@@ -195,6 +195,10 @@ nav::before{
 }
 .mw{flex:1;position:relative}
 #map{width:100%;height:100%;background:linear-gradient(180deg,#dde6f5 0%,#c8d4ec 100%)}
+#map-estilos{position:absolute;bottom:22px;left:14px;z-index:500;display:flex;gap:4px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);border-radius:12px;padding:4px;box-shadow:0 8px 24px rgba(31,38,135,.15)}
+.btn-map-estilo{width:32px;height:32px;border:none;border-radius:8px;background:transparent;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s}
+.btn-map-estilo:hover{background:rgba(30,64,175,.08)}
+.btn-map-estilo.on{background:var(--azul,#1e40af);box-shadow:0 2px 6px rgba(30,64,175,.35)}
 
 /* tabs */
 .tabs{
@@ -244,7 +248,8 @@ nav::before{
 .sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--glass-hairline) 0%,transparent 100%)}
 
 /* form fields */
-.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;min-width:0}
+.fl input[type=file]{max-width:100%}
 .fl label{font-size:10px;font-weight:600;color:var(--txts);text-transform:uppercase;letter-spacing:0.5px}
 .fl input,.fl select{
   font-size:12px;padding:9px 11px;
@@ -1503,6 +1508,12 @@ function baixarModeloRot() {
 
   <div class="mw">
     <div id="map"></div>
+    <div id="map-estilos">
+      <button type="button" class="btn-map-estilo on" data-style="light-v11" title="Mapa">🗺️</button>
+      <button type="button" class="btn-map-estilo" data-style="satellite-streets-v12" title="Satélite">🛰️</button>
+      <button type="button" class="btn-map-estilo" data-style="outdoors-v12" title="Relevo">🏔️</button>
+      <button type="button" class="btn-map-estilo" data-style="dark-v11" title="Escuro">🌙</button>
+    </div>
     <div id="mres" class="mres"></div>
     <div class="lasso-hint">✏️ Arraste no mapa para desenhar a área. ESC ou clique fora para cancelar.</div>
     <div class="ml">
@@ -1764,6 +1775,20 @@ function _mapaPronto(){
   map.addLayer({id:'rotas-line-solid',type:'line',source:'rotas-src',filter:['==',['get','dash'],false],
     paint:{'line-color':['get','cor'],'line-width':['get','weight'],'line-opacity':['get','opacity']}});
 }
+
+// Seletor de estilo do mapa (satélite/relevo/escuro/padrão). map.setStyle()
+// apaga as fontes/camadas próprias (lasso/régua/rotas) — precisam ser
+// recriadas depois que o novo estilo termina de carregar; os marcadores
+// (mapboxgl.Marker) não são afetados e não precisam ser recriados.
+document.querySelectorAll('.btn-map-estilo').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    if(!map) return;
+    document.querySelectorAll('.btn-map-estilo').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+    map.once('style.load', function(){ _mapaPronto(); updRts(); _lassoSetData&&_lassoSetData(); });
+    map.setStyle('mapbox://styles/mapbox/' + btn.dataset.style);
+  });
+});
 
 function mkIco(cor,seq,seg){
   var il=seg==='LICITACAO'; var ia=seg==='AMOSTRA';
