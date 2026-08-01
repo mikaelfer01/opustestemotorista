@@ -17,8 +17,8 @@ import {
   ref, get, set, update, onValue
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Trava a pagina para admin
-exigirPerfis(['admin']);
+// Trava a pagina para admin e logistica
+exigirPerfis(['admin', 'logistica']);
 
 const PERFIS = ['admin', 'logistica', 'comercial', 'operacao'];
 const PERFIL_LABEL = {

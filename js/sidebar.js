@@ -45,6 +45,7 @@
   "#opus-sidebar::-webkit-scrollbar{width:6px;}#opus-sidebar::-webkit-scrollbar-thumb{background:rgba(232,201,106,.3);border-radius:3px;}" +
   "#opus-sidebar .opus-brand{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:700;font-size:16px;color:var(--opus-gold);padding:18px 18px 14px;border-bottom:1px solid rgba(232,201,106,.18);display:flex;flex-direction:column;gap:2px;flex-shrink:0;white-space:nowrap;}" +
   "#opus-sidebar .opus-brand small{font-family:'Inter',sans-serif;font-style:normal;font-size:9px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:#fff;}" +
+  "#opus-sidebar .opus-brand-logo{display:none;width:30px;height:30px;border-radius:7px;object-fit:cover;margin:0 auto;}" +
   "#opus-sidebar .opus-close{display:none;position:absolute;top:14px;right:12px;background:transparent;border:none;color:#9fb0c9;cursor:pointer;padding:4px;}" +
   "#opus-sidebar .opus-close svg{width:18px;height:18px;}" +
   "#opus-sidebar nav{display:flex;flex-direction:column;padding:8px;gap:2px;}" +
@@ -60,7 +61,7 @@
   "body.opus-sidebar-collapsed{margin-left:var(--opus-sidebar-w-collapsed);}" +
   "#opus-sidebar.opus-collapsed{width:var(--opus-sidebar-w-collapsed);}" +
   "#opus-sidebar.opus-collapsed .opus-brand small,#opus-sidebar.opus-collapsed .opus-brand{font-size:0;padding-left:0;padding-right:0;text-align:center;}" +
-  "#opus-sidebar.opus-collapsed .opus-brand::before{content:'O';font-size:18px;}" +
+  "#opus-sidebar.opus-collapsed .opus-brand-logo{display:block;}" +
   "#opus-sidebar.opus-collapsed .opus-link{justify-content:center;padding:10px;}" +
   "#opus-sidebar.opus-collapsed .opus-link span{display:none;}" +
   "#opus-sidebar.opus-collapsed #opus-collapse-toggle{right:50%;transform:translateX(50%);top:54px;}" +
@@ -73,7 +74,7 @@
     "#opus-sidebar.open{transform:translateX(0);}" +
     "#opus-sidebar .opus-close{display:block;}" +
     "#opus-sidebar.opus-collapsed .opus-brand,#opus-sidebar.opus-collapsed .opus-link{font-size:inherit;}" +
-    "#opus-sidebar.opus-collapsed .opus-brand::before{content:none;}" +
+    "#opus-sidebar.opus-collapsed .opus-brand-logo{display:none;}" +
     "#opus-sidebar.opus-collapsed .opus-link{justify-content:flex-start;padding:10px 12px;}" +
     "#opus-sidebar.opus-collapsed .opus-link span{display:inline;}" +
     "#opus-collapse-toggle{display:none;}" +
@@ -103,7 +104,7 @@
 
     // sidebar
     var sidebar = el("aside", { id: "opus-sidebar" });
-    var brand = el("div", { class: "opus-brand" }, "Grupo MF Paris<small>OPUS</small>");
+    var brand = el("div", { class: "opus-brand" }, '<img class="opus-brand-logo" src="/logo-gmf.png" alt="Grupo MF Paris">Grupo MF Paris<small>OPUS</small>');
     var closeBtn = el("button", { class: "opus-close", type: "button", "aria-label": "Fechar menu" },
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>');
     brand.appendChild(closeBtn);

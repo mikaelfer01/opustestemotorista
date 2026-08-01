@@ -311,6 +311,7 @@ const resumoProdutosExibicao = itens.map(it =>
               valor_total:    p.total_pedido?.valor_total_pedido||0,
               peso_total:     calcularPesoPedido(p.det, dep.tipo),
               observacoes:    p.observacoes?.obs_venda||'',
+              dadosAdicionaisNF: p.informacoes_adicionais?.dados_adicionais_nf||'',
               resumoProdutos,
               resumoProdutosExibicao,
               itens,
@@ -796,6 +797,8 @@ function renderDrawer() {
     <h4>Observações</h4>
     <textarea id="dr-obs" style="width:100%;min-height:70px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--cream);resize:vertical">${p.observacoes||''}</textarea>
     <button onclick="salvarObs()" style="margin-top:6px;padding:8px 16px;background:var(--navy);color:var(--gold3);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">💾 Salvar observação</button>
+    <h4>Dados Adicionais para a Nota Fiscal</h4>
+    <div style="width:100%;min-height:24px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--cream2);color:${p.dadosAdicionaisNF?'var(--ink)':'var(--ink4)'};white-space:pre-wrap;">${p.dadosAdicionaisNF || 'Nenhum dado adicional informado no OMIE.'}</div>
     <h4>Itens (${p.itens.length})</h4>
     <table class="itens">
       <thead><tr><th>SKU</th><th>Descrição</th><th class="r">Qtd</th><th class="r">Estoque</th><th class="r">Vlr Unit.</th><th></th></tr></thead>
