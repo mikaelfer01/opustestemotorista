@@ -19,7 +19,7 @@
 body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;overflow-x:auto}
 .bg-texture{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 70% 50% at 100% 0%,rgba(184,144,42,.07) 0%,transparent 60%),var(--cream)}
 .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(184,144,42,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(184,144,42,.06) 1px,transparent 1px);background-size:52px 52px}
-header{position:sticky;top:54px;z-index:100;height:54px;background:rgba(250,248,244,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);box-shadow:0 1px 20px var(--shadow)}
+header{position:sticky;top:0;z-index:100;height:54px;background:rgba(250,248,244,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);box-shadow:0 1px 20px var(--shadow)}
 .header-top{display:flex;align-items:center;justify-content:space-between;padding:.4rem 2rem;gap:1rem;flex-wrap:nowrap}
 .h-left{display:flex;align-items:center;gap:1rem}
 .h-brand h1{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--navy)}
@@ -67,7 +67,7 @@ main{position:relative;z-index:1;padding:0}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .tbl-wrap{background:var(--white);border:1px solid var(--border);border-radius:16px;box-shadow:0 2px 16px var(--shadow)}
 table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1200px}
-thead{position:sticky;top:194px;z-index:50}
+thead{position:sticky;top:var(--carteira-thead-top,140px);z-index:50}
 .dr-body thead{position:sticky;top:0;z-index:2}
 thead tr{background:var(--navy);border-bottom:2px solid var(--gold)}
 table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1200px;table-layout:fixed}
@@ -151,7 +151,7 @@ input[type=checkbox]:disabled{cursor:not-allowed;opacity:.4}
 
 <main>
 
-  <div style="position:sticky;top:108px;z-index:90;display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:var(--white);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px">
+  <div id="carteira-topbar" style="position:sticky;top:54px;z-index:90;display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:var(--white);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px">
     <div style="display:flex;align-items:center;gap:24px;flex:1">
       <div>
         <div style="font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-weight:700">Carteira</div>
@@ -278,6 +278,22 @@ input[type=checkbox]:disabled{cursor:not-allowed;opacity:.4}
   var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   var el = document.getElementById('h-date');
   if (el) el.textContent = dias[dt.getDay()].charAt(0).toUpperCase()+dias[dt.getDay()].slice(1)+', '+dt.getDate()+' de '+meses[dt.getMonth()];
+})();
+</script>
+<script>
+(function(){
+  // A barra de KPIs (#carteira-topbar) muda de altura conforme os dados
+  // carregam e quebram linha; o thead da tabela precisa saber essa altura
+  // real para grudar logo abaixo dela, sem sobrepor nem deixar vão.
+  var topbar = document.getElementById('carteira-topbar');
+  function atualizarOffset(){
+    if (!topbar) return;
+    var h = 54 + topbar.offsetHeight;
+    document.documentElement.style.setProperty('--carteira-thead-top', h+'px');
+  }
+  atualizarOffset();
+  window.addEventListener('resize', atualizarOffset);
+  if (window.ResizeObserver && topbar) new ResizeObserver(atualizarOffset).observe(topbar);
 })();
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
