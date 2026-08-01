@@ -660,6 +660,10 @@ function atualizarMarcadores() {
   var GPS_STALE_MS = 15*60*1000;
   Object.keys(despachos).forEach(function(t) {
     var d = despachos[t];
+    if (d.concluido) {
+      if (marcadores[t]) { map.removeLayer(marcadores[t]); delete marcadores[t]; }
+      return;
+    }
     if (!d.gps||!d.gps.lat) return;
     var cor = getCor(t);
     var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
