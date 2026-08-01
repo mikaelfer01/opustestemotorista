@@ -1737,6 +1737,14 @@ try{
   _mapaPronto();
   var _bmap=document.getElementById('bmap');
   if(_bmap){_bmap.textContent='Mapa OK';_bmap.style.color='#22c55e';_bmap.style.borderColor='#22c55e';}
+  // O container fica dentro de um layout flex cujo tamanho final só se
+  // acomoda depois que o sidebar.js (script deferred) aplica a classe que
+  // desloca o body — sem este resize() o canvas do Mapbox pode ficar preso
+  // na medida errada (mapa "cortado") quando essa reflow acontece depois
+  // da construção do mapa.
+  setTimeout(function(){ if(map) map.resize(); }, 300);
+  window.addEventListener('opus-sidebar-toggle', function(){ if(map) map.resize(); });
+  window.addEventListener('resize', function(){ if(map) map.resize(); });
 }catch(e){err('Mapa: '+e.message);}
 })();
 
