@@ -5706,7 +5706,75 @@ function limparFormMotorista(){
   document.getElementById('mot-eh-transportadora').checked = false;
   toggleVeiculoTerceiro();
   toggleTransportadoraPJ();
+  ['mot-upload-cnh','mot-upload-crlv'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['mot-upload-cnh-status','mot-upload-crlv-status'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.textContent=''; } });
   var t = document.querySelector('#m-motoristas .mt2'); if(t) t.textContent='🚗 Cadastrar Motorista';
+}
+
+// Le a CNH/CRLV enviada (foto ou PDF) e tenta preencher os campos do
+// cadastro automaticamente via /api/extrair-documento. Se a extração
+// falhar ou vier incompleta, o formulário continua liberado pra
+// preenchimento manual normalmente — isso aqui só ajuda quando dá certo.
+function _fileParaBase64(file){
+  return new Promise(function(resolve,reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(String(reader.result).split(',')[1] || ''); };
+    reader.onerror = function(){ reject(new Error('Falha ao ler arquivo')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function _preencherCamposDocumento(tipo, campos){
+  function set(id, val){
+    if(val===undefined || val===null || val==='') return;
+    var el = document.getElementById(id);
+    if(el && !el.value) el.value = val;
+  }
+  if(tipo === 'cnh'){
+    set('mot-nome', campos.nome);
+    set('mot-cpf', campos.cpf);
+    set('mot-nascimento', campos.nascimento);
+    set('mot-cnh', campos.numeroCnh);
+    if(campos.categoria){ var selCat=document.getElementById('mot-cat-cnh'); if(selCat) selCat.value = String(campos.categoria).toUpperCase(); }
+    set('mot-venc-cnh', campos.validade);
+  } else if(tipo === 'crlv'){
+    if(campos.placa){ var pl=document.getElementById('mot-placa'); if(pl && !pl.value) pl.value = String(campos.placa).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+    if(campos.uf){ var selUf=document.getElementById('mot-uf-veiculo'); if(selUf) selUf.value = String(campos.uf).toUpperCase(); }
+    set('mot-veiculo', campos.modelo);
+    set('mot-renavan', campos.renavam);
+    if(campos.proprietarioTerceiro){
+      var chk = document.getElementById('mot-veic-terceiro');
+      if(chk && !chk.checked){ chk.checked = true; toggleVeiculoTerceiro(); }
+      set('mot-terceiro-nome', campos.proprietarioNome);
+      set('mot-terceiro-doc', campos.proprietarioDoc);
+    }
+  }
+}
+
+async function processarDocumentoMotorista(inputEl, tipo){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  var statusEl = document.getElementById('mot-upload-'+tipo+'-status');
+  if(statusEl){ statusEl.textContent='🔎 Analisando documento…'; statusEl.style.color='#2563eb'; }
+  try{
+    var b64 = await _fileParaBase64(file);
+    var resp = await fetch('/api/extrair-documento', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tipo: tipo, mediaType: file.type || 'image/jpeg', imagemBase64: b64 })
+    });
+    var data = await resp.json().catch(function(){ return {}; });
+    if(!resp.ok || data.erro) throw new Error(data.erro || 'Falha ao analisar documento');
+    var campos = data.campos || {};
+    _preencherCamposDocumento(tipo, campos);
+    var qtd = Object.keys(campos).filter(function(k){ return campos[k]!==null && campos[k]!==''; }).length;
+    if(statusEl){
+      if(qtd > 0){ statusEl.textContent='✅ '+qtd+' campo(s) identificado(s) — confira antes de salvar.'; statusEl.style.color='#16a34a'; }
+      else { statusEl.textContent='⚠ Não identificamos os dados — preencha manualmente.'; statusEl.style.color='#b45309'; }
+    }
+  }catch(e){
+    if(statusEl){ statusEl.textContent='⚠ Não foi possível ler automaticamente — preencha manualmente.'; statusEl.style.color='#b45309'; }
+    console.error('Erro ao processar documento do motorista:', e);
+  }
 }
 
 function salvarMotorista(){
@@ -7400,6 +7468,23 @@ function copiarTextoGerado(){
       <!-- FORMULÁRIO -->
       <div class="mb-xl-form">
         <input type="hidden" id="mot-edit-id"/>
+
+        <div class="mot-card">
+          <div class="sec">📎 Importar Documentos (opcional)</div>
+          <div class="g2">
+            <div class="fl">
+              <label>Foto ou PDF da CNH</label>
+              <input type="file" id="mot-upload-cnh" accept="image/*,application/pdf" onchange="processarDocumentoMotorista(this,'cnh')"/>
+              <div class="mot-upload-status" id="mot-upload-cnh-status" style="font-size:11px;margin-top:4px;min-height:14px;"></div>
+            </div>
+            <div class="fl">
+              <label>Foto ou PDF do documento do veículo (CRLV)</label>
+              <input type="file" id="mot-upload-crlv" accept="image/*,application/pdf" onchange="processarDocumentoMotorista(this,'crlv')"/>
+              <div class="mot-upload-status" id="mot-upload-crlv-status" style="font-size:11px;margin-top:4px;min-height:14px;"></div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">O sistema tenta identificar os dados automaticamente. Confira e complete manualmente o que não vier preenchido.</div>
+        </div>
 
         <div class="mot-card">
           <div class="sec">👤 Dados Pessoais</div>
