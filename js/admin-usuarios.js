@@ -149,16 +149,25 @@ window.editarUsuario = async function(uid) {
   const u = snap.val();
   const novoNome = prompt('Nome:', u.nome || '');
   if (novoNome === null) return;
+  if (!novoNome.trim()) return alert('Nome nao pode ficar vazio.');
   const novoPerfil = prompt('Perfil (admin/logistica/comercial/operacao):', u.perfil || '');
   if (novoPerfil === null) return;
   if (!PERFIS.includes(novoPerfil)) return alert('Perfil invalido');
-  await editarUsuario(uid, { nome: novoNome.trim(), perfil: novoPerfil });
+  try {
+    await editarUsuario(uid, { nome: novoNome.trim(), perfil: novoPerfil });
+  } catch (e) {
+    alert('Erro ao salvar: ' + (e.code || e.message));
+  }
 };
 
 window.toggleAtivo = async function(uid, estaInativo) {
   const acao = estaInativo ? 'Ativar' : 'Desativar';
   if (!confirm(acao + ' este usuario?')) return;
-  await setAtivo(uid, estaInativo);
+  try {
+    await setAtivo(uid, estaInativo);
+  } catch (e) {
+    alert('Erro ao ' + acao.toLowerCase() + ': ' + (e.code || e.message));
+  }
 };
 
 window.resetarSenha = async function(uid, nome) {
