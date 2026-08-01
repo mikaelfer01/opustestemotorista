@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.grupomfparis.opusentregas",
+      "sha256_cert_fingerprints": [
+        "7E:62:E1:1F:55:AA:02:6B:7A:1A:C3:23:C0:42:70:9C:E2:8B:F1:F6:11:87:2A:B1:82:14:E1:FE:C2:42:07:7E"
+      ]
+    }
+  }
+]
