@@ -518,7 +518,8 @@ function gerarTermoPDF() {
     if (y + altura > 283) { doc.addPage(); y = 20; }
   }
   function tituloSec(txt) {
-    checarQuebra(11);
+    checarQuebra(15.5);
+    y += 4.5;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
     doc.text(txt.toUpperCase(), ml, y);
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6);
@@ -547,7 +548,7 @@ function gerarTermoPDF() {
     doc.rect(ml, y, tableW, 9, 'S');
     doc.setLineDashPattern([], 0);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.3); doc.setTextColor(0, 0, 0);
-    const prefixo = '⚠ ATENÇÃO: ';
+    const prefixo = 'ATENÇÃO: ';
     doc.text(prefixo, ml + 3, y + 5.5);
     const lp = doc.getTextWidth(prefixo);
     doc.setFont('helvetica', 'normal');
@@ -695,6 +696,7 @@ function gerarTermoPDF() {
   // 9. Vias da nota fiscal (canhoto de entrega) — 2 vias por NF, com peso e valor
   const notasOk = pedidosAtual.filter(it => it.status === 'ok');
   if (notasOk.length) {
+    checarQuebra(15.5 + 5.5 + 33 + 2);
     tituloSec('9. Vias da Nota Fiscal (Canhoto de Entrega)');
     doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(70, 70, 70);
     doc.text('1ª via fica com o transportador, 2ª via fica com o destinatário (recorte na linha pontilhada).', ml, y);
@@ -736,8 +738,8 @@ function gerarTermoPDF() {
   }
 
   // 10. Declaração de recebimento
+  checarQuebra(15.5 + 20);
   tituloSec('10. Declaração de Recebimento da Carga');
-  checarQuebra(20);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
   const declTexto = 'Declaro, para os devidos fins, que recebi a carga discriminada acima em perfeitas condições, ' +
     'nas quantidades, pesos e valores indicados, comprometendo-me a transportá-la e entregá-la aos respectivos ' +
@@ -746,8 +748,8 @@ function gerarTermoPDF() {
   y += 22;
 
   // 11. Assinaturas
+  checarQuebra(15.5 + 20);
   tituloSec('11. Assinaturas');
-  checarQuebra(20);
   y += 12;
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
   doc.line(ml, y, ml + 78, y);
