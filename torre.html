@@ -213,6 +213,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
         <button class="filtro-btn" onclick="setFiltro('emrota',this)">🚗 Em rota</button>
         <button class="filtro-btn" onclick="setFiltro('pendente',this)">⏳ Pendentes</button>
         <button class="filtro-btn" onclick="setFiltro('concluido',this)">✅ Concluídos</button>
+        <button class="filtro-btn" id="btn-excluir-pendentes" onclick="excluirTodasPendentes()" style="margin-left:auto;color:#b91c1c;border-color:rgba(220,38,38,.3)">🗑 Excluir pendentes</button>
       </div>
       <div class="filtros-sel-row">
         <select class="filtro-select" id="sel-mot" onchange="filtrarPorMotorista(this.value)">
@@ -746,6 +747,34 @@ window.copiarIdRota = function(id, el) {
 };
 window.filtrarPorMotorista = function(v) { filtroMotPlaca=v; renderPainel(); };
 window.filtrarPorRegiao = function(v) { filtroRegiao=v; renderPainel(); };
+
+window.excluirTodasPendentes = function() {
+  var alvos = Object.keys(despachos).filter(function(t){
+    var d = despachos[t];
+    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+    return nC < nP;
+  });
+  if (!alvos.length) { alert('Nenhuma rota pendente pra excluir.'); return; }
+  if (!confirm('Excluir ' + alvos.length + ' rota(s) pendente(s)?\n\nIsso remove essas rotas e suas paradas permanentemente. Não pode ser desfeito.')) return;
+
+  var btn = document.getElementById('btn-excluir-pendentes');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo...'; }
+
+  Promise.all(alvos.map(function(t){
+    return fetch('/api/firebase-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'despachos/' + t, method: 'remove' })
+    }).then(function(r){ return { t: t, ok: r.ok }; })
+      .catch(function(){ return { t: t, ok: false }; });
+  })).then(function(results){
+    var falhas = results.filter(function(r){ return !r.ok; });
+    if (motoristaSel && alvos.indexOf(motoristaSel) !== -1) motoristaSel = null;
+    if (btn) { btn.disabled = false; btn.textContent = '🗑 Excluir pendentes'; }
+    if (falhas.length) alert('⚠ ' + falhas.length + ' de ' + alvos.length + ' não foram excluídas. Tente de novo.');
+    else alert('✅ ' + alvos.length + ' rota(s) pendente(s) excluída(s).');
+  });
+};
 
 window.excluirRota = function(t) {
   var d = despachos[t];
