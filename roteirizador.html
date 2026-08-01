@@ -671,6 +671,7 @@ nav::before{
   background:rgba(255,255,255,.55);border:1px solid var(--glass-hairline);
   border-radius:var(--rl);padding:14px 16px 6px;margin-bottom:14px;
 }
+.mot-card.h{display:none}
 .mot-card .sec{margin-top:0}
 .mot-side-count{
   font-size:10px;font-weight:700;color:var(--txts);background:rgba(15,23,42,.05);
@@ -5652,13 +5653,29 @@ function abrirCadastroMotoristas(){
   oModal('m-motoristas');
 }
 
+function toggleVeiculoTerceiro(){
+  var on = document.getElementById('mot-veic-terceiro').checked;
+  document.getElementById('mot-card-terceiro').classList.toggle('h', !on);
+}
+function toggleTransportadoraPJ(){
+  var on = document.getElementById('mot-eh-transportadora').checked;
+  document.getElementById('mot-card-transportadora').classList.toggle('h', !on);
+}
+
 function limparFormMotorista(){
   document.getElementById('mot-edit-id').value = '';
-  ['mot-nome','mot-cpf','mot-tel','mot-cnh','mot-venc-cnh','mot-placa',
-   'mot-veiculo','mot-renavan','mot-antt','mot-rntrc','mot-obs',
+  ['mot-nome','mot-cpf','mot-nascimento','mot-endereco','mot-tel','mot-cnh','mot-venc-cnh','mot-placa',
+   'mot-uf-veiculo','mot-veiculo','mot-renavan','mot-antt','mot-rntrc','mot-obs',
+   'mot-terceiro-nome','mot-terceiro-doc','mot-terceiro-rntrc',
+   'mot-transp-razao','mot-transp-cnpj','mot-transp-rntrc','mot-transp-categoria','mot-transp-situacao','mot-transp-endereco',
    'mot-pix','mot-pix-nome'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var cat = document.getElementById('mot-cat-cnh'); if(cat) cat.value='B';
+  var uf = document.getElementById('mot-uf-veiculo'); if(uf) uf.value='MG';
+  document.getElementById('mot-veic-terceiro').checked = false;
+  document.getElementById('mot-eh-transportadora').checked = false;
+  toggleVeiculoTerceiro();
+  toggleTransportadoraPJ();
   var t = document.querySelector('#m-motoristas .mt2'); if(t) t.textContent='🚗 Cadastrar Motorista';
 }
 
@@ -5666,16 +5683,30 @@ function salvarMotorista(){
   var campos = {
     nome:       (document.getElementById('mot-nome').value||'').trim(),
     cpf:        (document.getElementById('mot-cpf').value||'').trim(),
+    nascimento: (document.getElementById('mot-nascimento').value||''),
+    endereco:   (document.getElementById('mot-endereco').value||'').trim(),
     telefone:   (document.getElementById('mot-tel').value||'').trim(),
     cnh:        (document.getElementById('mot-cnh').value||'').trim(),
     catCnh:     (document.getElementById('mot-cat-cnh').value||'B'),
     vencCnh:    (document.getElementById('mot-venc-cnh').value||''),
     placa:      (document.getElementById('mot-placa').value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''),
+    ufVeiculo:  (document.getElementById('mot-uf-veiculo').value||''),
     veiculo:    (document.getElementById('mot-veiculo').value||'').trim(),
     renavan:    (document.getElementById('mot-renavan').value||'').trim(),
     antt:       (document.getElementById('mot-antt').value||'').trim(),
     rntrc:      (document.getElementById('mot-rntrc').value||'').trim(),
     obs:        (document.getElementById('mot-obs').value||'').trim(),
+    veiculoTerceiro: document.getElementById('mot-veic-terceiro').checked,
+    terceiroNome:    (document.getElementById('mot-terceiro-nome').value||'').trim(),
+    terceiroDoc:     (document.getElementById('mot-terceiro-doc').value||'').trim(),
+    terceiroRntrc:   (document.getElementById('mot-terceiro-rntrc').value||'').trim(),
+    ehTransportadora: document.getElementById('mot-eh-transportadora').checked,
+    transpRazao:     (document.getElementById('mot-transp-razao').value||'').trim(),
+    transpCnpj:      (document.getElementById('mot-transp-cnpj').value||'').trim(),
+    transpRntrc:     (document.getElementById('mot-transp-rntrc').value||'').trim(),
+    transpCategoria: (document.getElementById('mot-transp-categoria').value||''),
+    transpSituacao:  (document.getElementById('mot-transp-situacao').value||'').trim(),
+    transpEndereco:  (document.getElementById('mot-transp-endereco').value||'').trim(),
     pix:        (document.getElementById('mot-pix').value||'').trim(),
     pixNome:    (document.getElementById('mot-pix-nome').value||'').trim()
   };
@@ -5706,16 +5737,32 @@ function editarMotorista(id){
   document.getElementById('mot-edit-id').value    = m.id;
   document.getElementById('mot-nome').value        = m.nome||'';
   document.getElementById('mot-cpf').value         = m.cpf||'';
+  document.getElementById('mot-nascimento').value  = m.nascimento||'';
+  document.getElementById('mot-endereco').value    = m.endereco||'';
   document.getElementById('mot-tel').value         = m.telefone||'';
   document.getElementById('mot-cnh').value         = m.cnh||'';
   document.getElementById('mot-cat-cnh').value     = m.catCnh||'B';
   document.getElementById('mot-venc-cnh').value    = m.vencCnh||'';
   document.getElementById('mot-placa').value       = m.placa||'';
+  document.getElementById('mot-uf-veiculo').value  = m.ufVeiculo||'MG';
   document.getElementById('mot-veiculo').value     = m.veiculo||'';
   document.getElementById('mot-renavan').value     = m.renavan||'';
   document.getElementById('mot-antt').value        = m.antt||'';
   document.getElementById('mot-rntrc').value       = m.rntrc||'';
   document.getElementById('mot-obs').value         = m.obs||'';
+  document.getElementById('mot-veic-terceiro').checked = !!m.veiculoTerceiro;
+  document.getElementById('mot-terceiro-nome').value   = m.terceiroNome||'';
+  document.getElementById('mot-terceiro-doc').value    = m.terceiroDoc||'';
+  document.getElementById('mot-terceiro-rntrc').value  = m.terceiroRntrc||'';
+  toggleVeiculoTerceiro();
+  document.getElementById('mot-eh-transportadora').checked = !!m.ehTransportadora;
+  document.getElementById('mot-transp-razao').value     = m.transpRazao||'';
+  document.getElementById('mot-transp-cnpj').value      = m.transpCnpj||'';
+  document.getElementById('mot-transp-rntrc').value     = m.transpRntrc||'';
+  document.getElementById('mot-transp-categoria').value = m.transpCategoria||'';
+  document.getElementById('mot-transp-situacao').value  = m.transpSituacao||'';
+  document.getElementById('mot-transp-endereco').value  = m.transpEndereco||'';
+  toggleTransportadoraPJ();
   document.getElementById('mot-pix').value         = m.pix||'';
   document.getElementById('mot-pix-nome').value    = m.pixNome||'';
   var t = document.querySelector('#m-motoristas .mt2'); if(t) t.textContent='✏️ Editar Motorista';
@@ -7340,6 +7387,12 @@ function copiarTextoGerado(){
           </div>
           <div class="g2">
             <div class="fl"><label>CPF</label><input type="text" id="mot-cpf" placeholder="000.000.000-00" maxlength="14"/></div>
+            <div class="fl"><label>Data de nascimento</label><input type="date" id="mot-nascimento"/></div>
+          </div>
+          <div class="g2">
+            <div class="fl" style="grid-column:1/-1;"><label>Endereço</label><input type="text" id="mot-endereco" placeholder="Rua, número, bairro, cidade/UF"/></div>
+          </div>
+          <div class="g2">
             <div class="fl"><label>Telefone (WhatsApp) *</label><input type="tel" id="mot-tel" placeholder="(31) 99999-9999"/></div>
           </div>
         </div>
@@ -7366,13 +7419,74 @@ function copiarTextoGerado(){
           <div class="sec">🚙 Veículo</div>
           <div class="g2">
             <div class="fl"><label>Placa *</label><input type="text" id="mot-placa" placeholder="ABC1D23" maxlength="8" style="text-transform:uppercase;"/></div>
-            <div class="fl"><label>Veículo (modelo)</label><input type="text" id="mot-veiculo" placeholder="Fiorino 1.3 2020"/></div>
+            <div class="fl"><label>UF</label>
+              <select id="mot-uf-veiculo">
+                <option value="">—</option>
+                <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option>
+                <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
+                <option selected>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option>
+                <option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+                <option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option>
+                <option>SP</option><option>TO</option>
+              </select>
+            </div>
           </div>
           <div class="g2">
+            <div class="fl"><label>Veículo (modelo)</label><input type="text" id="mot-veiculo" placeholder="Fiorino 1.3 2020"/></div>
             <div class="fl"><label>RENAVAM</label><input type="text" id="mot-renavan" placeholder="00000000000" maxlength="11"/></div>
-            <div class="fl"><label>RNTRC (Carga)</label><input type="text" id="mot-rntrc" placeholder="00000000"/></div>
           </div>
-          <div class="fl"><label>ANTT / Registro</label><input type="text" id="mot-antt" placeholder="Nº registro ANTT"/></div>
+          <div class="g2">
+            <div class="fl"><label>RNTRC do motorista (se autônomo)</label><input type="text" id="mot-rntrc" placeholder="00000000"/></div>
+            <div class="fl"><label>ANTT / Registro</label><input type="text" id="mot-antt" placeholder="Nº registro ANTT"/></div>
+          </div>
+          <div class="fl" style="margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:7px;font-weight:600;cursor:pointer;">
+              <input type="checkbox" id="mot-veic-terceiro" onchange="toggleVeiculoTerceiro()" style="width:auto;"/>
+              Veículo é de terceiro (arrendado / alienação fiduciária)
+            </label>
+          </div>
+        </div>
+
+        <div class="mot-card h" id="mot-card-terceiro">
+          <div class="sec">🧾 Proprietário do veículo no CRLV (terceiro)</div>
+          <div class="g2">
+            <div class="fl" style="grid-column:1/-1;"><label>Nome / Razão social do proprietário</label><input type="text" id="mot-terceiro-nome" placeholder="Nome ou razão social no CRLV"/></div>
+          </div>
+          <div class="g2">
+            <div class="fl"><label>CPF/CNPJ do proprietário</label><input type="text" id="mot-terceiro-doc" placeholder="CPF ou CNPJ"/></div>
+            <div class="fl"><label>RNTRC do proprietário</label><input type="text" id="mot-terceiro-rntrc" placeholder="RNTRC (se diferente do motorista)"/></div>
+          </div>
+        </div>
+
+        <div class="mot-card">
+          <div class="fl">
+            <label style="display:flex;align-items:center;gap:7px;font-weight:600;cursor:pointer;">
+              <input type="checkbox" id="mot-eh-transportadora" onchange="toggleTransportadoraPJ()" style="width:auto;"/>
+              Motorista opera como transportadora (Pessoa Jurídica)
+            </label>
+          </div>
+        </div>
+
+        <div class="mot-card h" id="mot-card-transportadora">
+          <div class="sec">🏢 Transportadora (PJ)</div>
+          <div class="g2">
+            <div class="fl" style="grid-column:1/-1;"><label>Razão social</label><input type="text" id="mot-transp-razao" placeholder="Razão social da transportadora"/></div>
+          </div>
+          <div class="g2">
+            <div class="fl"><label>CNPJ</label><input type="text" id="mot-transp-cnpj" placeholder="00.000.000/0000-00"/></div>
+            <div class="fl"><label>RNTRC da transportadora</label><input type="text" id="mot-transp-rntrc" placeholder="RNTRC da empresa"/></div>
+          </div>
+          <div class="g2">
+            <div class="fl"><label>Categoria</label>
+              <select id="mot-transp-categoria">
+                <option value="">—</option>
+                <option value="TAC">TAC — Transportador Autônomo de Cargas</option>
+                <option value="ETC">ETC — Empresa de Transporte de Cargas</option>
+              </select>
+            </div>
+            <div class="fl"><label>Situação</label><input type="text" id="mot-transp-situacao" placeholder="Ex: Regular"/></div>
+          </div>
+          <div class="fl"><label>Endereço</label><input type="text" id="mot-transp-endereco" placeholder="Endereço completo da transportadora"/></div>
         </div>
 
         <div class="mot-card">
