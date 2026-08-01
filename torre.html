@@ -50,6 +50,8 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
 .mot-idrota-top{font-size:13px;font-weight:800;letter-spacing:.3px;color:var(--azul-d);cursor:pointer}
 .mot-idrota-top:hover{text-decoration:underline}
 .mot-status-pill{margin-left:auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.btn-excluir-rota{flex-shrink:0;width:22px;height:22px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--txts);cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:.55;transition:.12s}
+.btn-excluir-rota:hover{opacity:1;background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.25);color:#b91c1c}
 .mot-status-pill.st-aguardando{background:rgba(148,163,184,.18);color:#475569}
 .mot-status-pill.st-emrota{background:rgba(22,163,74,.14);color:#166534}
 .mot-status-pill.st-concluido{background:rgba(30,64,175,.12);color:var(--azul-d)}
@@ -594,7 +596,9 @@ window.renderPainel = function() {
     html += d.idRota
       ? '<div class="mot-idrota-top" title="Clique pra copiar" onclick="event.stopPropagation();copiarIdRota(\''+d.idRota+'\',this)">🔖 '+d.idRota+'</div>'
       : '<div class="mot-idrota-top" style="color:var(--txts);font-weight:600">sem ID</div>';
-    html += '<div class="mot-status-pill '+statusClasse+'">'+statusLabel+'</div></div>';
+    html += '<div class="mot-status-pill '+statusClasse+'">'+statusLabel+'</div>';
+    html += '<button class="btn-excluir-rota" title="Excluir esta rota" onclick="event.stopPropagation();excluirRota(\''+t+'\')">🗑</button>';
+    html += '</div>';
     html += '<div class="mot-sub"><div class="mot-nome">'+(d.motoristaNome||'—')+'</div>';
     html += '<div class="mot-placa">'+(d.motoristaPlaca||'—')+'</div></div>';
     html += '<div class="mot-rota-info">'+(d.nomeRota||'—')+'</div>';
@@ -742,6 +746,24 @@ window.copiarIdRota = function(id, el) {
 };
 window.filtrarPorMotorista = function(v) { filtroMotPlaca=v; renderPainel(); };
 window.filtrarPorRegiao = function(v) { filtroRegiao=v; renderPainel(); };
+
+window.excluirRota = function(t) {
+  var d = despachos[t];
+  if (!d) return;
+  var label = (d.idRota ? d.idRota + ' · ' : '') + (d.nomeRota || d.motoristaNome || 'esta rota');
+  if (!confirm('Excluir ' + label + '?\n\nIsso remove a rota e as paradas permanentemente. Não pode ser desfeito.')) return;
+  fetch('/api/firebase-write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: 'despachos/' + t, method: 'remove' })
+  }).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (motoristaSel === t) motoristaSel = null;
+    // onValue('despachos') já vai atualizar a lista automaticamente ao remover no servidor
+  }).catch(function(e){
+    alert('❌ Erro ao excluir: ' + e.message);
+  });
+};
 
 // Popula os selects de "Motorista/Placa" e "Região" com base nos despachos atuais,
 // preservando a seleção corrente do usuário.
