@@ -1,0 +1,17 @@
+{
+  "name": "OPUS Entregas — Motorista",
+  "short_name": "OPUS Entregas",
+  "description": "App do motorista OPUS: navegação da rota, paradas e envio do canhoto assinado.",
+  "start_url": "/motorista.html?src=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a1f6b",
+  "theme_color": "#0a1f6b",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

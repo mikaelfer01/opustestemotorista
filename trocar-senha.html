@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OPUS — Trocar Senha</title>
+<script type="module" src="/js/trocar-senha.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#0a1f6b;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#0b1437}
+.card{background:#fff;width:100%;max-width:420px;padding:36px 34px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.card h1{font-size:20px;color:#0a1f6b;margin-bottom:4px}
+.card .subtitle{color:#666;font-size:13px;margin-bottom:18px}
+.identidade{background:#f5f7ff;padding:11px 13px;border-radius:8px;margin-bottom:20px;font-size:12.5px;line-height:1.5;border-left:3px solid #1e40af}
+.identidade b{color:#0a1f6b}
+label{display:block;font-size:12px;font-weight:600;color:#333;margin:12px 0 5px}
+input{width:100%;padding:10px 12px;border:1px solid #d8d8d8;border-radius:8px;font-size:14px;outline:none}
+input:focus{border-color:#1e40af;box-shadow:0 0 0 3px rgba(30,64,175,.12)}
+.dica{font-size:11px;color:#666;margin-top:4px;font-style:italic}
+button{width:100%;margin-top:18px;padding:11px;background:linear-gradient(135deg,#1e40af,#1d3a99);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.6;cursor:not-allowed}
+.msg{margin-top:14px;padding:10px 12px;border-radius:8px;font-size:13px;display:none}
+.msg.ok{display:block;background:#d1fae5;color:#065f46}
+.msg.erro{display:block;background:#fee2e2;color:#991b1b}
+.aviso{margin-top:18px;font-size:11px;color:#888;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>&#128274; Trocar senha</h1>
+  <p class="subtitle">Voce esta usando uma senha provisoria. Crie uma nova senha para continuar.</p>
+
+  <div class="identidade">
+    <b id="nome-usr">Carregando...</b><br>
+    <span id="email-usr" style="color:#666"></span>
+  </div>
+
+  <form id="form-trocar" autocomplete="off">
+    <label>Senha atual</label>
+    <input name="atual" type="password" required autocomplete="current-password"/>
+
+    <label>Nova senha</label>
+    <input name="nova" type="password" required autocomplete="new-password"/>
+    <div id="dica-senha" class="dica"></div>
+
+    <label>Confirmar nova senha</label>
+    <input name="conf" type="password" required autocomplete="new-password"/>
+
+    <button name="btn" type="submit">Trocar senha</button>
+    <div id="msg" class="msg"></div>
+  </form>
+
+  <div class="aviso">A nova senha deve ser pessoal e intransferivel.</div>
+</div>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

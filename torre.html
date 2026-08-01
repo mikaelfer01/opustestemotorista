@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPUS — Torre de Controle</title>
+<script type="module" src="/checar-login.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--azul-d:#0a1f6b;--azul:#1e40af;--verde:#16a34a;--vm:#dc2626;--lj:#ea580c;--gold:#d4af37;--txt:#0b1437;--txtm:#3f4a6b;--txts:#6b7691;--glass:rgba(255,255,255,0.92);--border:rgba(15,23,42,0.08);--shadow:0 4px 20px rgba(0,0,0,0.1);--r:10px;--rl:16px;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:#eef2ff}
+body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+
+.hdr{height:54px;flex-shrink:0;z-index:1000;display:flex;align-items:center;padding:0 18px;gap:14px;background:linear-gradient(135deg,rgba(10,15,40,.96),rgba(20,28,80,.96));border-bottom:1px solid rgba(212,175,55,.22);box-shadow:0 4px 20px rgba(10,15,40,.3)}
+.hdr-brand{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#d4af37;letter-spacing:1px}
+.hdr-title{font-size:12px;font-weight:600;color:rgba(255,255,255,.7)}
+.hdr-r{display:flex;gap:7px;margin-left:auto;align-items:center}
+.hbadge{font-size:11px;color:rgba(216,226,255,.8);background:rgba(255,255,255,.08);padding:5px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.1)}
+.tab-btn{height:34px;padding:0 13px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;transition:all .2s;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+.tab-btn.on{background:rgba(212,175,55,.2);color:#d4af37;border:1px solid rgba(212,175,55,.3)}
+
+.main{display:flex;flex:1;overflow:hidden}
+
+.painel{width:320px;flex-shrink:0;display:flex;flex-direction:column;background:var(--glass);backdrop-filter:saturate(180%) blur(22px);border-right:1px solid rgba(255,255,255,.65);box-shadow:4px 0 24px -8px rgba(31,38,135,.1);transition:width .2s}
+.painel.colapsado{width:0;overflow:hidden;border-right:none}
+.btn-colapsar{height:34px;padding:0 10px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;transition:all .2s;background:rgba(255,255,255,.08);color:rgba(255,255,255,.75)}
+.btn-colapsar:hover{background:rgba(255,255,255,.16)}
+.filtro-select{padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.8);font-family:inherit;font-size:11px;color:var(--txt);outline:none;flex:1;min-width:0}
+.filtros-sel-row{display:flex;gap:5px;margin-bottom:8px}
+.painel-hdr{padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.5);flex-shrink:0}
+.painel-title{font-size:10px;font-weight:700;color:var(--txts);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.filtros{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.filtro-btn{padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,.7);cursor:pointer;font-size:10px;font-weight:600;font-family:inherit;color:var(--txtm);transition:all .15s}
+.filtro-btn.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+.busca{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.8);font-family:inherit;font-size:12px;color:var(--txt);outline:none}
+
+.painel-scroll{flex:1;overflow-y:auto;padding:10px}
+.painel-scroll::-webkit-scrollbar{width:4px}
+.painel-scroll::-webkit-scrollbar-thumb{background:rgba(15,23,42,.15);border-radius:2px}
+
+.mot-card{background:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.8);border-left:4px solid var(--txts);border-radius:var(--rl);padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)}
+.mot-card.st-aguardando{border-left-color:#94a3b8}
+.mot-card.st-emrota{border-left-color:var(--verde)}
+.mot-card.st-concluido{border-left-color:var(--azul)}
+.mot-card.st-alerta{border-left-color:var(--vm)}
+.mot-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.mot-idrota-top{font-size:13px;font-weight:800;letter-spacing:.3px;color:var(--azul-d);cursor:pointer}
+.mot-idrota-top:hover{text-decoration:underline}
+.mot-status-pill{margin-left:auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.mot-status-pill.st-aguardando{background:rgba(148,163,184,.18);color:#475569}
+.mot-status-pill.st-emrota{background:rgba(22,163,74,.14);color:#166534}
+.mot-status-pill.st-concluido{background:rgba(30,64,175,.12);color:var(--azul-d)}
+.mot-sub{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.mot-compact{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.mot-compact-txt{font-size:11px;font-weight:700;color:var(--txtm);white-space:nowrap}
+.mot-compact .mot-bar{flex:1;margin-bottom:0}
+.mot-problemas{display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap}
+.mot-chip{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px}
+.mot-chip-dev{background:rgba(234,88,12,.12);color:#9a3412}
+.mot-chip-av{background:rgba(220,38,38,.12);color:#991b1b}
+.mot-card:hover{transform:translateY(-1px);border-color:rgba(30,64,175,.25)}
+.mot-card.sel{border-color:rgba(30,64,175,.5);background:rgba(219,234,254,.7);box-shadow:0 0 0 3px rgba(30,64,175,.1)}
+.mot-hdr{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.mot-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #fff}
+.mot-dot.online{animation:pmot 2s infinite}
+@keyframes pmot{0%,100%{box-shadow:0 0 0 2px #fff,0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(34,197,94,0)}}
+.mot-nome{font-size:12px;font-weight:700;color:var(--txt);flex:1}
+.mot-placa{font-size:10px;color:var(--txts);background:rgba(15,23,42,.06);padding:2px 7px;border-radius:5px}
+.mot-idrota{font-size:9.5px;font-weight:800;letter-spacing:.3px;color:var(--azul-d);background:rgba(30,64,175,.1);border:1px solid rgba(30,64,175,.25);padding:2px 7px;border-radius:5px;cursor:pointer}
+.mot-idrota:hover{background:rgba(30,64,175,.18)}
+.mot-contato{display:flex;gap:6px;margin-bottom:8px}
+.contato-btn{flex:1;padding:7px 8px;border-radius:9px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none}
+.contato-btn:active{transform:scale(.97)}
+.btn-ligar{background:rgba(22,163,74,.12);color:#166534;border:1px solid rgba(22,163,74,.25)}
+.btn-wapp{background:rgba(37,211,102,.12);color:#128c7e;border:1px solid rgba(37,211,102,.25)}
+.mot-rota-info{font-size:10px;color:var(--txts);margin-bottom:7px}
+.mot-prog{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:7px}
+.mot-stat{text-align:center;background:rgba(255,255,255,.6);border-radius:7px;padding:5px 3px;border:1px solid var(--border)}
+.mot-stat-l{font-size:8px;color:var(--txts);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:2px}
+.mot-stat-v{font-size:12px;font-weight:800;color:var(--txt)}
+.mot-bar{height:3px;border-radius:2px;background:rgba(15,23,42,.08);overflow:hidden;margin-bottom:7px}
+.mot-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.mot-ult{font-size:10px;color:var(--txts)}
+.mot-fora{font-size:10px;font-weight:700;color:var(--vm);margin-top:3px}
+.mot-hit{font-size:10.5px;font-weight:700;color:#8a6d1a;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);border-radius:7px;padding:5px 8px;margin-top:5px;line-height:1.5}
+.mot-gps-alerta{font-size:10px;font-weight:700;color:#fff;background:var(--vm);margin-top:5px;padding:5px 8px;border-radius:7px;display:flex;align-items:center;gap:5px}
+
+.paradas-list{margin-top:8px;border-top:1px solid var(--border);padding-top:8px;display:none}
+.paradas-list.on{display:block}
+.par-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(15,23,42,.04)}
+.par-item:last-child{border-bottom:none}
+.par-ico{font-size:13px;flex-shrink:0}
+.par-txt{flex:1;min-width:0}
+.par-cli{font-size:11px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.par-meta{font-size:10px;color:var(--txts)}
+.par-hora{font-size:10px;color:var(--txts);flex-shrink:0}
+.tag-fora{font-size:9px;font-weight:700;color:var(--vm);background:rgba(220,38,38,.1);padding:1px 5px;border-radius:4px;margin-left:3px}
+
+.btn-nf-refresh{width:100%;padding:7px 8px;margin-bottom:8px;border-radius:9px;border:1.5px dashed rgba(212,175,55,.5);background:rgba(212,175,55,.08);color:#8a6d1a;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-nf-refresh:hover{background:rgba(212,175,55,.16)}
+.btn-nf-refresh:disabled{opacity:.65;cursor:wait}
+.tab-btn-nf{background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.35)}
+.tab-btn-nf:hover{background:rgba(212,175,55,.25)}
+.tab-btn-nf:disabled{opacity:.6;cursor:wait}
+
+.mw{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+.resumo{position:absolute;top:12px;right:12px;z-index:500;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);border-top:3px solid var(--azul);border-radius:var(--rl);padding:11px 14px;min-width:210px;box-shadow:0 12px 32px rgba(31,38,135,.15)}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.res-k{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center}
+.res-l{font-size:8px;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:2px}
+.res-v{font-size:15px;font-weight:800;color:var(--azul-d)}
+.res-title{font-size:10px;font-weight:700;color:var(--txts);text-transform:uppercase;letter-spacing:.8px}
+
+/* HISTÓRICO */
+.hist-panel{display:none;position:absolute;inset:0;z-index:600;background:rgba(238,242,255,.99);overflow:hidden;flex-direction:column}
+.hist-panel.on{display:flex}
+.hist-hdr{padding:12px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.8);flex-shrink:0}
+.hist-title{font-size:13px;font-weight:800;color:var(--azul-d);margin-bottom:10px}
+
+/* FILTROS HISTÓRICO — linha 1: datas */
+.hist-filtros-datas{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.hist-filtros-datas label{font-size:10px;font-weight:700;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.hist-input{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.9);font-family:inherit;font-size:12px;outline:none;color:var(--txt)}
+.hist-input:focus{border-color:var(--azul)}
+
+/* FILTROS HISTÓRICO — linha 2: seletores + botões atalho */
+.hist-filtros-sel{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.hist-atalho{padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,.7);cursor:pointer;font-size:10px;font-weight:600;font-family:inherit;color:var(--txtm);transition:all .15s;white-space:nowrap}
+.hist-atalho:hover{background:var(--azul);color:#fff;border-color:var(--azul)}
+.hist-atalho.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+
+/* RESUMO HISTÓRICO */
+.hist-resumo{display:flex;gap:8px;padding:8px 18px;background:rgba(255,255,255,.6);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.hist-res-item{flex:1;min-width:80px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px 10px;text-align:center}
+.hist-res-l{font-size:9px;font-weight:700;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.hist-res-v{font-size:16px;font-weight:800}
+
+.hist-scroll{flex:1;overflow-y:auto;padding:14px 18px}
+.hist-scroll::-webkit-scrollbar{width:5px}
+.hist-scroll::-webkit-scrollbar-thumb{background:rgba(15,23,42,.15);border-radius:3px}
+
+.ent-card{background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.8);border-radius:var(--rl);padding:13px;margin-bottom:9px;box-shadow:var(--shadow)}
+.ent-hdr{display:flex;align-items:flex-start;gap:9px;margin-bottom:10px}
+.ent-ico{font-size:20px;flex-shrink:0;margin-top:2px}
+.ent-info{flex:1}
+.ent-cli{font-size:12.5px;font-weight:700;color:var(--txt)}
+.ent-meta{font-size:11px;color:var(--txts);margin-top:2px;line-height:1.4}
+.ent-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.badge-st{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px}
+.b-entregue{background:rgba(22,163,74,.12);color:#166534;border:1px solid rgba(22,163,74,.25)}
+.b-entregue-avaria{background:rgba(245,158,11,.12);color:#92400e;border:1px solid rgba(245,158,11,.25)}
+.b-entregue-parcial{background:rgba(234,88,12,.12);color:#9a3412;border:1px solid rgba(234,88,12,.25)}
+.b-devolucao{background:rgba(220,38,38,.12);color:#991b1b;border:1px solid rgba(220,38,38,.25)}
+.b-fora{background:rgba(220,38,38,.1);color:var(--vm);border:1px solid rgba(220,38,38,.2);font-size:9px}
+
+.ent-fotos-wrap{margin-top:10px}
+.ent-fotos-lbl{font-size:10px;font-weight:700;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.ent-fotos{display:flex;gap:7px;flex-wrap:wrap}
+.ent-foto{width:80px;height:80px;border-radius:9px;object-fit:cover;cursor:pointer;border:2px solid rgba(30,64,175,.15);transition:transform .15s;display:block}
+.ent-foto:hover{transform:scale(1.05)}
+.ent-foto-label{font-size:9px;color:var(--txts);text-align:center;margin-top:3px;font-weight:600}
+.ent-foto-wrap{display:flex;flex-direction:column;align-items:center}
+.ent-obs{font-size:11px;color:var(--txtm);margin-top:7px;padding:6px 8px;background:rgba(15,23,42,.04);border-radius:6px;font-style:italic}
+.ent-mot{font-size:10px;font-weight:600;color:var(--azul);margin-top:4px}
+
+.ent-receptor{margin-top:10px;padding:10px 12px;background:rgba(212,175,55,.1);border:1.5px solid rgba(212,175,55,.4);border-radius:10px}
+.ent-receptor-title{font-size:10px;font-weight:800;color:#92720d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.ent-receptor-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.ent-receptor-label{font-size:9px;color:var(--txts);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.ent-receptor-val{font-size:12.5px;font-weight:700;color:var(--txt);margin-top:1px}
+.ent-receptor-alert{color:var(--vm)}
+
+.modal-foto{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.94);display:none;align-items:center;justify-content:center;flex-direction:column}
+.modal-foto.on{display:flex}
+.modal-foto img{max-width:92vw;max-height:83vh;border-radius:12px;object-fit:contain}
+.mf-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.15);border:none;color:#fff;width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mf-info{color:rgba(255,255,255,.65);font-size:12px;margin-top:10px;text-align:center;max-width:90vw}
+
+.empty{text-align:center;padding:32px 16px;color:var(--txts)}
+.empty-icon{font-size:36px;margin-bottom:8px}
+.ld{display:inline-block;width:14px;height:14px;border:2px solid rgba(30,64,175,.2);border-top-color:var(--azul);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">OPUS</div>
+  <div class="hdr-title">Torre de Controle</div>
+  <div class="hdr-r">
+    <div class="hbadge" id="badge-mots">0 motoristas</div>
+    <div class="hbadge" id="badge-hora">--:--</div>
+    <button class="tab-btn on" id="tab-mapa" onclick="setAba('mapa')">🗺️ Mapa ao vivo</button>
+    <button class="tab-btn" id="tab-hist" onclick="setAba('hist')">📋 Histórico</button>
+    <button class="tab-btn tab-btn-nf" id="btn-nf-global" onclick="atualizarTodasNFsPendentes()">🔄 Atualizar NFs pendentes</button>
+    <button class="btn-colapsar" id="btn-colapsar-painel" onclick="toggleColapsarPainel()" title="Ocultar/mostrar lista para focar no mapa">⇤</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="painel">
+    <div class="painel-hdr">
+      <div class="painel-title">Motoristas em rota</div>
+      <div class="filtros">
+        <button class="filtro-btn on" onclick="setFiltro('todos',this)">Todos</button>
+        <button class="filtro-btn" onclick="setFiltro('emrota',this)">🚗 Em rota</button>
+        <button class="filtro-btn" onclick="setFiltro('pendente',this)">⏳ Pendentes</button>
+        <button class="filtro-btn" onclick="setFiltro('concluido',this)">✅ Concluídos</button>
+      </div>
+      <div class="filtros-sel-row">
+        <select class="filtro-select" id="sel-mot" onchange="filtrarPorMotorista(this.value)">
+          <option value="">Todos os motoristas/placas</option>
+        </select>
+        <select class="filtro-select" id="sel-regiao" onchange="filtrarPorRegiao(this.value)">
+          <option value="">Todas as regiões</option>
+        </select>
+      </div>
+      <input class="busca" type="text" placeholder="Buscar por ID da rota, NF, pedido, cliente ou motorista..." oninput="filtrarBusca(this.value)">
+    </div>
+    <div class="painel-scroll" id="painel-lista">
+      <div class="empty"><div class="empty-icon">📡</div><div>Conectando ao Firebase...<br><div class="ld" style="margin:8px auto 0"></div></div></div>
+    </div>
+  </div>
+
+  <div class="mw" style="position:relative">
+    <div id="map"></div>
+    <div class="resumo">
+      <div class="res-title">Resumo do dia</div>
+      <div class="res-grid">
+        <div class="res-k"><div class="res-l">Em rota</div><div class="res-v" id="r-emrota">0</div></div>
+        <div class="res-k"><div class="res-l">Entregas</div><div class="res-v" id="r-entregas" style="color:#16a34a">0</div></div>
+        <div class="res-k"><div class="res-l">Pendentes</div><div class="res-v" id="r-pendentes" style="color:#ea580c">0</div></div>
+        <div class="res-k"><div class="res-l">Avarias</div><div class="res-v" id="r-avarias" style="color:#dc2626">0</div></div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="hist-panel" id="hist-panel">
+      <div class="hist-hdr">
+        <div class="hist-title">📋 Histórico de Entregas</div>
+
+        <!-- Linha 1: intervalo de datas -->
+        <div class="hist-filtros-datas">
+          <label>De</label>
+          <input class="hist-input" type="date" id="hist-de" onchange="renderHistorico()">
+          <label>até</label>
+          <input class="hist-input" type="date" id="hist-ate" onchange="renderHistorico()">
+          <!-- Atalhos de período -->
+          <button class="hist-atalho" onclick="setAtalho('hoje',this)">Hoje</button>
+          <button class="hist-atalho" onclick="setAtalho('ontem',this)">Ontem</button>
+          <button class="hist-atalho on" onclick="setAtalho('7d',this)">7 dias</button>
+          <button class="hist-atalho" onclick="setAtalho('30d',this)">30 dias</button>
+          <button class="hist-atalho" onclick="setAtalho('mes',this)">Este mês</button>
+        </div>
+
+        <!-- Linha 2: filtros seletores -->
+        <div class="hist-filtros-sel">
+          <select class="hist-input" id="hist-mot" onchange="renderHistorico()">
+            <option value="">Todos os motoristas</option>
+          </select>
+          <select class="hist-input" id="hist-status" onchange="renderHistorico()">
+            <option value="">Todos os status</option>
+            <option value="entregue">✅ Entrega completa</option>
+            <option value="entregue-avaria">⚠️ Com avaria</option>
+            <option value="entregue-parcial">📦 Parcial</option>
+            <option value="devolucao">↩ Devolução</option>
+          </select>
+          <select class="hist-input" id="hist-rota" onchange="renderHistorico()">
+            <option value="">Todas as rotas</option>
+          </select>
+          <input class="hist-input" type="text" id="hist-busca" style="min-width:230px;flex:1"
+                 placeholder="🔎 Buscar NF, pedido ou cliente..." oninput="renderHistorico()">
+        </div>
+      </div>
+
+      <!-- Resumo do período -->
+      <div class="hist-resumo" id="hist-resumo">
+        <div class="hist-res-item"><div class="hist-res-l">Total</div><div class="hist-res-v" id="hr-total" style="color:var(--azul-d)">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Entregues</div><div class="hist-res-v" id="hr-ent" style="color:#16a34a">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Com avaria</div><div class="hist-res-v" id="hr-avar" style="color:#f59e0b">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Parciais</div><div class="hist-res-v" id="hr-parc" style="color:#ea580c">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Devoluções</div><div class="hist-res-v" id="hr-dev" style="color:#dc2626">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Fora do raio</div><div class="hist-res-v" id="hr-fora" style="color:#dc2626">0</div></div>
+      </div>
+
+      <div class="hist-scroll" id="hist-lista">
+        <div class="empty"><div class="empty-icon">📦</div><div>Carregando histórico...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-foto" id="modal-foto">
+  <button class="mf-close" onclick="fecharFoto()">✕</button>
+  <img id="mf-img" src="" alt="">
+  <div class="mf-info" id="mf-info"></div>
+</div>
+
+<!-- Firebase com auth — usa o módulo ES6 já carregado pelo checar-login.js -->
+<script type="module">
+import { db as _db, auth } from '/js/firebase-init.js';
+import { ref, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+var despachos = {}, marcadores = {}, paradaLy = [];
+var motoristaSel = null, filtroAtual = 'todos', buscaAtual = '', abaAtual = 'mapa';
+var filtroMotPlaca = '', filtroRegiao = '', painelColapsado = false;
+var CORES = ['#3b82f6','#f97316','#22c55e','#a855f7','#ef4444','#06b6d4','#eab308','#ec4899'];
+var coresMot = {}, corIdx = 0;
+var map;
+
+// ── BUSCA POR NF / PEDIDO / CLIENTE ───────────────────────────────────────────
+// Compara NF e pedido só pelos dígitos, então "NF 12.345", "12345" e "nf12345"
+// encontram a mesma parada. Texto puro cai na busca por nome do cliente.
+function normTxt(v){ return (v==null?'':String(v)).toLowerCase().trim(); }
+function soDig(v){ return (v==null?'':String(v)).replace(/\D/g,''); }
+function paradaBate(p, q){
+  if (!p || !q) return false;
+  var qd = soDig(q);
+  if (qd){
+    var nfd = soDig(p.nf), pedd = soDig(p.pedido);
+    if (nfd && nfd.indexOf(qd) !== -1) return true;
+    if (pedd && pedd.indexOf(qd) !== -1) return true;
+  }
+  return normTxt(p.cliente).indexOf(normTxt(q)) !== -1;
+}
+function paradasQueBatem(d, q){
+  var hits = [];
+  (d.paradas||[]).forEach(function(p, i){ if (paradaBate(p, q)) hits.push({ p:p, i:i }); });
+  return hits;
+}
+
+// ── BUSCA DE NF NO OMIE (sob demanda — botão "Atualizar NF") ─────────────────
+// Mesma lógica/corrções já validadas no roteirizador: endpoint certo
+// (produtos/pedido/, chamada StatusPedido), de-para de apelido de empresa
+// (PRF -> PROFI) e uso direto do codigo_pedido quando já salvo na parada
+// (evita a chamada extra de ListarPedidos pra descobrir o codigo_pedido).
+var OMIE_CREDS_GT = {
+  MFP:  { key: '952260381072',   secret: '8300b385eeec583c71439709ab866fc7' },
+  DMS:  { key: '1340821992510',  secret: 'dac287f9b3ec422dc93da6cdbcc3e0b2' },
+  PROFI:{ key: '6625695374298',  secret: '588e34aa9429edcae86f5e87c47a65df' }
+};
+var ALIAS_EMPRESA_GT = { PRF: 'PROFI' };
+function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
+  var empKey = ALIAS_EMPRESA_GT[empresa] || empresa;
+  var creds = OMIE_CREDS_GT[empKey] || OMIE_CREDS_GT['MFP'];
+
+  function statusPorCodigo(codPed){
+    return fetch('/api/omie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
+        payload: {
+          call: 'StatusPedido',
+          app_key: creds.key,
+          app_secret: creds.secret,
+          param: [{ codigo_pedido: parseInt(codPed, 10) || codPed }]
+        }
+      })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data && data.ListaNfe && data.ListaNfe.length > 0){
+        return data.ListaNfe
+          .map(function(nf){ return nf.numero_nfe ? (parseInt(nf.numero_nfe, 10) || nf.numero_nfe) : ''; })
+          .filter(Boolean)
+          .join(', ');
+      }
+      return '';
+    })
+    .catch(function(){ return ''; });
+  }
+
+  if (codigoPedido) return statusPorCodigo(codigoPedido);
+
+  if (!numeroPedido) return Promise.resolve('');
+  var numPed = parseInt(numeroPedido, 10) || 0;
+  return fetch('/api/omie', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
+      payload: {
+        call: 'ListarPedidos',
+        app_key: creds.key,
+        app_secret: creds.secret,
+        param: [{ pagina: 1, registros_por_pagina: 10, numero_pedido_de: numPed, numero_pedido_ate: numPed }]
+      }
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var lista = (data && data.pedido_venda_produto) || [];
+    var achado = lista.filter(function(p){
+      return String((p.cabecalho || {}).numero_pedido || '').trim() === String(numeroPedido).trim();
+    })[0];
+    if (!achado) return '';
+    return statusPorCodigo(achado.cabecalho.codigo_pedido);
+  })
+  .catch(function(){ return ''; });
+}
+function buscarNFEmQualquerEmpresa(numeroPedido, codigoPedido){
+  var empresas = Object.keys(OMIE_CREDS_GT);
+  return empresas.reduce(function(cadeia, emp){
+    return cadeia.then(function(achada){
+      if (achada) return achada;
+      return buscarNFPorPedido(numeroPedido, emp, codigoPedido);
+    });
+  }, Promise.resolve(''));
+}
+function sleepNF(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+function gravarParadasDoToken(t){
+  return fetch('/api/firebase-write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: 'despachos/' + t + '/paradas', data: despachos[t].paradas })
+  });
+}
+
+// Atualiza a NF só das paradas da rota selecionada — rápido e econômico:
+// pula quem já tem NF, e usa o codigo_pedido direto (1 chamada) quando
+// já está salvo na parada, só caindo na busca por número (2 chamadas)
+// pras rotas antigas que não têm esse campo.
+window.atualizarNFsRota = async function(t){
+  var d = despachos[t];
+  if (!d) return;
+  var btn = document.getElementById('btn-nf-' + t);
+  var alvos = (d.paradas || []).map(function(p, idx){ return { p: p, idx: idx }; })
+    .filter(function(x){ return x.p.pedido && !x.p.nf; });
+  if (!alvos.length){ if (btn) btn.textContent = '✅ NFs em dia'; return; }
+  if (btn) btn.disabled = true;
+  var achadas = 0;
+  for (var i = 0; i < alvos.length; i++){
+    var x = alvos[i];
+    if (btn) btn.textContent = '⏳ Buscando NF... (' + (i+1) + '/' + alvos.length + ')';
+    var emp = x.p._emp_key || x.p.empresa || '';
+    var codPed = x.p._codigo_pedido || '';
+    var nf = await (emp ? buscarNFPorPedido(x.p.pedido, emp, codPed) : buscarNFEmQualquerEmpresa(x.p.pedido, codPed))
+      .catch(function(){ return ''; });
+    if (nf){ d.paradas[x.idx].nf = nf; achadas++; }
+    if (i < alvos.length - 1) await sleepNF(350); // evita o limite de "consumo redundante" do Omie
+  }
+  await gravarParadasDoToken(t);
+  if (btn) btn.disabled = false;
+  renderPainel();
+  alert(achadas ? ('✅ ' + achadas + ' NF(s) encontrada(s).') : '⏳ Nenhuma NF nova ainda — pedido(s) provavelmente ainda não faturado(s).');
+};
+
+// Atualiza TODAS as NFs pendentes de TODAS as rotas (útil pra colocar em dia
+// pedidos antigos já na base). Roda devagar de propósito (uma chamada por
+// vez, com pausa entre elas) pra não estourar o limite de requisições
+// repetidas do Omie, e grava o progresso rota a rota — se for interrompida
+// no meio, o que já foi achado não se perde.
+var _cancelarNFGlobal = false;
+window.atualizarTodasNFsPendentes = async function(){
+  var btn = document.getElementById('btn-nf-global');
+  if (btn && btn.dataset.rodando === '1'){ _cancelarNFGlobal = true; return; }
+
+  var alvos = [];
+  Object.keys(despachos).forEach(function(t){
+    (despachos[t].paradas || []).forEach(function(p, idx){
+      if (p.pedido && !p.nf) alvos.push({ t: t, idx: idx, p: p });
+    });
+  });
+  if (!alvos.length){ alert('Todas as NFs já estão atualizadas.'); return; }
+  if (!confirm('Isso vai consultar o Omie pra ' + alvos.length + ' pedido(s) pendente(s).\n\nPode levar alguns minutos (roda devagar de propósito, pra não sobrecarregar o Omie). Continuar?')) return;
+
+  _cancelarNFGlobal = false;
+  if (btn){ btn.dataset.rodando = '1'; }
+  var achadas = 0, tokensSujos = {};
+  for (var i = 0; i < alvos.length; i++){
+    if (_cancelarNFGlobal) break;
+    var x = alvos[i];
+    if (btn) btn.textContent = '⏳ ' + (i+1) + '/' + alvos.length + ' (' + achadas + ' achadas · clique p/ parar)';
+    var emp = x.p._emp_key || x.p.empresa || '';
+    var codPed = x.p._codigo_pedido || '';
+    var nf = await (emp ? buscarNFPorPedido(x.p.pedido, emp, codPed) : buscarNFEmQualquerEmpresa(x.p.pedido, codPed))
+      .catch(function(){ return ''; });
+    if (nf){ despachos[x.t].paradas[x.idx].nf = nf; achadas++; tokensSujos[x.t] = true; }
+    // grava a cada 5 pedidos processados (ou no último), pra não perder progresso
+    if (i % 5 === 4 || i === alvos.length - 1){
+      var toks = Object.keys(tokensSujos);
+      await Promise.all(toks.map(gravarParadasDoToken));
+      tokensSujos = {};
+    }
+    if (i < alvos.length - 1) await sleepNF(400);
+  }
+  if (btn){ btn.disabled = false; btn.dataset.rodando = '0'; btn.textContent = '🔄 Atualizar NFs pendentes'; }
+  renderPainel();
+  alert((_cancelarNFGlobal ? 'Atualização interrompida. ' : 'Atualização concluída. ') + achadas + ' NF(s) encontrada(s) de ' + alvos.length + ' pendente(s).');
+};
+
+// ── MAPA ──────────────────────────────────────────────────────────────────────
+map = L.map('map', {zoomControl:true}).setView([-19.921307,-44.025736], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OSM',maxZoom:19}).addTo(map);
+var cdIco = L.divIcon({html:'<div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 8px rgba(34,197,94,.7)"></div>',className:'',iconAnchor:[7,7]});
+L.marker([-19.921307,-44.025736],{icon:cdIco}).bindPopup('<b>CD MFParis — Contagem/MG</b>').addTo(map);
+
+setInterval(function(){document.getElementById('badge-hora').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}, 1000);
+
+// Define período inicial: últimos 7 dias
+(function initDatas(){
+  var hoje = new Date();
+  var d7 = new Date(); d7.setDate(d7.getDate() - 6);
+  document.getElementById('hist-ate').value = fmtDateInput(hoje);
+  document.getElementById('hist-de').value = fmtDateInput(d7);
+})();
+
+// ── FIREBASE — aguarda auth do checar-login.js ────────────────────────────────
+onAuthStateChanged(auth, function(user) {
+  if (!user) return; // checar-login.js já redireciona se não logado
+  iniciarListener();
+});
+
+function iniciarListener() {
+  onValue(ref(_db, 'despachos'), function(snap) {
+    despachos = snap.val() || {};
+    renderPainel();
+    atualizarMarcadores();
+    atualizarResumo();
+    atualizarSelects();
+    atualizarSelectsPainel();
+    document.getElementById('badge-mots').textContent = Object.keys(despachos).length + ' motoristas';
+    if (abaAtual === 'hist') renderHistorico();
+  }, function(err) {
+    document.getElementById('painel-lista').innerHTML = '<div class="empty"><div class="empty-icon">❌</div><div>Erro Firebase:<br>' + err.message + '</div></div>';
+  });
+}
+
+// ── PAINEL ────────────────────────────────────────────────────────────────────
+window.renderPainel = function() {
+  var tokens = Object.keys(despachos).filter(function(t) {
+    var d = despachos[t];
+    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+    if (filtroAtual==='emrota' && (!d.iniciou||d.concluido)) return false;
+    if (filtroAtual==='pendente' && nC>=nP) return false;
+    if (filtroAtual==='concluido' && !d.concluido) return false;
+    if (filtroMotPlaca && t !== filtroMotPlaca) return false;
+    if (filtroRegiao) {
+      var temNaRegiao = (d.paradas||[]).some(function(p){ return (p.estado||'').toUpperCase() === filtroRegiao; });
+      if (!temNaRegiao) return false;
+    }
+    if (buscaAtual) {
+      var q = normTxt(buscaAtual);
+      var baterota = (d.motoristaNome||'').toLowerCase().includes(q) || (d.nomeRota||'').toLowerCase().includes(q) || (d.idRota||'').toLowerCase().includes(q);
+      if (!baterota && !paradasQueBatem(d, buscaAtual).length) return false;
+    }
+    return true;
+  });
+
+  if (!tokens.length) {
+    document.getElementById('painel-lista').innerHTML = '<div class="empty"><div class="empty-icon">📡</div><div>Nenhum motorista encontrado</div></div>';
+    return;
+  }
+
+  document.getElementById('painel-lista').innerHTML = tokens.map(function(t) {
+    var d = despachos[t];
+    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+    var pct = nP>0?(nC/nP*100):0;
+    var cor = getCor(t);
+    var online = d.iniciou && !d.concluido && d.gps && (Date.now()-(d.gps.ts||0))<120000;
+    // GPS "parado" — motorista em rota, mas sem sinal há muito tempo (tela
+    // bloqueou, app foi pra segundo plano, etc.). 15 min é bem acima do
+    // intervalo normal de envio (30s), então já indica um problema real.
+    var GPS_STALE_MS = 15*60*1000;
+    var emRotaAtiva = d.iniciou && !d.concluido;
+    var gpsStale = emRotaAtiva && (!d.gps || (Date.now()-(d.gps.ts||0)) > GPS_STALE_MS);
+    var status = !d.iniciou ? 'Aguardando início' : (d.concluido ? '✅ Concluído' : '🚗 Em rota');
+    var sel = motoristaSel===t;
+    var nE=0, nD=0, nA=0, nP2=0, nFora=0;
+    Object.values(d.confirmacoes||{}).forEach(function(c){
+      if (c.tipo==='entregue') nE++;
+      else if (c.tipo==='devolucao') nD++;
+      else if (c.tipo==='entregue-avaria') nA++;
+      else if (c.tipo==='entregue-parcial') nP2++;
+      if (c.foraRaio) nFora++;
+    });
+    var tel = (d.motoristaTel||'').replace(/\D/g,'');
+    var telFmt = d.motoristaTel||'';
+    var telWapp = '55'+tel;
+
+    var statusClasse = !d.iniciou ? 'st-aguardando' : (d.concluido ? 'st-concluido' : 'st-emrota');
+    var statusLabel = !d.iniciou ? 'Aguardando' : (d.concluido ? '✅ Concluído' : '🚗 Em rota');
+    if (emRotaAtiva && (gpsStale || nFora>0)) statusClasse = 'st-alerta';
+
+    var html = '<div class="mot-card '+statusClasse+(sel?' sel':'')+'" id="mc-'+t+'" onclick="selecionarMot(\''+t+'\')">';
+    html += '<div class="mot-top"><div class="mot-dot'+(online?' online':'')+'" style="background:'+cor+'"></div>';
+    html += d.idRota
+      ? '<div class="mot-idrota-top" title="Clique pra copiar" onclick="event.stopPropagation();copiarIdRota(\''+d.idRota+'\',this)">🔖 '+d.idRota+'</div>'
+      : '<div class="mot-idrota-top" style="color:var(--txts);font-weight:600">sem ID</div>';
+    html += '<div class="mot-status-pill '+statusClasse+'">'+statusLabel+'</div></div>';
+    html += '<div class="mot-sub"><div class="mot-nome">'+(d.motoristaNome||'—')+'</div>';
+    html += '<div class="mot-placa">'+(d.motoristaPlaca||'—')+'</div></div>';
+    html += '<div class="mot-rota-info">'+(d.nomeRota||'—')+'</div>';
+    if (tel) {
+      html += '<div class="mot-contato">';
+      html += '<a class="contato-btn btn-ligar" href="tel:+'+telWapp+'" onclick="event.stopPropagation()">📞 '+telFmt+'</a>';
+      html += '<a class="contato-btn btn-wapp" href="https://wa.me/'+telWapp+'" target="_blank" onclick="event.stopPropagation()">💬 WhatsApp</a>';
+      html += '</div>';
+    }
+    if (buscaAtual) {
+      var hits = paradasQueBatem(d, buscaAtual);
+      if (hits.length) {
+        html += '<div class="mot-hit">' + hits.map(function(h){
+          var ref = h.p.nf ? 'NF ' + h.p.nf : (h.p.pedido ? 'Ped. ' + h.p.pedido : 'Parada ' + (h.i+1));
+          var cf  = d.confirmacoes && d.confirmacoes[h.i];
+          return '🧾 ' + ref + ' · ' + (h.p.cliente || '—') + (cf ? ' · entregue ' + (cf.hora||'') : ' · pendente');
+        }).join('<br>') + '</div>';
+      }
+    }
+    if (nFora>0) html += '<div class="mot-fora">⚠️ '+nFora+' confirmação(ões) fora do raio</div>';
+    if (gpsStale) html += '<div class="mot-gps-alerta">📡 GPS parado'+(d.gps?' há '+tempoRel(d.gps.ts):' — nunca recebido')+' · ligar pra confirmar</div>';
+    html += '<div class="mot-compact"><div class="mot-compact-txt">'+nC+'/'+nP+'</div>';
+    html += '<div class="mot-bar"><div class="mot-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>';
+    if (nD>0 || nA>0) {
+      html += '<div class="mot-problemas">';
+      if (nD>0) html += '<div class="mot-chip mot-chip-dev">↩ '+nD+' devolução</div>';
+      if (nA>0) html += '<div class="mot-chip mot-chip-av">⚠️ '+nA+' avaria</div>';
+      html += '</div>';
+    }
+    html += '<div class="mot-bar"><div class="mot-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div>';
+    html += '<div class="mot-ult">🕐 '+(d.gps?tempoRel(d.gps.ts):'sem GPS')+' · '+nC+'/'+nP+' paradas</div>';
+    if (sel) {
+      var pendNF = (d.paradas||[]).filter(function(p){ return p.pedido && !p.nf; }).length;
+      html += '<div class="paradas-list on">';
+      html += '<button class="btn-nf-refresh" id="btn-nf-'+t+'" onclick="event.stopPropagation();atualizarNFsRota(\''+t+'\')">'
+        + (pendNF ? '🔄 Atualizar NF ('+pendNF+' pendente'+(pendNF>1?'s':'')+')' : '✅ NFs em dia')
+        + '</button>';
+      (d.paradas||[]).forEach(function(p,idx){
+        var c = d.confirmacoes && d.confirmacoes[idx];
+        var ico = c ? (c.tipo==='entregue'?'✅':c.tipo==='entregue-avaria'?'⚠️':c.tipo==='entregue-parcial'?'📦':c.tipo==='devolucao'?'↩':'✅') : '⏳';
+        html += '<div class="par-item"><div class="par-ico">'+ico+'</div><div class="par-txt">';
+        html += '<div class="par-cli">'+(p.cliente||'—')+(c&&c.foraRaio?'<span class="tag-fora">FORA RAIO</span>':'')+'</div>';
+        html += '<div class="par-meta">'+(p.cidade||'')+'/'+( p.estado||'')+' · '+(p.peso||0)+' kg'
+          +(p.pedido?' · Ped. '+p.pedido:'')
+          +(p.nf?' · <strong style="color:#8a6d1a">NF '+p.nf+'</strong>':(p.pedido?' · NF pendente':''))
+          +(c&&c.motivo?' · '+c.motivo:'')+'</div>';
+        html += '</div><div class="par-hora">'+(c?c.hora||'':'')+'</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+};
+
+// ── MARCADORES ────────────────────────────────────────────────────────────────
+function atualizarMarcadores() {
+  var GPS_STALE_MS = 15*60*1000;
+  Object.keys(despachos).forEach(function(t) {
+    var d = despachos[t];
+    if (!d.gps||!d.gps.lat) return;
+    var cor = getCor(t);
+    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+    var stale = d.iniciou && !d.concluido && (Date.now()-(d.gps.ts||0)) > GPS_STALE_MS;
+    if (marcadores[t]) {
+      marcadores[t].setLatLng([d.gps.lat,d.gps.lng]);
+      marcadores[t].setIcon(mkMotIco(cor,d.motoristaNome,nC,nP,stale));
+    } else {
+      var m = L.marker([d.gps.lat,d.gps.lng],{icon:mkMotIco(cor,d.motoristaNome,nC,nP,stale)})
+        .bindPopup(buildPopup(t,d)).addTo(map);
+      m.on('click', function(){ selecionarMot(t); });
+      marcadores[t] = m;
+    }
+    if (marcadores[t].isPopupOpen()) marcadores[t].setPopupContent(buildPopup(t,d));
+  });
+  if (motoristaSel && despachos[motoristaSel]) desenharParadas(motoristaSel, despachos[motoristaSel]);
+}
+
+function mkMotIco(cor,nome,nC,nP,stale) {
+  var ini = (nome||'?').charAt(0).toUpperCase();
+  var borda = stale ? '3px solid #dc2626' : '3px solid #fff';
+  var alerta = stale ? '<div style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;box-shadow:0 0 0 2px #fff">!</div>' : '';
+  return L.divIcon({html:'<div style="position:relative"><div style="width:38px;height:38px;border-radius:50%;background:'+cor+';border:'+borda+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.3)">'+ini+'</div>'+alerta+'<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:5px;padding:1px 4px;font-size:9px;font-weight:800;color:'+cor+';border:1px solid '+cor+'">'+nC+'/'+nP+'</div></div>',className:'',iconAnchor:[19,19]});
+}
+
+function buildPopup(t,d) {
+  var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+  var tel = (d.motoristaTel||'').replace(/\D/g,'');
+  var telWapp = '55'+tel;
+  return '<div style="font-family:Inter,sans-serif;min-width:180px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:3px">🚗 '+(d.motoristaNome||'—')+'</div>'
+    +'<div style="font-size:11px;color:#666;margin-bottom:2px">'+(d.nomeRota||'—')+'</div>'
+    +'<div style="font-size:11px;color:#666;margin-bottom:2px">📦 '+nC+'/'+nP+' entregas</div>'
+    +'<div style="font-size:11px;color:#666;margin-bottom:8px">🕐 '+(d.gps?tempoRel(d.gps.ts):'sem GPS')+'</div>'
+    +(tel?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">'
+      +'<a href="tel:+'+telWapp+'" style="padding:6px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;text-align:center;font-size:11px;font-weight:700;color:#166534;text-decoration:none">📞 Ligar</a>'
+      +'<a href="https://wa.me/'+telWapp+'" target="_blank" style="padding:6px;background:#f0fff4;border:1px solid #bbf7d0;border-radius:7px;text-align:center;font-size:11px;font-weight:700;color:#128c7e;text-decoration:none">💬 WhatsApp</a>'
+      +'</div>':'')
+    +'<button onclick="selecionarMot(\''+t+'\')" style="width:100%;padding:6px;border:none;border-radius:6px;background:#1e40af;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Ver detalhes</button>'
+    +'</div>';
+}
+
+function desenharParadas(t,d) {
+  paradaLy.forEach(function(l){map.removeLayer(l);}); paradaLy=[];
+  (d.paradas||[]).forEach(function(p,idx){
+    if (!p.lat||!p.lng) return;
+    var c = d.confirmacoes && d.confirmacoes[idx];
+    var cor = c ? (c.tipo==='entregue'?'#22c55e':c.tipo==='entregue-avaria'?'#f59e0b':c.tipo==='entregue-parcial'?'#f97316':c.tipo==='devolucao'?'#dc2626':'#22c55e') : '#94a3b8';
+    var ico = L.divIcon({html:'<div style="width:22px;height:22px;border-radius:50%;background:'+cor+';border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(idx+1)+'</div>',className:'',iconAnchor:[11,11]});
+    var m = L.marker([p.lat,p.lng],{icon:ico}).bindTooltip((idx+1)+'. '+(p.cliente||'—')+(c&&c.foraRaio?' ⚠ FORA DO RAIO':''),{permanent:false}).addTo(map);
+    paradaLy.push(m);
+  });
+}
+
+window.selecionarMot = function(t) {
+  motoristaSel = motoristaSel===t ? null : t;
+  paradaLy.forEach(function(l){map.removeLayer(l);}); paradaLy=[];
+  if (motoristaSel && despachos[t]) {
+    desenharParadas(t, despachos[t]);
+    if (marcadores[t]) map.setView(marcadores[t].getLatLng(), 10, {animate:true});
+  }
+  renderPainel();
+};
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+window.setFiltro = function(f,btn) {
+  filtroAtual=f;
+  document.querySelectorAll('.filtro-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  renderPainel();
+};
+window.filtrarBusca = function(v) { buscaAtual=v; renderPainel(); };
+window.copiarIdRota = function(id, el) {
+  var ok = function(){
+    if (!el) return;
+    var txtOrig = el.textContent;
+    el.textContent = '✅ Copiado!';
+    setTimeout(function(){ el.textContent = '🔖 ' + id; }, 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(id).then(ok).catch(ok);
+  } else {
+    ok();
+  }
+};
+window.filtrarPorMotorista = function(v) { filtroMotPlaca=v; renderPainel(); };
+window.filtrarPorRegiao = function(v) { filtroRegiao=v; renderPainel(); };
+
+// Popula os selects de "Motorista/Placa" e "Região" com base nos despachos atuais,
+// preservando a seleção corrente do usuário.
+function atualizarSelectsPainel() {
+  var selMot = document.getElementById('sel-mot');
+  var selReg = document.getElementById('sel-regiao');
+  if (!selMot || !selReg) return;
+
+  var atualMot = selMot.value, atualReg = selReg.value;
+
+  var optsMot = Object.keys(despachos).map(function(t) {
+    var d = despachos[t];
+    var label = (d.motoristaNome||'—') + (d.motoristaPlaca ? ' · ' + d.motoristaPlaca : '');
+    return { t: t, label: label };
+  }).sort(function(a,b){ return a.label.localeCompare(b.label); });
+  selMot.innerHTML = '<option value="">Todos os motoristas/placas</option>' +
+    optsMot.map(function(o){ return '<option value="'+o.t+'">'+o.label+'</option>'; }).join('');
+  if (optsMot.some(function(o){ return o.t===atualMot; })) selMot.value = atualMot;
+
+  var regioes = {};
+  Object.keys(despachos).forEach(function(t) {
+    (despachos[t].paradas||[]).forEach(function(p) {
+      var uf = (p.estado||'').toUpperCase().trim();
+      if (uf) regioes[uf] = true;
+    });
+  });
+  var listaReg = Object.keys(regioes).sort();
+  selReg.innerHTML = '<option value="">Todas as regiões</option>' +
+    listaReg.map(function(uf){ return '<option value="'+uf+'">'+uf+'</option>'; }).join('');
+  if (listaReg.indexOf(atualReg) !== -1) selReg.value = atualReg;
+}
+
+// Colapsa o painel lateral pra deixar o mapa em foco total (visão priorizada no mapa).
+window.toggleColapsarPainel = function() {
+  painelColapsado = !painelColapsado;
+  var painel = document.querySelector('.painel');
+  var btn = document.getElementById('btn-colapsar-painel');
+  painel.classList.toggle('colapsado', painelColapsado);
+  btn.textContent = painelColapsado ? '⇥' : '⇤';
+  btn.title = painelColapsado ? 'Mostrar lista de motoristas' : 'Ocultar lista para focar no mapa';
+  setTimeout(function(){ if (map) map.invalidateSize(); }, 220);
+};
+
+// ── ABAS ──────────────────────────────────────────────────────────────────────
+window.setAba = function(aba) {
+  abaAtual=aba;
+  document.getElementById('tab-mapa').classList.toggle('on', aba==='mapa');
+  document.getElementById('tab-hist').classList.toggle('on', aba==='hist');
+  document.getElementById('hist-panel').classList.toggle('on', aba==='hist');
+  if (aba==='hist') renderHistorico();
+};
+
+// ── ATALHOS DE PERÍODO ────────────────────────────────────────────────────────
+window.setAtalho = function(tipo, btn) {
+  document.querySelectorAll('.hist-atalho').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  var hoje = new Date();
+  var de = new Date(), ate = new Date();
+  if (tipo==='hoje')   { /* de=hoje, ate=hoje */ }
+  else if (tipo==='ontem') { de.setDate(de.getDate()-1); ate.setDate(ate.getDate()-1); }
+  else if (tipo==='7d')  { de.setDate(de.getDate()-6); }
+  else if (tipo==='30d') { de.setDate(de.getDate()-29); }
+  else if (tipo==='mes') { de = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+  document.getElementById('hist-de').value  = fmtDateInput(de);
+  document.getElementById('hist-ate').value = fmtDateInput(ate);
+  renderHistorico();
+};
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+window.renderHistorico = function() {
+  var lista = [];
+  Object.keys(despachos).forEach(function(t) {
+    var d = despachos[t];
+    Object.keys(d.confirmacoes||{}).forEach(function(idx) {
+      lista.push({
+        token:t,
+        motoristaNome:d.motoristaNome||'—',
+        motoristaTel:d.motoristaTel||'',
+        nomeRota:d.nomeRota||'—',
+        parada:(d.paradas||[])[parseInt(idx)]||{},
+        conf:d.confirmacoes[idx],
+        idx:parseInt(idx)
+      });
+    });
+  });
+
+  var de  = document.getElementById('hist-de').value;
+  var ate = document.getElementById('hist-ate').value;
+  var fm  = document.getElementById('hist-mot').value;
+  var fs  = document.getElementById('hist-status').value;
+  var fr  = document.getElementById('hist-rota').value;
+  var fq  = (document.getElementById('hist-busca')||{}).value || '';
+
+  // Converte strings de data para timestamps de início/fim do dia
+  var tsDE  = de  ? new Date(de  + 'T00:00:00').getTime() : 0;
+  var tsATE = ate ? new Date(ate + 'T23:59:59').getTime() : Infinity;
+
+  // Busca por NF/pedido/cliente ignora o intervalo de datas: quando alguém
+  // pergunta por uma NF específica, ela precisa aparecer mesmo que a entrega
+  // tenha sido fora do período selecionado nos atalhos.
+  var buscando = !!fq.trim();
+
+  lista = lista.filter(function(x) {
+    var ts = x.conf.ts || 0;
+    if (!buscando && (ts < tsDE || ts > tsATE)) return false;
+    if (fm && x.motoristaNome !== fm) return false;
+    if (fs && x.conf.tipo !== fs) return false;
+    if (fr && x.nomeRota !== fr) return false;
+    if (buscando && !paradaBate(x.parada, fq)) return false;
+    return true;
+  });
+  lista.sort(function(a,b){ return (b.conf.ts||0)-(a.conf.ts||0); });
+
+  // Resumo do período
+  var totE=0, totA=0, totP=0, totD=0, totFora=0;
+  lista.forEach(function(x){
+    var t = x.conf.tipo;
+    if (t==='entregue') totE++;
+    else if (t==='entregue-avaria') { totE++; totA++; }
+    else if (t==='entregue-parcial') { totE++; totP++; }
+    else if (t==='devolucao') totD++;
+    if (x.conf.foraRaio) totFora++;
+  });
+  document.getElementById('hr-total').textContent = lista.length;
+  document.getElementById('hr-ent').textContent   = totE;
+  document.getElementById('hr-avar').textContent  = totA;
+  document.getElementById('hr-parc').textContent  = totP;
+  document.getElementById('hr-dev').textContent   = totD;
+  document.getElementById('hr-fora').textContent  = totFora;
+
+  if (!lista.length) {
+    document.getElementById('hist-lista').innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div>'
+      + (buscando
+          ? 'Nenhuma entrega encontrada para "' + fq + '". Se o pedido ainda não foi faturado, clique em "Atualizar NFs pendentes" e busque de novo.'
+          : 'Nenhuma entrega no período selecionado')
+      + '</div></div>';
+    return;
+  }
+
+  var tipoLabel = { 'entregue':'Entrega completa', 'entregue-avaria':'Com avaria', 'entregue-parcial':'Parcial', 'devolucao':'Devolução' };
+  var tipoIco   = { 'entregue':'✅', 'entregue-avaria':'⚠️', 'entregue-parcial':'📦', 'devolucao':'↩' };
+
+  document.getElementById('hist-lista').innerHTML = lista.map(function(x) {
+    var c=x.conf, p=x.parada;
+    var ico = tipoIco[c.tipo] || '✅';
+    var bCls = 'b-'+(c.tipo||'entregue');
+    var tipoTxt = tipoLabel[c.tipo] || c.tipo;
+    var dt = c.ts ? new Date(c.ts).toLocaleDateString('pt-BR') : '—';
+
+    // Fotos — suporta formato antigo (avaria) e novo (extra)
+    var fotosC = (c.fotos&&c.fotos.canhoto)||[];
+    var fotosE = (c.fotos&&(c.fotos.extra||c.fotos.avaria))||[];
+    var temFotos = fotosC.length || fotosE.length;
+    var fotosHtml = '';
+    if (temFotos) {
+      fotosHtml = '<div class="ent-fotos-wrap"><div class="ent-fotos-lbl">📸 Fotos registradas</div><div class="ent-fotos">';
+      fotosC.forEach(function(f,fi){ fotosHtml += '<div class="ent-foto-wrap"><img class="ent-foto" src="'+f+'" onclick="verFoto(\''+f+'\',\'Canhoto — '+(p.cliente||'')+'\')"><div class="ent-foto-label">Canhoto '+(fi+1)+'</div></div>'; });
+      fotosE.forEach(function(f,fi){ fotosHtml += '<div class="ent-foto-wrap"><img class="ent-foto" src="'+f+'" onclick="verFoto(\''+f+'\',\'Foto extra — '+(p.cliente||'')+'\')"><div class="ent-foto-label">Extra '+(fi+1)+'</div></div>'; });
+      fotosHtml += '</div></div>';
+    }
+
+    // Dados de quem recebeu — evidenciados junto com as fotos
+    var receptorHtml = '';
+    if (c.nomeRecebedor || c.docRecebedor || c.data) {
+      receptorHtml = '<div class="ent-receptor">'
+        +'<div class="ent-receptor-title">🧾 Confirmação de recebimento</div>'
+        +'<div class="ent-receptor-grid">'
+        +'<div><div class="ent-receptor-label">Recebido por</div><div class="ent-receptor-val'+(!c.nomeRecebedor?' ent-receptor-alert':'')+'">'+(c.nomeRecebedor||'⚠ Não informado')+'</div></div>'
+        +'<div><div class="ent-receptor-label">Documento</div><div class="ent-receptor-val'+(!c.docRecebedor?' ent-receptor-alert':'')+'">'+(c.docRecebedor||'⚠ Não informado')+'</div></div>'
+        +'<div><div class="ent-receptor-label">Data</div><div class="ent-receptor-val">'+(c.data||dt)+'</div></div>'
+        +'<div><div class="ent-receptor-label">Horário</div><div class="ent-receptor-val">'+(c.hora||'—')+'</div></div>'
+        +'</div></div>';
+    }
+
+    return '<div class="ent-card">'
+      +'<div class="ent-hdr"><div class="ent-ico">'+ico+'</div><div class="ent-info">'
+      +'<div class="ent-cli">'+(p.cliente||'—')+'</div>'
+      +'<div class="ent-meta">'+(p.cidade||'')+'/'+( p.estado||'')+' · Ped. '+(p.pedido||'—')+' · '+(p.peso||0)+' kg</div>'
+      +'<div class="ent-mot">🚗 '+x.motoristaNome+' · '+x.nomeRota+' · '+dt+' '+(c.hora||'')+'</div>'
+      +'<div class="ent-badges">'
+      +'<span class="badge-st '+bCls+'">'+tipoTxt+'</span>'
+      +(p.nf?'<span class="badge-st" style="background:rgba(212,175,55,.15);color:#8a6d1a;border:1px solid rgba(212,175,55,.4)">🧾 NF '+p.nf+'</span>':(p.pedido?'<span class="badge-st" style="background:rgba(107,118,145,.1);color:var(--txts);border:1px solid var(--border)">🧾 NF pendente</span>':''))
+      +(c.foraRaio?'<span class="badge-st b-fora">⚠ Fora do raio · '+(c.distKm||'?')+' km</span>':'')
+      +(c.motivo?'<span class="badge-st" style="background:rgba(15,23,42,.06);color:var(--txtm);border:1px solid var(--border)">'+c.motivo+'</span>':'')
+      +'</div></div></div>'
+      + receptorHtml
+      + fotosHtml
+      +(c.obs?'<div class="ent-obs">💬 '+c.obs+'</div>':'')
+      +(c.gps?'<div style="font-size:10px;color:var(--txts);margin-top:4px">📍 GPS: '+c.gps.lat.toFixed(5)+', '+c.gps.lng.toFixed(5)+'</div>':'')
+      +'</div>';
+  }).join('');
+};
+
+function atualizarSelects() {
+  var selMot = document.getElementById('hist-mot'), valMot = selMot.value;
+  var selRota = document.getElementById('hist-rota'), valRota = selRota.value;
+  var nomes = [...new Set(Object.values(despachos).map(function(d){return d.motoristaNome||'';}).filter(Boolean))].sort();
+  var rotas = [...new Set(Object.values(despachos).map(function(d){return d.nomeRota||'';}).filter(Boolean))].sort();
+  selMot.innerHTML  = '<option value="">Todos os motoristas</option>' + nomes.map(function(n){return'<option value="'+n+'"'+(n===valMot?' selected':'')+'>'+n+'</option>';}).join('');
+  selRota.innerHTML = '<option value="">Todas as rotas</option>' + rotas.map(function(r){return'<option value="'+r+'"'+(r===valRota?' selected':'')+'>'+r+'</option>';}).join('');
+}
+
+// ── RESUMO MAPA ───────────────────────────────────────────────────────────────
+function atualizarResumo() {
+  var emR=0, ent=0, pend=0, avar=0;
+  Object.values(despachos).forEach(function(d){
+    if (d.iniciou&&!d.concluido) emR++;
+    var nP = (d.paradas||[]).length;
+    Object.values(d.confirmacoes||{}).forEach(function(c){
+      if (c.tipo==='entregue'||c.tipo==='entregue-avaria'||c.tipo==='entregue-parcial') ent++;
+      else if (c.tipo==='entregue-avaria') avar++;
+    });
+    pend += nP - Object.keys(d.confirmacoes||{}).length;
+  });
+  document.getElementById('r-emrota').textContent   = emR;
+  document.getElementById('r-entregas').textContent  = ent;
+  document.getElementById('r-pendentes').textContent = Math.max(0,pend);
+  document.getElementById('r-avarias').textContent   = avar;
+}
+
+// ── FOTO ─────────────────────────────────────────────────────────────────────
+window.verFoto = function(src,info) {
+  document.getElementById('mf-img').src=src;
+  document.getElementById('mf-info').textContent=info||'';
+  document.getElementById('modal-foto').classList.add('on');
+};
+window.fecharFoto = function() { document.getElementById('modal-foto').classList.remove('on'); };
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function getCor(t) { if (!coresMot[t]) { coresMot[t]=CORES[corIdx%CORES.length]; corIdx++; } return coresMot[t]; }
+function tempoRel(ts) {
+  if (!ts) return 'nunca';
+  var d = Math.floor((Date.now()-ts)/1000);
+  if (d<60) return 'agora'; if (d<3600) return Math.floor(d/60)+'min atrás';
+  if (d<86400) return Math.floor(d/3600)+'h atrás';
+  return new Date(ts).toLocaleDateString('pt-BR');
+}
+function fmtDateInput(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,2114 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento de OP — MF Paris OPUS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0d1f3c;--navy2:#1a3a6b;--gold:#b8902a;--gold2:#d4a83a;--gold3:#e8c96a;
+  --cream:#faf8f4;--ink:#0d1f3c;--ink3:#4a6080;--ink4:#7a8fa8;--border:#d4c4a0;
+  --green:#15803d;--green-l:#dcfce7;--red:#dc2626;--red-l:#fee2e2;
+  --amber:#b45309;--amber-l:#fef3c7;--blue:#1e40af;--blue-l:#dbeafe;
+  --purple:#7c3aed;--purple-l:#ede9fe;
+  --glass:rgba(255,255,255,0.85);--blur:saturate(180%) blur(20px);
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px -4px rgba(13,31,60,.1);
+  --shadow-l:0 8px 32px -8px rgba(13,31,60,.2);
+  --r:10px;--rl:16px;--rxl:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse 70% 50% at 100% 0%,rgba(184,144,42,.07),transparent 60%),var(--cream);}
+
+/* NAV */
+/* LAYOUT */
+main{max-width:1400px;margin:0 auto;padding:24px 20px 60px;}
+.page-header{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.page-eyebrow{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.page-title{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--navy);line-height:1.1;}
+.page-title em{font-style:italic;color:var(--gold);}
+
+/* CARDS */
+.card{background:var(--glass);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:var(--rl);padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow);}
+.card-title{font-size:10px;font-weight:700;color:var(--ink4);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.card-title .num{width:22px;height:22px;border-radius:6px;background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+
+/* ETAPA BADGE */
+.etapa-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;}
+.etapa-producao{background:rgba(30,64,175,.12);color:#1e40af;border:1px solid rgba(30,64,175,.2);}
+.etapa-qualidade{background:rgba(124,58,237,.12);color:#7c3aed;border:1px solid rgba(124,58,237,.2);}
+.etapa-conferido{background:rgba(245,158,11,.14);color:#b45309;border:1px solid rgba(245,158,11,.25);}
+.etapa-concluido{background:rgba(22,163,74,.14);color:#15803d;border:1px solid rgba(22,163,74,.2);}
+.etapa-armazenado{background:rgba(15,23,42,.08);color:#334155;border:1px solid rgba(15,23,42,.15);}
+.etapa-planejada{background:rgba(148,163,184,.15);color:#475569;border:1px solid rgba(148,163,184,.3);}
+
+/* OP LIST */
+.op-list{display:flex;flex-direction:column;gap:10px;}
+.op-group{margin-bottom:8px;}
+.op-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink4);margin-bottom:6px;padding-left:4px;}
+.op-card{background:white;border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;}
+.op-card:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:var(--shadow-l);}
+.op-card.selected{border-color:var(--blue);background:var(--blue-l);box-shadow:0 0 0 3px rgba(30,64,175,.15);}
+.op-num{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:var(--navy);min-width:70px;}
+.op-info{flex:1;}
+.op-prod{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:3px;}
+.op-det{font-size:11px;color:var(--ink4);}
+.op-linha-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:5px;flex-shrink:0;}
+.lacteo{background:var(--blue-l);color:var(--blue);}
+.cafe{background:rgba(154,107,26,.15);color:#6b3a00;}
+.sacaria{background:rgba(109,40,217,.1);color:#5b21b6;}
+
+/* FORM */
+.form-grid{display:grid;gap:12px;}
+.g2{grid-template-columns:1fr 1fr;}
+.g3{grid-template-columns:1fr 1fr 1fr;}
+.g4{grid-template-columns:1fr 1fr 1fr 1fr;}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+.fl{display:flex;flex-direction:column;gap:4px;}
+.fl label{font-size:10px;font-weight:600;color:var(--ink4);text-transform:uppercase;letter-spacing:.5px;}
+.fl input,.fl select,.fl textarea{font-size:13px;padding:9px 12px;border-radius:var(--r);border:1.5px solid var(--border);background:white;color:var(--ink);font-family:inherit;outline:none;transition:all .18s;}
+.fl input:focus,.fl select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(30,64,175,.1);}
+.fl input[readonly]{background:#f8f8f8;color:var(--ink3);}
+.meta-badge{background:var(--amber-l);border:1px solid rgba(180,83,9,.25);color:var(--amber);padding:8px 12px;border-radius:var(--r);font-size:12px;font-weight:600;text-align:center;}
+
+/* TABELA HORA */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table.thora{width:100%;border-collapse:collapse;min-width:800px;font-size:12px;}
+table.thora thead th{background:var(--navy);color:rgba(255,255,255,.7);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:10px 8px;border-right:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+table.thora tbody tr{border-bottom:1px solid #eee;}
+table.thora tbody tr:last-child{border-bottom:none;}
+table.thora tbody tr:hover{background:#fafafa;}
+table.thora tbody tr.parada{background:#fff8f8;}
+table.thora td{padding:5px 6px;border-right:1px solid #f0f0f0;vertical-align:middle;}
+table.thora td:first-child{font-weight:700;font-size:11px;color:var(--ink3);background:#fafaf8;padding-left:12px;white-space:nowrap;min-width:90px;}
+table.thora td input,table.thora td select{width:100%;font-size:11px;padding:6px 7px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--ink);font-family:inherit;transition:all .15s;}
+table.thora td input:hover,table.thora td select:hover{border-color:var(--border);background:#fff;}
+table.thora td input:focus,table.thora td select:focus{outline:none;border-color:var(--blue);background:#fff;}
+table.thora td.dur{font-weight:700;color:var(--red);text-align:center;background:#fff8f8;font-size:12px;}
+table.thora td.dur.zero{color:var(--ink4);background:transparent;font-weight:400;}
+
+/* TOTAIS */
+.totais-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+@media(max-width:700px){.totais-grid{grid-template-columns:1fr 1fr;}}
+.tot{background:#f8f8f8;border-radius:var(--r);padding:14px;text-align:center;border:1px solid var(--border);}
+.tot .tl{font-size:10px;font-weight:700;color:var(--ink4);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;}
+.tot .tv{font-size:22px;font-weight:800;color:var(--ink);}
+.tot.ok .tv{color:var(--green);}
+.tot.warn .tv{color:var(--amber);}
+.tot.crit .tv{color:var(--red);}
+
+/* BOTÕES */
+.btn{padding:10px 20px;font-size:13px;font-weight:700;font-family:inherit;border-radius:var(--r);cursor:pointer;border:1.5px solid var(--border);background:white;color:var(--ink);transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+.btn:hover{background:#f5f5f5;border-color:#aaa;}
+.btn-primary{background:var(--navy);color:white;border-color:var(--navy);}
+.btn-primary:hover{background:#0a1728;}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-green{background:var(--green);color:white;border-color:var(--green);}
+.btn-green:hover{background:#0f6030;}
+.btn-qualidade{background:var(--purple);color:white;border-color:var(--purple);}
+.btn-qualidade:hover{background:#6d28d9;}
+.btn-conferido{background:var(--amber);color:white;border-color:var(--amber);}
+.btn-conferido:hover{background:#92400e;}
+.btn-concluido{background:var(--green);color:white;border-color:var(--green);}
+.btn-concluido:hover{background:#0f6030;}
+.btn-armazenado{background:#334155;color:white;border-color:#334155;}
+.btn-armazenado:hover{background:#1e293b;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(13,31,60,.65);backdrop-filter:blur(6px);z-index:999;display:none;align-items:center;justify-content:center;}
+.modal.on{display:flex;}
+.modal-box{background:white;border-radius:var(--rxl);padding:28px;width:400px;max-width:92vw;box-shadow:0 32px 80px -16px rgba(13,31,60,.4);border:1px solid rgba(232,201,106,.3);}
+.modal-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.modal-sub{font-size:12px;color:var(--ink4);margin-bottom:18px;line-height:1.6;}
+.modal-box input[type=password]{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;margin-bottom:8px;}
+.modal-box input[type=password]:focus{border-color:var(--gold);}
+.modal-err{font-size:11px;color:var(--red);min-height:16px;margin-bottom:10px;}
+.modal-acts{display:flex;gap:10px;}
+.modal-acts button{flex:1;padding:10px;border-radius:var(--r);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;}
+.modal-acts .mc{background:#f1f5f9;color:var(--ink3);}
+.modal-acts .mp{background:linear-gradient(135deg,var(--gold3),var(--gold));color:var(--navy);}
+
+/* ETAPAS PIPELINE */
+.pipeline{display:flex;align-items:center;gap:0;margin-bottom:20px;overflow-x:auto;padding:4px 0;}
+.pip-step{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;border:1.5px solid transparent;}
+.pip-step.done{background:var(--green-l);color:var(--green);border-color:rgba(22,163,74,.3);}
+.pip-step.active{background:var(--blue-l);color:var(--blue);border-color:rgba(30,64,175,.4);box-shadow:0 0 0 3px rgba(30,64,175,.12);}
+.pip-step.pending{background:#f1f5f9;color:#94a3b8;border-color:#e2e8f0;}
+.pip-arrow{color:#cbd5e1;font-size:14px;margin:0 2px;flex-shrink:0;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;color:white;animation:fadeUp .3s ease;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+.toast-ok{background:var(--green);}
+.toast-err{background:var(--red);}
+.toast-info{background:var(--navy);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* OP vazia */
+.empty-state{text-align:center;padding:48px 20px;color:var(--ink4);}
+.empty-icon{font-size:40px;margin-bottom:10px;}
+
+/* LOADING OVERLAY */
+#loading{position:fixed;inset:0;background:rgba(13,31,60,.6);backdrop-filter:blur(4px);z-index:9998;display:none;align-items:center;justify-content:center;}
+#loading.on{display:flex;}
+.spin-big{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--gold3);border-radius:50%;animation:spin .8s linear infinite;}
+
+.sep{height:1px;background:var(--border);margin:16px 0;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;}
+/* MODAL LARGO (materiais, reprogramacao, config etapas) */
+.modal-box.wide{width:640px;max-width:95vw;max-height:88vh;overflow-y:auto;}
+
+/* MATERIAIS / SKUs NECESSARIOS */
+.mat-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.mat-table thead th{background:var(--navy);color:rgba(255,255,255,.75);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:8px 8px;text-align:left;}
+.mat-table tbody tr{border-bottom:1px solid #eee;}
+.mat-table td{padding:6px 8px;vertical-align:middle;}
+.mat-table td input{width:90px;font-size:12px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-family:inherit;}
+.mat-table td.desc{font-weight:600;color:var(--ink);}
+.mat-table td.cod{font-family:monospace;font-size:11px;color:var(--ink4);}
+.mat-empty{text-align:center;padding:20px;color:var(--ink4);font-size:12px;}
+
+/* DIAGNOSTICO / CONFIG ETAPAS */
+.diag-box{background:#0d1f3c;border-radius:10px;padding:12px;font-size:11px;color:#a0c0e0;font-family:monospace;white-space:pre-wrap;max-height:260px;overflow-y:auto;margin-top:10px;}
+.etapa-cfg-row{display:grid;grid-template-columns:1fr 90px;gap:10px;align-items:center;margin-bottom:8px;}
+.etapa-cfg-row label{font-size:12px;font-weight:600;color:var(--ink);}
+.etapa-cfg-row input{padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:13px;text-align:center;}
+
+/* REPROGRAMACAO */
+.reprog-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
+.reprog-table thead th{background:var(--navy);color:rgba(255,255,255,.75);font-size:10px;font-weight:700;text-transform:uppercase;padding:8px;text-align:left;}
+.reprog-table tbody tr{border-bottom:1px solid #eee;}
+.reprog-table td{padding:7px 8px;}
+.reprog-nova{color:var(--purple);font-weight:700;}
+.reprog-antiga{color:var(--ink4);text-decoration:line-through;font-size:11px;}
+.reprog-badge-nova{background:var(--purple-l);color:var(--purple);font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;}
+
+/* ACOES EXTRA */
+.btn-encerrar{background:#7c2d12;color:white;border-color:#7c2d12;}
+.btn-encerrar:hover{background:#5c2110;}
+.btn-diag{background:transparent;color:var(--ink4);border-color:var(--border);font-size:11px;padding:6px 12px;}
+
+/* RELATÓRIO */
+.modal-box.xwide{width:920px;max-width:96vw;max-height:90vh;overflow-y:auto;}
+.rel-lista{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);padding:8px;margin-bottom:14px;}
+.rel-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:12px;}
+.rel-item:hover{background:#f7f5ef;}
+.rel-item input{width:16px;height:16px;flex-shrink:0;}
+.rel-item .ri-num{font-weight:800;color:var(--navy);min-width:60px;}
+.rel-item .ri-prod{flex:1;color:var(--ink3);}
+.rel-item .ri-det{font-size:10px;color:var(--ink4);}
+.rel-chart-wrap{background:white;border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px;}
+.rel-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spin-big"></div></div>
+<div id="toast"></div>
+
+<!-- MODAL SENHA -->
+<div class="modal" id="modal-senha">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-titulo">Autenticação</div>
+    <div class="modal-sub" id="modal-sub">Digite sua senha para continuar.</div>
+    <input type="password" id="modal-input" placeholder="Senha" autocomplete="off">
+    <div class="modal-err" id="modal-err"></div>
+    <div class="modal-acts">
+      <button class="mc" onclick="fecharModal()">Cancelar</button>
+      <button class="mp" onclick="confirmarModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIG ETAPAS -->
+<div class="modal" id="modal-etapas">
+  <div class="modal-box wide">
+    <div class="modal-title">Configurar etapas do OMIE</div>
+    <div class="modal-sub">Cada empresa configura as etapas da Ordem de Produção de um jeito no OMIE (Configurações &gt; Processo da Ordem de Produção). Se a OP está pulando direto para "Conferido", o código usado aqui para "Qualidade" provavelmente não é o mesmo configurado na sua conta. Use o diagnóstico abaixo para descobrir o código real antes de salvar.</div>
+    <div class="etapa-cfg-row"><label>Produção (produzindo)</label><input type="text" id="cfg-et-producao"></div>
+    <div class="etapa-cfg-row"><label>Qualidade</label><input type="text" id="cfg-et-qualidade"></div>
+    <div class="etapa-cfg-row"><label>Conferido</label><input type="text" id="cfg-et-conferido"></div>
+    <div class="etapa-cfg-row"><label>Concluído</label><input type="text" id="cfg-et-concluido"></div>
+    <div class="etapa-cfg-row"><label>Armazenado</label><input type="text" id="cfg-et-armazenado"></div>
+    <div class="sep"></div>
+    <div style="font-size:11px;color:var(--ink4);margin-bottom:8px;">Diagnóstico: consulta a OP selecionada agora no OMIE e mostra o código de etapa (cEtapa) que está gravado nela — compare com o que você vê na tela do OMIE para achar o valor certo.</div>
+    <button class="btn" onclick="diagnosticarEtapaOP()" style="margin-bottom:4px;">🔎 Consultar etapa real da OP selecionada</button>
+    <div class="diag-box" id="diag-etapas" style="display:none;"></div>
+    <div class="modal-acts" style="margin-top:16px;">
+      <button class="mc" onclick="fecharConfigEtapas()">Cancelar</button>
+      <button class="mp" onclick="salvarConfigEtapas()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REPROGRAMAÇÃO -->
+<div class="modal" id="modal-reprog">
+  <div class="modal-box wide">
+    <div class="modal-title">Prévia da reprogramação</div>
+    <div class="modal-sub" id="reprog-sub"></div>
+    <div style="max-height:50vh;overflow-y:auto;">
+      <table class="reprog-table">
+        <thead><tr><th>OP</th><th>SKU / Produto</th><th>Qtd (kg)</th><th>Data atual</th><th>Nova data</th></tr></thead>
+        <tbody id="reprog-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-acts" style="margin-top:16px;">
+      <button class="mc" onclick="fecharModalReprog()">Cancelar</button>
+      <button class="mp" onclick="confirmarReprogramacao()" id="btn-confirmar-reprog">Confirmar e aplicar no OMIE</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RELATÓRIO -->
+<div class="modal" id="modal-relatorio">
+  <div class="modal-box xwide">
+    <div class="modal-title">Relatório de OPs</div>
+    <div class="modal-sub">Carregue as OPs (inclui já concluídas/armazenadas), marque uma ou mais e gere o Excel com tudo: identificação, hora a hora, materiais, equipe e qualidade/refugo — mais um resumo comparativo e um gráfico.</div>
+    <div class="rel-toolbar">
+      <button class="btn btn-primary" onclick="carregarOPsRelatorio()" id="btn-rel-carregar">🔄 Carregar OPs</button>
+      <button class="btn" onclick="marcarTodosRelatorio(true)">Marcar todas</button>
+      <button class="btn" onclick="marcarTodosRelatorio(false)">Desmarcar todas</button>
+      <span id="rel-status" style="font-size:11px;color:var(--ink4);"></span>
+    </div>
+    <div class="rel-lista" id="rel-lista">
+      <div class="mat-empty">Clique em "Carregar OPs" para listar as ordens disponíveis.</div>
+    </div>
+    <div class="rel-chart-wrap" id="rel-chart-wrap" style="display:none;">
+      <canvas id="rel-chart" height="90"></canvas>
+    </div>
+    <div class="modal-acts" style="margin-top:6px;">
+      <button class="mc" onclick="fecharRelatorio()">Fechar</button>
+      <button class="btn" onclick="gerarGraficoRelatorio()" id="btn-rel-grafico">📈 Gerar gráfico</button>
+      <button class="btn btn-diag" style="border-color:var(--green);color:var(--green);" onclick="baixarGraficoRelatorioPNG()" id="btn-rel-png" disabled>🖼 Baixar gráfico (PNG)</button>
+      <button class="mp" onclick="gerarRelatorioExcel()" id="btn-rel-excel">⬇ Baixar Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<main>
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Ordens de Produção</div>
+      <div class="page-title">Fechamento de <em>OP</em></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div id="user-badge" style="font-size:12px;color:var(--ink3);background:white;padding:6px 14px;border-radius:999px;border:1px solid var(--border);">👁 Visualização</div>
+      <button class="btn" onclick="abrirConfigEtapas()" title="Configurar/descobrir os codigos de etapa do seu OMIE">⚙️ Etapas OMIE</button>
+      <button class="btn" onclick="abrirRelatorio()" title="Relatório em Excel por OP, com gráfico">📊 Relatório de OPs</button>
+      <button class="btn btn-primary" onclick="abrirListaOPs()" id="btn-carregar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+        Carregar OPs do OMIE
+      </button>
+    </div>
+  </div>
+
+  <!-- SELEÇÃO DE OP -->
+  <div class="card" id="card-selecao">
+    <div class="card-title"><div class="num">1</div>Selecionar Ordem de Produção</div>
+    <div id="op-lista-container">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Nenhuma OP carregada</div>
+        <div style="font-size:12px;">Clique em "Carregar OPs do OMIE" para buscar as ordens em aberto.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APONTAMENTO (aparece após selecionar OP) -->
+  <div id="card-apontamento" style="display:none;">
+
+    <!-- PIPELINE -->
+    <div class="card" style="padding:14px 22px;">
+      <div style="font-size:10px;font-weight:700;color:var(--ink4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Status da OP</div>
+      <div class="pipeline" id="pipeline"></div>
+    </div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div class="card">
+      <div class="card-title"><div class="num">2</div>Identificação</div>
+      <div class="form-grid g4">
+        <div class="fl"><label>Nº da OP</label><input type="text" id="ap-op" readonly></div>
+        <div class="fl"><label>Data</label><input type="date" id="ap-data"></div>
+        <div class="fl"><label>Turno</label>
+          <select id="ap-turno" onchange="agendarAutoSaveFirebase()"><option>Turno A (06h–14h)</option><option>Turno B (14h–22h)</option><option>Turno C (22h–06h)</option></select>
+        </div>
+        <div class="fl"><label>Operador</label><input type="text" id="ap-op-nome" placeholder="Nome do operador" onchange="agendarAutoSaveFirebase()"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="form-grid g4">
+        <div class="fl"><label>SKU</label><input type="text" id="ap-sku" readonly></div>
+        <div class="fl" style="grid-column:span 2"><label>Produto</label><input type="text" id="ap-produto" readonly></div>
+        <div class="fl"><label>Linha</label><input type="text" id="ap-linha" readonly></div>
+      </div>
+      <div class="form-grid g3" style="margin-top:12px;">
+        <div class="fl"><label>Máquina</label><input type="text" id="ap-maquina" readonly></div>
+        <div class="fl"><label>Qtd planejada (kg)</label><input type="text" id="ap-qtd-plan" readonly></div>
+        <div>
+          <div class="meta-badge" id="ap-meta-hora">— Calculando meta/hora...</div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="form-grid g4">
+        <div class="fl"><label>Qtd. Operadores</label><input type="number" id="ap-num-operadores" min="0" step="1" placeholder="0" onchange="agendarAutoSaveFirebase()"></div>
+        <div class="fl"><label>Qtd. Auxiliares</label><input type="number" id="ap-num-auxiliares" min="0" step="1" placeholder="0" onchange="agendarAutoSaveFirebase()"></div>
+        <div class="fl"><label>Qtd produzida — total (kg)</label><input type="text" id="ap-qtd-produzida" readonly></div>
+        <div class="fl"><label>Qtd planejada original (kg)</label><input type="text" id="ap-qtd-plan-original" readonly></div>
+      </div>
+    </div>
+
+    <!-- MATERIAIS NECESSARIOS -->
+    <div class="card">
+      <div class="card-title"><div class="num">3</div>Materiais necessários (Lista Técnica)
+        <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--ink4);">Confirme a quantidade realmente utilizada de cada item</span>
+      </div>
+      <div id="materiais-container">
+        <div class="mat-empty">Selecione uma OP para carregar a lista técnica.</div>
+      </div>
+    </div>
+
+    <!-- HORA A HORA -->
+    <div class="card">
+      <div class="card-title"><div class="num">4</div>Produção hora a hora
+        <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--ink4);">Linhas em vermelho = parada registrada</span>
+      </div>
+      <div class="table-wrap">
+        <table class="thora">
+          <thead><tr>
+            <th>Hora</th><th>Meta/h (kg)</th><th>Realizado (kg)</th>
+            <th>P. Início</th><th>P. Fim</th><th>Min.</th>
+            <th>Causa</th><th>Equipamento</th><th>Retrab./Desc.</th><th>Observações</th>
+          </tr></thead>
+          <tbody id="corpo-hora"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TOTAIS -->
+    <div class="card">
+      <div class="card-title"><div class="num">5</div>Totais do turno</div>
+      <div class="totais-grid">
+        <div class="tot"><div class="tl">Planejado (kg)</div><div class="tv" id="tot-plan">0</div></div>
+        <div class="tot"><div class="tl">Produzido (kg)</div><div class="tv" id="tot-prod">0</div></div>
+        <div class="tot"><div class="tl">Parado (min)</div><div class="tv" id="tot-min">0</div></div>
+        <div class="tot"><div class="tl">Nº Paradas</div><div class="tv" id="tot-np">0</div></div>
+        <div class="tot"><div class="tl">Disponibilidade</div><div class="tv" id="tot-disp">—</div></div>
+      </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="card" id="card-acoes">
+      <div class="card-title"><div class="num">6</div>Ações</div>
+      <div id="acoes-container"></div>
+    </div>
+
+  </div><!-- /card-apontamento -->
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONFIGURAÇÃO
+// ═══════════════════════════════════════════════
+var OMIE_KEY    = '952260381072';
+var OMIE_SECRET = '8300b385eeec583c71439709ab866fc7';
+var OMIE_KEY_DMS    = '1340821992510';
+var OMIE_SECRET_DMS = 'dac287f9b3ec422dc93da6cdbcc3e0b2';
+var USE_PROXY   = !(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '');
+
+// ═══════════════════════════════════════════════
+// FIREBASE — persistência do apontamento hora a hora
+// Projeto: mfparis-bd054 (Realtime Database). Cole abaixo o apiKey/appId/messagingSenderId
+// reais do seu projeto (Configurações do projeto > Geral > "Seus apps" > SDK, no console
+// do Firebase). Sem isso preenchido, o app funciona normalmente mas não salva/recupera
+// o hora a hora entre trocas de OP — tudo mais continua igual.
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAch7_Sn4jq1cuTGV1ijGsDGUXC9dyilOs",
+  authDomain: "mfparis-bd054.firebaseapp.com",
+  databaseURL: "https://mfparis-bd054-default-rtdb.firebaseio.com",
+  projectId: "mfparis-bd054",
+  storageBucket: "mfparis-bd054.firebasestorage.app",
+  messagingSenderId: "106506342977",
+  appId: "1:106506342977:web:cda4d2d0f3296c4284ecc0"
+};
+var FB_DB = null;
+try {
+  if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('COLE_AQUI') === -1 && window.firebase) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    FB_DB = firebase.database();
+  } else {
+    console.warn('Firebase não configurado — cole o apiKey/appId reais em FIREBASE_CONFIG para ativar o salvamento do hora a hora.');
+  }
+} catch(e) { console.warn('Erro ao iniciar Firebase:', e.message); FB_DB = null; }
+
+// Nó próprio, separado de despachos/roteirização. Exige esta entrada nas regras do
+// Realtime Database (adição isolada, não mexe em mais nada):
+//   "fechamento_op": { ".read": "auth != null", ".write": "auth != null" }
+// Por isso fazemos login anônimo antes de ler/gravar — é preciso ter o provedor
+// "Anônimo" habilitado em Authentication > Sign-in method do projeto.
+var FB_PATH = 'fechamento_op';
+var _fbAutoSaveTimer = null;
+var _fbAuthPromise = null;
+
+function fbAutenticar() {
+  if (!FB_DB || !window.firebase || !firebase.auth) return Promise.resolve(false);
+  if (firebase.auth().currentUser) return Promise.resolve(true);
+  if (_fbAuthPromise) return _fbAuthPromise;
+  _fbAuthPromise = firebase.auth().signInAnonymously()
+    .then(function(){ return true; })
+    .catch(function(e){
+      console.warn('Login anônimo do Firebase falhou — habilite o provedor "Anônimo" em Authentication > Sign-in method do projeto. Detalhe:', e.message);
+      _fbAuthPromise = null;
+      return false;
+    });
+  return _fbAuthPromise;
+}
+if (FB_DB) { fbAutenticar(); } // já dispara o login anônimo assim que a página carrega
+
+function fbRefOP(nCodOP) { return (FB_DB && nCodOP) ? FB_DB.ref(FB_PATH + '/' + nCodOP) : null; }
+
+// Usuários autorizados a preencher apontamento de produção
+var USUARIOS_PRODUCAO = [
+  { nome:'Vagner',  senha:'mfparis@2026' },
+  { nome:'Junior',  senha:'mfparis@2026' },
+  { nome:'Daniel',  senha:'Cafe@2026' }
+];
+
+// Senhas para cada etapa de movimentação
+var SENHAS_ETAPA = {
+  qualidade:  ['mfparis@2026','Cafe@2026'],
+  conferido:  ['mfparis@2026','Cafe@2026'],
+  concluido:  ['mfparis@2026','Cafe@2026'],
+  armazenado: ['mfparis@2026','Cafe@2026']
+};
+
+// Etapas OMIE — CONFIGURÁVEIS pelo usuário. Cada conta OMIE define suas próprias etapas em
+// Configurações > Processo da Ordem de Produção, então os códigos abaixo são só um palpite
+// inicial. Use o botão "⚙ Etapas OMIE" no topo da página para diagnosticar e corrigir os
+// códigos reais da sua conta (isso resolve OPs "pulando" direto para Conferido).
+var LS_ETAPAS = 'opus_etapas_omie_v1';
+var ETAPAS_OMIE_DEFAULT = { producao:'20', qualidade:'30', conferido:'40', concluido:'50', armazenado:'60' };
+function getEtapasCfg() {
+  try {
+    var s = JSON.parse(localStorage.getItem(LS_ETAPAS));
+    if (!s) return Object.assign({}, ETAPAS_OMIE_DEFAULT);
+    return Object.assign({}, ETAPAS_OMIE_DEFAULT, s);
+  } catch(e) { return Object.assign({}, ETAPAS_OMIE_DEFAULT); }
+}
+function salvarEtapasCfg(cfg) { localStorage.setItem(LS_ETAPAS, JSON.stringify(cfg)); }
+var ETAPAS_OMIE = getEtapasCfg();
+
+function buildEtapasLabel() {
+  var lbl = { '10':'A Produzir', '20':'Liberada', '80':'Concluída' };
+  lbl[ETAPAS_OMIE.producao]   = 'Produzindo';
+  lbl[ETAPAS_OMIE.qualidade]  = 'Qualidade';
+  lbl[ETAPAS_OMIE.conferido]  = 'Conferido';
+  lbl[ETAPAS_OMIE.concluido]  = 'Concluído';
+  lbl[ETAPAS_OMIE.armazenado] = 'Armazenado';
+  return lbl;
+}
+var ETAPAS_LABEL = buildEtapasLabel();
+function classeEtapa(codigo) {
+  if (codigo === ETAPAS_OMIE.producao)   return 'etapa-producao';
+  if (codigo === ETAPAS_OMIE.qualidade)  return 'etapa-qualidade';
+  if (codigo === ETAPAS_OMIE.conferido)  return 'etapa-conferido';
+  if (codigo === ETAPAS_OMIE.concluido)  return 'etapa-concluido';
+  if (codigo === ETAPAS_OMIE.armazenado) return 'etapa-armazenado';
+  if (codigo === '10') return 'etapa-planejada';
+  return 'etapa-planejada';
+}
+
+// Velocidades (kg/min) — mesmas premissas do simulador
+var VEL_IND  = {'200g':8,'400g':8,'800g':10,'1kg':12};
+var VEL_MAZ  = {'200g':3.6,'400g':3.6,'800g':5.6,'1kg':8};
+var VEL_SAC  = {'25kg':11};
+var VEL_CAFE = {'200g':8,'400g':16,'800g':9.6,'1kg':12,'500g':9.6};
+var OEE      = 0.7;
+var N_HORAS  = 10;
+var CAUSAS   = {MC:'Manut. Corretiva',MP:'Manut. Preventiva',SE:'Setup/Changeover',FI:'Falta de Insumo',QR:'Qualidade/Retrabalho',AO:'Ag. Operador',PP:'Parada Programada',UT:'Utilidades',OT:'Outro'};
+var MOTIVOS_REFUGO = {CT:'Contaminação',EMB:'Embalagem danificada',PES:'Fora do peso/padrão',VAL:'Validade/prazo vencido',MIX:'Mistura/erro de formulação',PR:'Processo/parâmetro fora do padrão',OUT:'Outro'};
+
+var OPS_CARREGADAS = [];
+var OP_SELECIONADA = null;
+var USUARIO_ATUAL  = null;
+var _modalCallback = null;
+
+// ═══════════════════════════════════════════════
+// OMIE API
+// ═══════════════════════════════════════════════
+async function omieCall(call, param, ep, _retry) {
+  ep = ep || 'https://app.omie.com.br/api/v1/produtos/op/';
+  var payload = { call:call, app_key:String(OMIE_KEY), app_secret:String(OMIE_SECRET), param:param };
+  var resp;
+  if (USE_PROXY) {
+    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+  } else {
+    resp = await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }
+  if (!resp.ok) throw new Error('HTTP '+resp.status);
+  var data = await resp.json();
+  if (data.faultstring) {
+    if (data.faultstring.indexOf('REDUNDANT')>=0 && !_retry) {
+      var seg=35, m=data.faultstring.match(/Aguarde (\d+) segundo/);
+      if(m) seg=parseInt(m[1])+3;
+      await new Promise(function(r){setTimeout(r,seg*1000);});
+      return omieCall(call,param,ep,true);
+    }
+    throw new Error(data.faultstring);
+  }
+  return data;
+}
+async function omieCallDMS(call, param, ep, _retry) {
+  ep = ep || 'https://app.omie.com.br/api/v1/produtos/op/';
+  var payload = { call:call, app_key:String(OMIE_KEY_DMS), app_secret:String(OMIE_SECRET_DMS), param:param };
+  var resp;
+  if (USE_PROXY) {
+    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+  } else {
+    resp = await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }
+  if (!resp.ok) throw new Error('HTTP '+resp.status);
+  var data = await resp.json();
+  if (data.faultstring) throw new Error(data.faultstring);
+  return data;
+}
+// ═══════════════════════════════════════════════
+// CARREGAR OPs
+// ═══════════════════════════════════════════════
+async function abrirListaOPs() {
+  showLoading(true);
+  var ops = [];
+  try {
+   try {
+      var pag1=1;
+      while(true) {
+        var d1 = await omieCall('ListarOrdemProducao',[{
+          pagina:pag1, registros_por_pagina:50,
+          apenas_importado_api:'N',
+          ordenar_por:'DATA_PREVISAO', ordem_decrescente:'S'
+        }],'https://app.omie.com.br/api/v1/produtos/op/');
+        var lista1 = d1.cadastros||[];
+        if (!lista1.length) break;
+        lista1.forEach(function(op){ op._empresa='CAFE'; ops.push(op); });
+        var total1 = d1.total_de_registros||lista1.length;
+        if (pag1*50>=total1||lista1.length<50) break;
+        // Para em OPs com mais de 90 dias
+        var ultDt1 = new Date(((lista1[lista1.length-1].identificacao||{}).dDtPrevisao||'').split('/').reverse().join('-'));
+        var corte = new Date(); corte.setDate(corte.getDate()-90);
+        if (ultDt1 < corte) break;
+        pag1++;
+        await new Promise(function(r){setTimeout(r,400);});
+      }
+    } catch(e){ console.warn('MF Paris erro:', e.message); }
+
+    await new Promise(function(r){setTimeout(r,500);});
+
+    // Busca DMS (Lácteo e Sacaria)
+    try {
+      var pag2=1;
+      while(true) {
+        var d2 = await omieCallDMS('ListarOrdemProducao',[{
+          pagina:pag2, registros_por_pagina:50,
+          apenas_importado_api:'N',
+          ordenar_por:'DATA_PREVISAO', ordem_decrescente:'S'
+        }],'https://app.omie.com.br/api/v1/produtos/op/');
+        var lista2 = d2.cadastros||[];
+        if (!lista2.length) break;
+        lista2.forEach(function(op){ op._empresa='DMS'; ops.push(op); });
+        var total2 = d2.total_de_registros||lista2.length;
+        if (pag2*50>=total2||lista2.length<50) break;
+        var ultDt2 = new Date(((lista2[lista2.length-1].identificacao||{}).dDtPrevisao||'').split('/').reverse().join('-'));
+        if (ultDt2 < corte) break;
+        pag2++;
+        await new Promise(function(r){setTimeout(r,400);});
+      }
+    } catch(e){ console.warn('DMS erro:', e.message); } 
+
+    await new Promise(function(r){setTimeout(r,500);});
+
+    // Busca DMS (Lácteo e Sacaria)
+    try {
+      for (var p2 = 0; p2 < 3; p2++) {
+        var d2 = await omieCallDMS('ListarOrdemProducao',[{ pagina: 999-p2, registros_por_pagina:50 }],'https://app.omie.com.br/api/v1/produtos/op/');
+        var total2 = d2.total_de_paginas || 0;
+        if (total2 > 0 && (999-p2) > total2) {
+          var d2b = await omieCallDMS('ListarOrdemProducao',[{ pagina: total2, registros_por_pagina:50 }],'https://app.omie.com.br/api/v1/produtos/op/');
+          (d2b.cadastros||[]).forEach(function(op){ op._empresa='DMS'; ops.push(op); });
+          break;
+        }
+        (d2.cadastros||[]).forEach(function(op){ op._empresa='DMS'; ops.push(op); });
+        if ((d2.cadastros||[]).length < 50) break;
+      }
+    } catch(e){ console.warn('DMS erro:', e.message); }
+
+    // Filtra apenas não concluídas
+    ops = ops.filter(function(op){
+      return (op.outrasInf||{}).cConcluida === 'N';
+    });
+
+    console.log('[FechamentoOP] Total OPs abertas:', ops.length);
+
+    OPS_CARREGADAS = ops.map(function(op){
+      var id  = op.identificacao || {};
+      var inf = op.infAdicionais || {};
+      return {
+        nCodOP:      id.nCodOP      || '',
+        cCodIntOP:   id.cCodIntOP   || '',
+        nCodProd:    id.nCodProduto || 0,
+        cCodProd:    String(id.nCodProduto || ''),
+        descProd:    'Carregando...',
+        qtdPlan:     parseFloat(id.nQtde || 0),
+        etapa:       String(inf.cEtapa || '10'),
+        dataPrevisao:id.dDtPrevisao || '',
+        numOP:       id.cNumOP      || '',
+        empresa:     op._empresa    || '',
+        raw: op
+      };
+    });
+
+    // Renderiza primeiro com "Carregando..." para mostrar rápido
+    renderListaOPs();
+    toast(OPS_CARREGADAS.length + ' OP(s) carregada(s) — buscando produtos...', 'info');
+
+    // Busca nome do produto de cada OP em paralelo
+    await Promise.all(OPS_CARREGADAS.map(async function(op){
+      try {
+        var ep = 'https://app.omie.com.br/api/v1/geral/produtos/';
+        var isCafe = op.empresa === 'CAFE';
+        var key    = isCafe ? OMIE_KEY     : OMIE_KEY_DMS;
+        var secret = isCafe ? OMIE_SECRET  : OMIE_SECRET_DMS;
+        var codProd = parseInt(op.nCodProd) || 0;
+if (!codProd) { op.descProd = op.numOP || 'OP '+op.nCodOP; return; }
+var payload = { call:'ConsultarProduto', app_key:String(key), app_secret:String(secret), param:[{ codigo_produto: codProd }] };
+        var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+        var data = await resp.json();
+       op.descProd = data.descricao || data.nome || 'OP '+op.numOP;
+var codCandidatos = [data.codigo, String(op.nCodProd)];
+op.cCodProd = codCandidatos.find(function(c){ return c && String(c).startsWith('12'); }) || data.codigo || '';
+      } catch(e){
+        op.descProd = 'OP '+op.numOP;
+      }
+    }));
+
+    // Renderiza novamente com os nomes
+    renderListaOPs();
+    toast(OPS_CARREGADAS.length + ' OP(s) carregada(s)', 'ok');
+
+  } catch(e) {
+    console.error(e);
+    toast('Erro ao carregar OPs: '+e.message.slice(0,80), 'err');
+    OPS_CARREGADAS = [
+      {nCodOP:'2648',cCodProd:'1230019',descProd:'LEITE EM PO INTEGRAL HORIZONTE 400g',qtdPlan:5000,etapa:'10',dataPrevisao:'07/06/2026'},
+      {nCodOP:'2649',cCodProd:'1230027',descProd:'LEITE EM PO INTEGRAL HORIZONTE 400g L2502',qtdPlan:3000,etapa:'10',dataPrevisao:'07/06/2026'},
+      {nCodOP:'2650',cCodProd:'1230045',descProd:'CAFE TORRADO E MOIDO BELVEDER VACUO 500G L2502',qtdPlan:2000,etapa:'10',dataPrevisao:'08/06/2026'},
+      {nCodOP:'2651',cCodProd:'1120028',descProd:'LEITE EM PO INTEGRAL HORIZONTE SACARIA 25KG',qtdPlan:10000,etapa:'10',dataPrevisao:'08/06/2026'},
+    ];
+    renderListaOPs();
+    toast('Modo demonstração ativo', 'info');
+  }
+  showLoading(false);
+}
+
+function detectarLinha(desc) {
+  if (!desc) return 'LACTEO';
+  var d = desc.toUpperCase();
+  if (d.includes('25KG') || d.includes('SACARIA')) return 'SACARIA';
+  if (d.includes('CAFE')||d.includes('CAFÉ')||d.includes('BELVEDER')||d.includes('VACUO')||d.includes('ALMOFADA')) return 'CAFE';
+  return 'LACTEO';
+}
+function detectarEmb(desc) {
+  if (!desc) return '400g';
+  var d = desc.toUpperCase();
+  if (d.includes('200G')) return '200g';
+  if (d.includes('400G')) return '400g';
+  if (d.includes('800G')) return '800g';
+  if (d.includes('1KG')||d.includes('1 KG')) return '1kg';
+  if (d.includes('500G')) return '500g';
+  if (d.includes('25KG')||d.includes('25 KG')) return '25kg';
+  return '400g';
+}
+function calcMetaHora(linha, emb, maquina) {
+  var vel;
+  if (linha==='SACARIA') vel = VEL_SAC[emb]||11;
+  else if (linha==='CAFE') vel = VEL_CAFE[emb]||8;
+  else vel = (maquina==='MAZ' ? VEL_MAZ[emb] : VEL_IND[emb]) || 8;
+  return (vel * OEE * 60).toFixed(0); // kg/hora
+}
+
+function renderListaOPs() {
+  var cont = document.getElementById('op-lista-container');
+  if (!OPS_CARREGADAS.length) {
+    cont.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div style="font-size:13px;font-weight:600;">Nenhuma OP em aberto</div></div>';
+    return;
+  }
+  var grupos = { LACTEO:[], CAFE:[], SACARIA:[] };
+  OPS_CARREGADAS.forEach(function(op){
+    var linha = detectarLinha(op.descProd);
+    grupos[linha].push(op);
+  });
+  var html = '';
+  var linhas = [
+    { key:'LACTEO', label:'Lácteo', cls:'lacteo' },
+    { key:'CAFE',   label:'Café',   cls:'cafe' },
+    { key:'SACARIA',label:'Sacaria',cls:'sacaria' }
+  ];
+  linhas.forEach(function(l){
+    if (!grupos[l.key].length) return;
+    html += '<div class="op-group"><div class="op-group-label">'+l.label+' — '+grupos[l.key].length+' OP(s)</div><div class="op-list">';
+    grupos[l.key].forEach(function(op){
+      var etapaLabel = ETAPAS_LABEL[op.etapa] || op.etapa;
+      var etapaCls = classeEtapa(op.etapa);
+      html += '<div class="op-card" onclick="selecionarOP(\''+op.nCodOP+'\')" id="op-card-'+op.nCodOP+'">'
+  +'<div class="op-num">'+(op.numOP||op.nCodOP)+'</div>'
+  +'<div class="op-info">'
+  +'<div class="op-prod">'+(op.descProd||'—')+'</div>'
+  +'<div class="op-det">SKU: '+(op.cCodProd||'—')+' · Qtd: '+(op.qtdPlan||0).toLocaleString('pt-BR')+' kg · Previsão: '+(op.dataPrevisao||'—')+'</div>'
+        +'</div>'
+        +'<span class="op-linha-badge '+l.cls+'">'+l.label+'</span>'
+        +'<span class="etapa-badge '+etapaCls+'">'+etapaLabel+'</span>'
+        +'</div>';
+    });
+    html += '</div></div>';
+  });
+  cont.innerHTML = html;
+}
+
+function selecionarOP(nCodOP) {
+  var op = OPS_CARREGADAS.find(function(o){ return String(o.nCodOP) === String(nCodOP); });
+  if (!op) return;
+  OP_SELECIONADA = op;
+  // Destaca o card selecionado
+  document.querySelectorAll('.op-card').forEach(function(c){ c.classList.remove('selected'); });
+  var card = document.getElementById('op-card-'+nCodOP);
+  if (card) card.classList.add('selected');
+  carregarApontamento(op);
+}
+
+// ═══════════════════════════════════════════════
+// APONTAMENTO
+// ═══════════════════════════════════════════════
+function carregarApontamento(op) {
+  document.getElementById('card-apontamento').style.display = 'block';
+  document.getElementById('card-apontamento').scrollIntoView({behavior:'smooth',block:'start'});
+
+  var linha   = detectarLinha(op.descProd);
+  var emb     = detectarEmb(op.descProd);
+  var obsOP = ((op.raw||{}).observacoes||{}).cObs || '';
+var maquina = linha==='LACTEO' ? 'IND' : (linha==='CAFE' ? 'ABIS' : 'EP04');
+if (obsOP.toUpperCase().includes('MAZIPAK')) maquina = 'MAZ';
+if (obsOP.toUpperCase().includes('INDUMAK')) maquina = 'IND';
+  var metaH   = calcMetaHora(linha, emb, maquina);
+
+  // Preenche campos
+  document.getElementById('ap-op').value       = op.numOP || op.nCodOP;
+  document.getElementById('ap-data').value      = new Date().toISOString().slice(0,10);
+  document.getElementById('ap-sku').value       = op.cCodProd || '—';
+  document.getElementById('ap-produto').value   = op.descProd || '—';
+  document.getElementById('ap-linha').value     = linha;
+  document.getElementById('ap-maquina').value   = maquina + (linha==='LACTEO'?' (Indumak)':linha==='CAFE'?' (Abis/Mazipak)':' (EP04)');
+  document.getElementById('ap-qtd-plan').value  = (op.qtdPlan||0).toLocaleString('pt-BR') + ' kg';
+  document.getElementById('ap-qtd-plan-original').value = (op.qtdPlan||0).toLocaleString('pt-BR') + ' kg';
+  document.getElementById('ap-num-operadores').value = '';
+  document.getElementById('ap-num-auxiliares').value = '';
+  document.getElementById('ap-meta-hora').textContent = '⚡ Meta: ' + metaH + ' kg/h · ' + linha + ' · ' + emb + ' · OEE ' + (OEE*100).toFixed(0) + '%';
+
+  // Pipeline
+  renderPipeline(op.etapa);
+
+  // Tabela hora a hora
+  buildTabela(linha, metaH);
+
+  // Ações conforme etapa
+  renderAcoes(op.etapa);
+
+  calcTotais();
+
+  // Materiais necessários (lista técnica) e, em seguida, o que já foi salvo no Firebase
+  // (hora a hora, equipe e "utilizado" dos materiais) para esta OP, se existir.
+  (async function(){
+    await carregarMateriaisOP(op);
+    await carregarApontamentoFirebase(op);
+  })();
+}
+
+function renderPipeline(etapaAtual) {
+  var steps = [
+    {cod:ETAPAS_OMIE.producao,   label:'Produção',   icon:'🏭'},
+    {cod:ETAPAS_OMIE.qualidade,  label:'Qualidade',  icon:'🔬'},
+    {cod:ETAPAS_OMIE.conferido,  label:'Conferido',  icon:'✅'},
+    {cod:ETAPAS_OMIE.concluido,  label:'Concluído',  icon:'🎯'},
+    {cod:ETAPAS_OMIE.armazenado, label:'Armazenado', icon:'📦'}
+  ];
+  var html = '';
+  var passados = true;
+  steps.forEach(function(s, i){
+    if (s.cod === etapaAtual) passados = false;
+    var cls = (s.cod === etapaAtual) ? 'active' : (passados ? 'done' : 'pending');
+    // nota: "passados" controla se já passou ou ainda vai
+    var jaPassou = parseInt(etapaAtual) > parseInt(s.cod);
+    cls = (s.cod === etapaAtual) ? 'active' : (jaPassou ? 'done' : 'pending');
+    html += '<div class="pip-step '+cls+'">'+s.icon+' '+s.label+'</div>';
+    if (i < steps.length-1) html += '<span class="pip-arrow">›</span>';
+  });
+  document.getElementById('pipeline').innerHTML = html;
+}
+
+function buildTabela(linha, metaH) {
+  var corpo = document.getElementById('corpo-hora');
+  corpo.innerHTML = '';
+  var equipOptions = '';
+  if (linha==='LACTEO') equipOptions = '<option>—</option><option>Indumak</option><option>Mazipak</option><option>Enfardadeira</option><option>Outro</option>';
+  else if (linha==='CAFE') equipOptions = '<option>—</option><option>Abis</option><option>Mazipak Café</option><option>Outro</option>';
+  else equipOptions = '<option>—</option><option>EP04</option><option>Outro</option>';
+
+  for (var i = 0; i < N_HORAS; i++) {
+    var h = 8 + i;
+    var lbl = String(h).padStart(2,'0')+':00 – '+String(h+1).padStart(2,'0')+':00';
+    var tr = document.createElement('tr');
+    tr.id = 'hr-'+i;
+    tr.innerHTML = '<td>'+lbl+'</td>'
+      +'<td><input type="number" value="'+metaH+'" min="0" style="width:70px;" oninput="calcTotais()" id="meta-'+i+'"></td>'
+      +'<td><input type="number" placeholder="0" min="0" style="width:80px;" oninput="calcTotais()" id="real-'+i+'"></td>'
+      +'<td><input type="time" id="pi-'+i+'" oninput="onParada('+i+')"></td>'
+      +'<td><input type="time" id="pf-'+i+'" oninput="onParada('+i+')"></td>'
+      +'<td class="dur zero" id="dur-'+i+'">—</td>'
+      +'<td><select id="causa-'+i+'" style="font-size:11px;width:130px;"><option value="">—</option>'
+        +Object.entries(CAUSAS).map(function(e){ return '<option value="'+e[0]+'">'+e[0]+' – '+e[1]+'</option>'; }).join('')
+      +'</select></td>'
+      +'<td><select id="equip-'+i+'" style="font-size:11px;width:110px;">'+equipOptions+'</select></td>'
+      +'<td><input type="text" id="ret-'+i+'" placeholder="Tipo" style="width:80px;"></td>'
+      +'<td><input type="text" id="obs-'+i+'" placeholder="Observações"></td>';
+    corpo.appendChild(tr);
+  }
+}
+
+function diffMin(a, b) {
+  if (!a||!b) return 0;
+  var ah=parseInt(a.split(':')[0]), am=parseInt(a.split(':')[1]);
+  var bh=parseInt(b.split(':')[0]), bm=parseInt(b.split(':')[1]);
+  var d=(bh*60+bm)-(ah*60+am); if(d<0)d+=1440; return d;
+}
+
+function onParada(i) {
+  var pi = document.getElementById('pi-'+i).value;
+  var pf = document.getElementById('pf-'+i).value;
+  var min = diffMin(pi,pf);
+  var dc = document.getElementById('dur-'+i);
+  dc.textContent = min>0?min+' min':'—';
+  dc.className = 'dur'+(min===0?' zero':'');
+  document.getElementById('hr-'+i).classList.toggle('parada',min>0);
+  calcTotais();
+}
+
+function calcTotais() {
+  var plan=0, prod=0, minT=0, nP=0;
+  for (var i=0;i<N_HORAS;i++) {
+    plan += parseFloat(document.getElementById('meta-'+i).value)||0;
+    prod += parseFloat(document.getElementById('real-'+i).value)||0;
+    var m = diffMin(document.getElementById('pi-'+i).value, document.getElementById('pf-'+i).value);
+    if (m>0){minT+=m;nP++;}
+  }
+  var turnoMin = 600; // 10h (seg-qui) / 540 (sexta)
+  var disp = prod>0||nP>0 ? Math.max(0,Math.round((1-minT/turnoMin)*100)) : null;
+  document.getElementById('tot-plan').textContent = plan.toLocaleString('pt-BR');
+  document.getElementById('tot-prod').textContent = prod.toLocaleString('pt-BR');
+  document.getElementById('tot-min').textContent  = minT;
+  document.getElementById('tot-np').textContent   = nP;
+  document.getElementById('tot-disp').textContent = disp!==null?disp+'%':'—';
+  var db = document.getElementById('tot-disp').parentElement;
+  db.className = 'tot'+(disp===null?'':(disp>=90?' ok':disp>=80?' warn':' crit'));
+  var qtdProdEl = document.getElementById('ap-qtd-produzida');
+  if (qtdProdEl) qtdProdEl.value = prod.toLocaleString('pt-BR') + ' kg';
+  agendarAutoSaveFirebase();
+}
+
+// ═══════════════════════════════════════════════
+// AÇÕES POR ETAPA
+// ═══════════════════════════════════════════════
+function renderAcoes(etapa) {
+  var cont = document.getElementById('acoes-container');
+  var html = '';
+
+  if (etapa === '10' || etapa === '20' || etapa === ETAPAS_OMIE.producao) {
+    // Etapa produção → preenche apontamento, materiais e equipe, depois fecha para Qualidade
+    html += '<p style="font-size:12px;color:var(--ink3);margin-bottom:14px;">Preencha o apontamento hora a hora, confirme os materiais utilizados e a equipe. Ao finalizar, clique em <strong>Fechar OP e Enviar para Qualidade</strong>. Se produziu menos que o planejado, use <strong>Encerrar com produção a menor</strong> para replanejar o saldo.</p>';
+    html += '<div class="btn-row">'
+      +'<button class="btn btn-primary" onclick="salvarApontamento()" id="btn-salvar"><span>💾</span> Salvar apontamento</button>'
+      +'<button class="btn btn-qualidade" onclick="fecharOPParaQualidade()"><span>🔬</span> Fechar OP e Enviar para Qualidade</button>'
+      +'<button class="btn btn-encerrar" onclick="encerrarComProducaoMenor()"><span>⏹</span> Encerrar com produção a menor</button>'
+      +'</div>';
+  } else if (etapa === ETAPAS_OMIE.qualidade) {
+    var qtdApontadaQC = parseFloat(OP_SELECIONADA.qtdPlan)||0;
+    html += '<p style="font-size:12px;color:var(--ink3);margin-bottom:14px;">OP aguardando aprovação da <strong>Qualidade</strong>. Informe a quantidade apta para armazenagem — o que não for aprovado fica registrado como refugo/perda.</p>';
+    html += '<div class="form-grid g3" style="margin-bottom:12px;">'
+      +'<div class="fl"><label>Quantidade apontada na produção (kg)</label><input type="text" id="qc-qtd-apontada" value="'+qtdApontadaQC.toLocaleString('pt-BR')+'" readonly></div>'
+      +'<div class="fl"><label>Quantidade aprovada — apta para armazenagem (kg)</label><input type="number" step="0.01" min="0" id="qc-qtd-aprovada" value="'+qtdApontadaQC+'" oninput="atualizarRefugoQualidade()"></div>'
+      +'<div class="fl"><label>Refugo / perda (kg)</label><input type="text" id="qc-qtd-refugo" readonly></div>'
+      +'</div>'
+      +'<div class="form-grid g2" id="qc-motivo-wrap" style="display:none;margin-bottom:14px;">'
+      +'<div class="fl"><label>Motivo do refugo</label><select id="qc-motivo-refugo">'+Object.keys(MOTIVOS_REFUGO).map(function(k){return '<option value="'+k+'">'+k+' – '+MOTIVOS_REFUGO[k]+'</option>';}).join('')+'</select></div>'
+      +'<div class="fl"><label>Detalhe (opcional)</label><input type="text" id="qc-motivo-obs" placeholder="Detalhes adicionais"></div>'
+      +'</div>';
+    html += '<div class="btn-row">'
+      +'<button class="btn btn-conferido" onclick="aprovarQualidade()"><span>✅</span> Aprovar — Mover para Conferido</button>'
+      +'</div>';
+  } else if (etapa === ETAPAS_OMIE.conferido) {
+    html += '<p style="font-size:12px;color:var(--ink3);margin-bottom:14px;">OP em <strong>Conferido</strong>. Clique para validar e mover para Concluído (requer senha).</p>';
+    html += '<div class="btn-row">'
+      +'<button class="btn btn-concluido" onclick="moverEtapa(\'concluido\')"><span>🎯</span> Validar — Mover para Concluído</button>'
+      +'</div>';
+  } else if (etapa === ETAPAS_OMIE.concluido) {
+    html += '<p style="font-size:12px;color:var(--ink3);margin-bottom:14px;">OP <strong>Concluída</strong>. Logística deve confirmar armazenamento (requer senha).</p>';
+    html += '<div class="btn-row">'
+      +'<button class="btn btn-armazenado" onclick="moverEtapa(\'armazenado\')"><span>📦</span> Confirmar — Mover para Armazenado</button>'
+      +'</div>';
+  } else {
+    html += '<p style="font-size:12px;color:var(--green);font-weight:600;">✅ OP finalizada e armazenada.</p>';
+  }
+
+  cont.innerHTML = html;
+  if (etapa === ETAPAS_OMIE.qualidade) atualizarRefugoQualidade();
+}
+
+// ═══════════════════════════════════════════════
+// SALVAR APONTAMENTO
+// ═══════════════════════════════════════════════
+function salvarApontamento() {
+  pedirSenha('Salvar Apontamento', 'Informe sua senha para registrar o apontamento.', USUARIOS_PRODUCAO.map(function(u){return u.senha;}), function(){
+    _executarSalvar();
+  });
+}
+
+async function _executarSalvar() {
+  if (!OP_SELECIONADA) { toast('Nenhuma OP selecionada','err'); return; }
+  showLoading(true);
+  try {
+    var plan=0, prod=0, linhas=[];
+    for (var i=0;i<N_HORAS;i++) {
+      var meta  = parseFloat(document.getElementById('meta-'+i).value)||0;
+      var real  = parseFloat(document.getElementById('real-'+i).value)||0;
+      var pi    = document.getElementById('pi-'+i).value;
+      var pf    = document.getElementById('pf-'+i).value;
+      var causa = document.getElementById('causa-'+i).value;
+      var equip = document.getElementById('equip-'+i).value;
+      var ret   = document.getElementById('ret-'+i).value;
+      var obs   = document.getElementById('obs-'+i).value;
+      var dur   = diffMin(pi,pf);
+      plan += meta; prod += real;
+      if (real>0||dur>0) linhas.push({hora:6+i,meta,real,pi,pf,dur,causa,equip,ret,obs});
+    }
+    var disp = Math.max(0,Math.round((1-calcMinTotal()/480)*100));
+    var obsTexto = '[OPUS Apontamento '+new Date().toLocaleDateString('pt-BR')+']'
+      +' Produzido: '+prod.toLocaleString('pt-BR')+' kg'
+      +' | Planejado: '+plan.toLocaleString('pt-BR')+' kg'
+      +' | Disponibilidade: '+disp+'%'
+      +' | Paradas: '+document.getElementById('tot-np').textContent+' ('+document.getElementById('tot-min').textContent+' min)'
+      +' | Operador: '+(document.getElementById('ap-op-nome').value||'—')
+      +' | Turno: '+document.getElementById('ap-turno').value;
+    await omieAtualizarObs(OP_SELECIONADA.nCodOP, obsTexto);
+    await salvarApontamentoFirebase(false);
+    toast('Apontamento salvo na OP '+OP_SELECIONADA.nCodOP+' e na base de dados','ok');
+  } catch(e) {
+    toast('Erro ao salvar: '+e.message,'err');
+  }
+  showLoading(false);
+}
+
+function calcMinTotal(){
+  var t=0;
+  for(var i=0;i<N_HORAS;i++) t+=diffMin(document.getElementById('pi-'+i).value,document.getElementById('pf-'+i).value);
+  return t;
+}
+
+// ═══════════════════════════════════════════════
+// MOVER ETAPA
+// ═══════════════════════════════════════════════
+function moverEtapa(novaEtapaKey) {
+  var labels = {
+    qualidade:'Qualidade', conferido:'Conferido',
+    concluido:'Concluído', armazenado:'Armazenado'
+  };
+  var senhas = SENHAS_ETAPA[novaEtapaKey] || [];
+  pedirSenha(
+    'Mover para '+labels[novaEtapaKey],
+    'Informe sua senha para mover a OP para a etapa '+labels[novaEtapaKey]+'.',
+    senhas,
+    function() { _executarMoverEtapa(novaEtapaKey, labels[novaEtapaKey]); }
+  );
+}
+
+async function _executarMoverEtapa(etapaKey, etapaLabel) {
+  if (!OP_SELECIONADA) { toast('Nenhuma OP selecionada','err'); return; }
+  showLoading(true);
+  try {
+    var novaCod = ETAPAS_OMIE[etapaKey];
+    var callFn = OP_SELECIONADA.empresa === 'CAFE' ? omieCall : omieCallDMS;
+
+    // Na etapa Armazenado — conclui a OP com quantidade produzida
+    if (etapaKey === 'armazenado') {
+      var prod = 0;
+      for (var i = 0; i < N_HORAS; i++) {
+        prod += parseFloat(document.getElementById('real-'+i).value)||0;
+      }
+      var dataAp = document.getElementById('ap-data').value;
+      var dtArr = dataAp.split('-');
+      var dtConclusao = dtArr[2]+'/'+dtArr[1]+'/'+dtArr[0];
+
+      await callFn('ConcluirOrdemProducao',[{
+        cCodIntOP: '',
+        nCodOP: parseInt(OP_SELECIONADA.nCodOP),
+        dDtConclusao: dtConclusao,
+        nQtdeProduzida: prod,
+        cObsConclusao: prod.toLocaleString('pt-BR')+' kg produzidos | Aprovado pela Logística'
+      }], 'https://app.omie.com.br/api/v1/produtos/op/');
+    } else {
+      // Para as demais etapas só muda a etapa
+      await callFn('AlterarOrdemProducao',[{
+        identificacao:{ nCodOP: parseInt(OP_SELECIONADA.nCodOP) },
+        infAdicionais:{ cEtapa: novaCod }
+      }], 'https://app.omie.com.br/api/v1/produtos/op/');
+    }
+
+    // Salva observação em todas as etapas
+    var obsMsg = '[OPUS '+new Date().toLocaleDateString('pt-BR')+'] Movido para '+etapaLabel+' por usuário autorizado.';
+    await omieAtualizarObs(OP_SELECIONADA.nCodOP, obsMsg);
+
+    // Atualiza localmente
+    OP_SELECIONADA.etapa = novaCod;
+    var opNaLista = OPS_CARREGADAS.find(function(o){ return String(o.nCodOP)===String(OP_SELECIONADA.nCodOP); });
+    if (opNaLista) opNaLista.etapa = novaCod;
+
+    renderPipeline(novaCod);
+    renderAcoes(novaCod);
+    renderListaOPs();
+    toast('OP movida para '+etapaLabel+' com sucesso!','ok');
+
+  } catch(e) {
+    toast('Erro: '+e.message.slice(0,80),'err');
+  }
+  showLoading(false);
+}
+async function omieAtualizarObs(nCodOP, novaObs) {
+  var callFn = OP_SELECIONADA && OP_SELECIONADA.empresa === 'CAFE' ? omieCall : omieCallDMS;
+  var obsAtual = '';
+  try {
+    var d = await callFn('ConsultarOrdemProducao',[{nCodOP:parseInt(nCodOP)}],'https://app.omie.com.br/api/v1/produtos/op/');
+    obsAtual = (d.observacoes||{}).cObs || '';
+  } catch(e){}
+  var obsCompleta = obsAtual ? (obsAtual.trim()+'\n'+novaObs) : novaObs;
+  await callFn('AlterarOrdemProducao',[{
+    identificacao:{ nCodOP:parseInt(nCodOP) },
+    observacoes:{ cObs: obsCompleta }
+  }], 'https://app.omie.com.br/api/v1/produtos/op/');
+}
+
+// ═══════════════════════════════════════════════
+// FIREBASE — salvar/recuperar o hora a hora (e equipe/materiais) por OP
+// ═══════════════════════════════════════════════
+function coletarEstadoApontamento() {
+  var horas = [];
+  for (var i=0;i<N_HORAS;i++) {
+    var elMeta = document.getElementById('meta-'+i);
+    if (!elMeta) continue;
+    horas.push({
+      meta:  document.getElementById('meta-'+i).value,
+      real:  document.getElementById('real-'+i).value,
+      pi:    document.getElementById('pi-'+i).value,
+      pf:    document.getElementById('pf-'+i).value,
+      causa: document.getElementById('causa-'+i).value,
+      equip: document.getElementById('equip-'+i).value,
+      ret:   document.getElementById('ret-'+i).value,
+      obs:   document.getElementById('obs-'+i).value
+    });
+  }
+  return {
+    nCodOP: OP_SELECIONADA ? OP_SELECIONADA.nCodOP : null,
+    numOP: OP_SELECIONADA ? (OP_SELECIONADA.numOP||OP_SELECIONADA.nCodOP) : null,
+    sku: OP_SELECIONADA ? OP_SELECIONADA.cCodProd : null,
+    produto: OP_SELECIONADA ? OP_SELECIONADA.descProd : null,
+    linha: document.getElementById('ap-linha') ? document.getElementById('ap-linha').value : '',
+    data: document.getElementById('ap-data') ? document.getElementById('ap-data').value : '',
+    turno: document.getElementById('ap-turno') ? document.getElementById('ap-turno').value : '',
+    operadorNome: document.getElementById('ap-op-nome') ? document.getElementById('ap-op-nome').value : '',
+    numOperadores: document.getElementById('ap-num-operadores') ? document.getElementById('ap-num-operadores').value : '',
+    numAuxiliares: document.getElementById('ap-num-auxiliares') ? document.getElementById('ap-num-auxiliares').value : '',
+    horas: horas,
+    materiais: MATERIAIS_ATUAIS,
+    atualizadoEm: new Date().toISOString()
+  };
+}
+
+async function salvarApontamentoFirebase(mostrarToast) {
+  if (!OP_SELECIONADA) return;
+  var ref = fbRefOP(OP_SELECIONADA.nCodOP);
+  if (!ref) { if (mostrarToast) toast('Base de dados não configurada (Firebase) — apontamento não persistido entre sessões.','info'); return; }
+  var autenticado = await fbAutenticar();
+  if (!autenticado) { if (mostrarToast) toast('Não foi possível autenticar no Firebase (login anônimo) — verifique se está habilitado em Authentication.','err'); return; }
+  try {
+    await ref.set(coletarEstadoApontamento());
+    if (mostrarToast) toast('Apontamento salvo na base de dados.','ok');
+  } catch(e) {
+    console.warn('Erro ao salvar no Firebase:', e.message);
+    if (mostrarToast) toast('Aviso: não foi possível salvar na base ('+(e.message||'').slice(0,60)+')','err');
+  }
+}
+
+function agendarAutoSaveFirebase() {
+  if (!FB_DB || !OP_SELECIONADA) return;
+  if (_fbAutoSaveTimer) clearTimeout(_fbAutoSaveTimer);
+  _fbAutoSaveTimer = setTimeout(function(){ salvarApontamentoFirebase(false); }, 1500);
+}
+
+async function carregarApontamentoFirebase(op) {
+  var ref = fbRefOP(op.nCodOP);
+  if (!ref) return;
+  var autenticado = await fbAutenticar();
+  if (!autenticado) return;
+  try {
+    var snap = await ref.once('value');
+    var d = snap.val();
+    if (!d) return;
+
+    (d.horas||[]).forEach(function(h, i){
+      if (i>=N_HORAS || !document.getElementById('meta-'+i)) return;
+      document.getElementById('meta-'+i).value  = h.meta!=null ? h.meta : document.getElementById('meta-'+i).value;
+      document.getElementById('real-'+i).value  = h.real  || '';
+      document.getElementById('pi-'+i).value    = h.pi    || '';
+      document.getElementById('pf-'+i).value    = h.pf    || '';
+      document.getElementById('causa-'+i).value = h.causa || '';
+      document.getElementById('equip-'+i).value = h.equip || '';
+      document.getElementById('ret-'+i).value   = h.ret   || '';
+      document.getElementById('obs-'+i).value   = h.obs   || '';
+      onParada(i);
+    });
+    if (d.turno && document.getElementById('ap-turno')) document.getElementById('ap-turno').value = d.turno;
+    if (d.operadorNome && document.getElementById('ap-op-nome')) document.getElementById('ap-op-nome').value = d.operadorNome;
+    if (d.numOperadores!=null && document.getElementById('ap-num-operadores')) document.getElementById('ap-num-operadores').value = d.numOperadores;
+    if (d.numAuxiliares!=null && document.getElementById('ap-num-auxiliares')) document.getElementById('ap-num-auxiliares').value = d.numAuxiliares;
+
+    if (Array.isArray(d.materiais) && d.materiais.length) {
+      if (MATERIAIS_ATUAIS.length) {
+        // Mescla o "utilizado" salvo sobre a lista técnica recém-calculada (mantém o "necessário" atualizado)
+        d.materiais.forEach(function(saved){
+          var alvo = MATERIAIS_ATUAIS.find(function(m){ return m.codMp === saved.codMp; });
+          if (alvo) alvo.utilizado = saved.utilizado;
+        });
+      } else {
+        MATERIAIS_ATUAIS = d.materiais;
+      }
+      renderMateriais();
+    }
+
+    calcTotais();
+    toast('Apontamento salvo anteriormente foi recarregado da base de dados.','info');
+  } catch(e) {
+    console.warn('Erro ao carregar do Firebase:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// MATERIAIS NECESSÁRIOS (LISTA TÉCNICA)
+// ═══════════════════════════════════════════════
+var MATERIAIS_ATUAIS = [];
+async function carregarMateriaisOP(op) {
+  var cont = document.getElementById('materiais-container');
+  if (!cont) return;
+  cont.innerHTML = '<div class="mat-empty">Buscando lista técnica do SKU '+(op.cCodProd||'—')+'...</div>';
+  MATERIAIS_ATUAIS = [];
+  try {
+    var isCafe = op.empresa === 'CAFE';
+    var key    = isCafe ? OMIE_KEY    : OMIE_KEY_DMS;
+    var secret = isCafe ? OMIE_SECRET : OMIE_SECRET_DMS;
+    var ep = 'https://app.omie.com.br/api/v1/geral/malha/';
+    var payload = { call:'ConsultarEstrutura', app_key:String(key), app_secret:String(secret), param:[{idProduto:0,intProduto:'',codProduto:String(op.cCodProd)}] };
+    var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+    var data = await resp.json();
+    if (data.faultstring) throw new Error(data.faultstring);
+    var itens = data.itens || data.itensEstrutura || [];
+    MATERIAIS_ATUAIS = itens.map(function(it){
+      var qtdPor1000 = (parseFloat(it.quantProdMalha||it.qtdProdMalha||it.nQtde||it.quantidade||0)||0) * 1000;
+      var necessario = (qtdPor1000/1000) * (parseFloat(op.qtdPlan)||0);
+      necessario = Math.round(necessario*1000)/1000;
+      return {
+        codMp: it.codProdMalha || it.codigo_componente || '',
+        descMp: it.descrProdMalha || it.descricao_componente || '(sem descrição)',
+        unidade: it.unidProdMalha || it.cUnid || it.unidade || 'KG',
+        necessario: necessario,
+        utilizado: necessario
+      };
+    });
+    renderMateriais();
+  } catch(e) {
+    cont.innerHTML = '<div class="mat-empty">Não foi possível carregar a lista técnica automaticamente ('+(e.message||'').slice(0,80)+'). A OP pode ser fechada mesmo assim, mas confira os materiais manualmente com a produção.</div>';
+  }
+}
+function renderMateriais() {
+  var cont = document.getElementById('materiais-container');
+  if (!cont) return;
+  if (!MATERIAIS_ATUAIS.length) { cont.innerHTML = '<div class="mat-empty">Nenhum item de lista técnica encontrado para este SKU no OMIE.</div>'; return; }
+  var html = '<table class="mat-table"><thead><tr><th>Cód. MP</th><th>Descrição</th><th>Necessário (calc.)</th><th>Utilizado (confirme)</th></tr></thead><tbody>';
+  MATERIAIS_ATUAIS.forEach(function(m, i){
+    html += '<tr><td class="cod">'+(m.codMp||'—')+'</td><td class="desc">'+m.descMp+'</td>'
+      +'<td>'+m.necessario.toLocaleString('pt-BR',{maximumFractionDigits:3})+' '+m.unidade+'</td>'
+      +'<td><input type="number" step="0.001" min="0" value="'+m.utilizado+'" oninput="atualizarMaterialUtilizado('+i+',this.value)"></td></tr>';
+  });
+  html += '</tbody></table>';
+  cont.innerHTML = html;
+}
+function atualizarMaterialUtilizado(i, val) {
+  if (MATERIAIS_ATUAIS[i]) MATERIAIS_ATUAIS[i].utilizado = parseFloat(val)||0;
+  agendarAutoSaveFirebase();
+}
+function materiaisParaObs() {
+  if (!MATERIAIS_ATUAIS.length) return '';
+  var linhas = MATERIAIS_ATUAIS.map(function(m){
+    return (m.codMp||'—')+' '+m.descMp+': '+m.utilizado.toLocaleString('pt-BR',{maximumFractionDigits:3})+' '+m.unidade+' (necessário '+m.necessario.toLocaleString('pt-BR',{maximumFractionDigits:3})+')';
+  });
+  return 'Materiais utilizados — ' + linhas.join(' | ');
+}
+
+// ═══════════════════════════════════════════════
+// EQUIPE (OPERADORES / AUXILIARES)
+// ═══════════════════════════════════════════════
+function equipeParaObs() {
+  var nOp  = parseInt(document.getElementById('ap-num-operadores').value)||0;
+  var nAux = parseInt(document.getElementById('ap-num-auxiliares').value)||0;
+  return 'Equipe: ' + nOp + ' operador(es) + ' + nAux + ' auxiliar(es) (total ' + (nOp+nAux) + ' pessoas)';
+}
+
+// ═══════════════════════════════════════════════
+// FECHAR OP → QUALIDADE (atualiza qtde produzida + observações)
+// ═══════════════════════════════════════════════
+function fecharOPParaQualidade() {
+  pedirSenha(
+    'Fechar OP e Enviar para Qualidade',
+    'A quantidade planejada da OP será atualizada para a quantidade realmente produzida, e a OP será movida para a etapa Qualidade. Informe sua senha para confirmar.',
+    USUARIOS_PRODUCAO.map(function(u){return u.senha;}),
+    function(){ _executarFecharParaQualidade(); }
+  );
+}
+
+async function _executarFecharParaQualidade() {
+  if (!OP_SELECIONADA) { toast('Nenhuma OP selecionada','err'); return; }
+  showLoading(true);
+  try {
+    await _fecharOPComQuantidade(false);
+    toast('OP '+OP_SELECIONADA.nCodOP+' fechada e enviada para Qualidade!','ok');
+  } catch(e) {
+    toast('Erro ao fechar OP: '+e.message.slice(0,100),'err');
+  }
+  showLoading(false);
+}
+
+// Função compartilhada: atualiza nQtde + cEtapa=Qualidade + observações completas.
+// Usada tanto no fechamento normal quanto após a reprogramação de "produção a menor".
+async function _fecharOPComQuantidade(producaoMenor) {
+  var prod = 0;
+  for (var i=0;i<N_HORAS;i++) prod += parseFloat(document.getElementById('real-'+i).value)||0;
+  var callFn = OP_SELECIONADA.empresa === 'CAFE' ? omieCall : omieCallDMS;
+  var qtdOriginal = parseFloat(OP_SELECIONADA.qtdPlan)||0;
+  var qtdFinal = prod > 0 ? prod : qtdOriginal;
+
+  await callFn('AlterarOrdemProducao',[{
+    identificacao:{ nCodOP: parseInt(OP_SELECIONADA.nCodOP), nQtde: qtdFinal },
+    infAdicionais:{ cEtapa: ETAPAS_OMIE.qualidade }
+  }], 'https://app.omie.com.br/api/v1/produtos/op/');
+
+  var disp = Math.max(0,Math.round((1-calcMinTotal()/480)*100));
+  var obsTexto = '[OPUS Fechamento '+new Date().toLocaleDateString('pt-BR')+']'
+    +' Produzido: '+prod.toLocaleString('pt-BR')+' kg'
+    +' | Planejado original: '+qtdOriginal.toLocaleString('pt-BR')+' kg'
+    +(producaoMenor ? ' | ENCERRADA COM PRODUÇÃO A MENOR — saldo replanejado em nova OP' : '')
+    +' | Disponibilidade: '+document.getElementById('tot-disp').textContent
+    +' | Paradas: '+document.getElementById('tot-np').textContent+' ('+document.getElementById('tot-min').textContent+' min)'
+    +' | '+equipeParaObs()
+    +' | '+(materiaisParaObs()||'Sem lista técnica confirmada')
+    +' | Movido para Qualidade por usuário autorizado.';
+  await omieAtualizarObs(OP_SELECIONADA.nCodOP, obsTexto);
+
+  OP_SELECIONADA.etapa   = ETAPAS_OMIE.qualidade;
+  OP_SELECIONADA.qtdPlan = qtdFinal;
+  var opNaLista = OPS_CARREGADAS.find(function(o){ return String(o.nCodOP)===String(OP_SELECIONADA.nCodOP); });
+  if (opNaLista) { opNaLista.etapa = OP_SELECIONADA.etapa; opNaLista.qtdPlan = qtdFinal; }
+
+  var qtdPlanEl = document.getElementById('ap-qtd-plan');
+  if (qtdPlanEl) qtdPlanEl.value = qtdFinal.toLocaleString('pt-BR') + ' kg';
+
+  renderPipeline(OP_SELECIONADA.etapa);
+  renderAcoes(OP_SELECIONADA.etapa);
+  renderListaOPs();
+}
+
+// ═══════════════════════════════════════════════
+// QUALIDADE — aprovação com quantidade apta para armazenagem + refugo
+// ═══════════════════════════════════════════════
+function atualizarRefugoQualidade() {
+  var aprovadaEl = document.getElementById('qc-qtd-aprovada');
+  var refugoEl   = document.getElementById('qc-qtd-refugo');
+  if (!aprovadaEl || !refugoEl || !OP_SELECIONADA) return;
+  var apontada = parseFloat(OP_SELECIONADA.qtdPlan)||0;
+  var aprovada = parseFloat(aprovadaEl.value)||0;
+  var refugo = Math.max(0, Math.round((apontada-aprovada)*1000)/1000);
+  refugoEl.value = refugo.toLocaleString('pt-BR',{maximumFractionDigits:3}) + ' kg';
+  var wrap = document.getElementById('qc-motivo-wrap');
+  if (wrap) wrap.style.display = refugo>0.001 ? 'grid' : 'none';
+}
+
+function aprovarQualidade() {
+  var aprovadaEl = document.getElementById('qc-qtd-aprovada');
+  var aprovada = parseFloat(aprovadaEl && aprovadaEl.value)||0;
+  if (aprovada <= 0) { toast('Informe a quantidade aprovada (apta para armazenagem).','err'); return; }
+  pedirSenha(
+    'Aprovar Qualidade',
+    'Isso vai atualizar a quantidade da OP no OMIE para o valor aprovado e mover para Conferido. Informe sua senha.',
+    SENHAS_ETAPA.conferido,
+    function(){ _executarAprovarQualidade(aprovada); }
+  );
+}
+
+async function _executarAprovarQualidade(aprovada) {
+  if (!OP_SELECIONADA) { toast('Nenhuma OP selecionada','err'); return; }
+  showLoading(true);
+  try {
+    var apontada = parseFloat(OP_SELECIONADA.qtdPlan)||0;
+    var refugo = Math.max(0, Math.round((apontada-aprovada)*1000)/1000);
+    var motivoSel    = document.getElementById('qc-motivo-refugo');
+    var motivoObsEl  = document.getElementById('qc-motivo-obs');
+    var motivoTxt = '';
+    if (refugo > 0.001 && motivoSel) {
+      motivoTxt = MOTIVOS_REFUGO[motivoSel.value] || motivoSel.value;
+      if (motivoObsEl && motivoObsEl.value.trim()) motivoTxt += ' — ' + motivoObsEl.value.trim();
+    }
+
+    var callFn = OP_SELECIONADA.empresa === 'CAFE' ? omieCall : omieCallDMS;
+    await callFn('AlterarOrdemProducao',[{
+      identificacao:{ nCodOP: parseInt(OP_SELECIONADA.nCodOP), nQtde: aprovada },
+      infAdicionais:{ cEtapa: ETAPAS_OMIE.conferido }
+    }], 'https://app.omie.com.br/api/v1/produtos/op/');
+
+    var obsTexto = '[OPUS Qualidade '+new Date().toLocaleDateString('pt-BR')+']'
+      +' Quantidade apontada na produção: '+apontada.toLocaleString('pt-BR')+' kg'
+      +' | Quantidade aprovada (apta para armazenagem): '+aprovada.toLocaleString('pt-BR')+' kg'
+      +(refugo>0.001
+        ? (' | Divergência/Refugo: '+refugo.toLocaleString('pt-BR')+' kg — Motivo: '+(motivoTxt||'não informado'))
+        : ' | Sem divergência — 100% aprovado')
+      +' | Movido para Conferido por usuário autorizado.';
+    await omieAtualizarObs(OP_SELECIONADA.nCodOP, obsTexto);
+
+    OP_SELECIONADA.etapa   = ETAPAS_OMIE.conferido;
+    OP_SELECIONADA.qtdPlan = aprovada;
+    var opNaLista = OPS_CARREGADAS.find(function(o){ return String(o.nCodOP)===String(OP_SELECIONADA.nCodOP); });
+    if (opNaLista) { opNaLista.etapa = OP_SELECIONADA.etapa; opNaLista.qtdPlan = aprovada; }
+
+    var qtdPlanEl = document.getElementById('ap-qtd-plan');
+    if (qtdPlanEl) qtdPlanEl.value = aprovada.toLocaleString('pt-BR') + ' kg';
+
+    renderPipeline(OP_SELECIONADA.etapa);
+    renderAcoes(OP_SELECIONADA.etapa);
+    renderListaOPs();
+    toast(refugo>0.001 ? ('Qualidade aprovada com '+refugo.toLocaleString('pt-BR')+' kg de refugo — OP movida para Conferido.') : 'Qualidade aprovada — OP movida para Conferido.', 'ok');
+  } catch(e) {
+    toast('Erro ao aprovar qualidade: '+e.message.slice(0,100),'err');
+  }
+  showLoading(false);
+}
+
+// ═══════════════════════════════════════════════
+// MOTOR DE REPROGRAMAÇÃO — parâmetros portados de programacao.html
+// (mesmas velocidades/turnos/OEE/calendário usados na Programação da Produção)
+// ═══════════════════════════════════════════════
+var RP_TURNOS         = { seg_qui:510, sexta:390 };
+var RP_VEL_IND         = {'200g':12,'400g':16,'800g':30,'1kg':30};
+var RP_VEL_MAZ         = {'200g':3.6,'400g':3.6,'800g':5.6,'1kg':8};
+var RP_VEL_CAFE        = {'200g':12,'400g':16,'800g':30,'1kg':30,'250g':3.12,'500g':6.24};
+var RP_SACARIA_CAP_DIA = { seg_qui:7000, sexta:5000 };
+var RP_OEE       = 0.80;
+var RP_SETUP_MIN = 120;
+var RP_CACAU_MIN = 60;
+var LS_CALTRAB   = 'opus_calendario_trabalho_v1'; // mesma chave usada na tela de Programação
+
+function rpGetCalendario() {
+  var DEFAULT = { LACTEO:{sab:false,dom:false}, SACARIA:{sab:false,dom:false}, CAFE:{sab:false,dom:false}, feriados:[] };
+  try {
+    var s = JSON.parse(localStorage.getItem(LS_CALTRAB));
+    if (!s) return DEFAULT;
+    return {
+      LACTEO:  Object.assign({sab:false,dom:false}, s.LACTEO||{}),
+      SACARIA: Object.assign({sab:false,dom:false}, s.SACARIA||{}),
+      CAFE:    Object.assign({sab:false,dom:false}, s.CAFE||{}),
+      feriados: Array.isArray(s.feriados) ? s.feriados : []
+    };
+  } catch(e) { return DEFAULT; }
+}
+function rpIsoDate(d) { var r = new Date(d); r.setHours(12,0,0,0); return r.toISOString().slice(0,10); }
+function rpEhFeriado(date, cfg) { return (cfg.feriados||[]).indexOf(rpIsoDate(date)) >= 0; }
+function rpTrabalhaNoDia(date, linha, cfg) {
+  if (rpEhFeriado(date, cfg)) return false;
+  var dow = date.getDay();
+  var regra = cfg[linha] || {sab:false,dom:false};
+  if (dow === 6) return !!regra.sab;
+  if (dow === 0) return !!regra.dom;
+  return true;
+}
+function rpTurnoMinutosDia(date, linha, cfg) {
+  if (linha && !rpTrabalhaNoDia(date, linha, cfg)) return 0;
+  var dow = date.getDay();
+  if (dow === 5) return RP_TURNOS.sexta;
+  if (dow === 0 || dow === 6) return RP_TURNOS.sexta;
+  return RP_TURNOS.seg_qui;
+}
+function rpProxDiaUtil(d, linha, cfg) {
+  var r = new Date(d); r.setHours(12,0,0,0);
+  while (!rpTrabalhaNoDia(r, linha, cfg)) r.setDate(r.getDate()+1);
+  return r;
+}
+function rpAddDays(d, n) { var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function rpCapSacariaDia(date, cfg) {
+  if (!rpTrabalhaNoDia(date, 'SACARIA', cfg)) return 0;
+  var dow = date.getDay();
+  if (dow===5||dow===0||dow===6) return RP_SACARIA_CAP_DIA.sexta;
+  return RP_SACARIA_CAP_DIA.seg_qui;
+}
+function rpTemCacau(desc) {
+  if (!desc) return false;
+  var d = desc.toUpperCase();
+  return d.indexOf('CACAU')>=0 || d.indexOf('CHOCOLAT')>=0 || d.indexOf('ACHOCOLAT')>=0;
+}
+function fmtDtBRISO(iso) { var p = iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function extrairMaquinaObs(obs) {
+  if (!obs) return 'IND';
+  var m = obs.match(/MAQUINA:\s*([A-Za-z0-9]+)/i);
+  if (m) {
+    var v = m[1].toUpperCase();
+    if (v==='MAZ'||v==='MAZIPAK') return 'MAZ';
+    if (v==='IND'||v==='INDUMAK') return 'IND';
+  }
+  return 'IND';
+}
+
+// Plano para linha de máquina única (SACARIA / CAFE) — preserva a ordem da fila recebida (FIFO)
+function rpGerarPlanoLinha(linhaNome, itens, dataInicio, cfg) {
+  var isSacaria = linhaNome === 'SACARIA';
+  var velMap = linhaNome === 'CAFE' ? RP_VEL_CAFE : {};
+  var dias = [], dMap = {};
+  var dataAtual = rpProxDiaUtil(new Date(dataInicio), linhaNome, cfg);
+  var minutosRest = isSacaria ? 0 : rpTurnoMinutosDia(dataAtual, linhaNome, cfg);
+  var capRestKg = isSacaria ? rpCapSacariaDia(dataAtual, cfg) : 0;
+  var embAtual = null;
+  function registrar(ev) {
+    var iso = dataAtual.toISOString().slice(0,10);
+    if (!dMap[iso]) { dMap[iso] = {dataISO:iso, eventos:[]}; dias.push(dMap[iso]); }
+    dMap[iso].eventos.push(ev);
+  }
+  function avancarDia() {
+    dataAtual = rpProxDiaUtil(rpAddDays(dataAtual,1), linhaNome, cfg);
+    if (isSacaria) capRestKg = rpCapSacariaDia(dataAtual, cfg);
+    else minutosRest = rpTurnoMinutosDia(dataAtual, linhaNome, cfg);
+  }
+  function consumirMin(minNec, evBase) {
+    var rest = minNec;
+    while (rest > 0) {
+      if (minutosRest <= 0) { avancarDia(); continue; }
+      var usa = Math.min(rest, minutosRest); minutosRest -= usa; rest -= usa;
+      registrar(Object.assign({}, evBase, {min:usa}));
+    }
+  }
+  itens.forEach(function(item){
+    if (!isSacaria && embAtual && embAtual !== item.embalagem) consumirMin(RP_SETUP_MIN, {tipo:'setup', id:item.id});
+    embAtual = item.embalagem;
+    var restKg = item.qtd;
+    if (isSacaria) {
+      while (restKg > 0) {
+        if (capRestKg <= 0) { avancarDia(); continue; }
+        var usaKg = Math.min(restKg, capRestKg);
+        capRestKg -= usaKg; restKg -= usaKg;
+        registrar({tipo:'producao', id:item.id, kg:usaKg});
+      }
+    } else {
+      var vel = velMap[item.embalagem] || 9.6;
+      var capPorMin = vel * RP_OEE;
+      while (restKg > 0) {
+        if (minutosRest <= 0) { avancarDia(); continue; }
+        var podeKg = capPorMin * minutosRest;
+        var usaKg = Math.min(restKg, podeKg);
+        var minUsa = usaKg / capPorMin;
+        minutosRest -= minUsa; restKg -= usaKg;
+        registrar({tipo:'producao', id:item.id, kg:usaKg});
+      }
+      if (rpTemCacau(item.produto)) consumirMin(RP_CACAU_MIN, {tipo:'descontaminacao', id:item.id});
+    }
+  });
+  return dias.sort(function(a,b){ return a.dataISO.localeCompare(b.dataISO); });
+}
+
+// Plano para LACTEO (Indumak/Mazipak), respeitando a máquina informada em cada item
+function rpGerarPlanoLacteo(itens, dataInicio, cfg) {
+  var dMap = {};
+  var start = rpProxDiaUtil(new Date(dataInicio), 'LACTEO', cfg);
+  var maqs = {
+    IND:{dataAtual:new Date(start), minutosRest:rpTurnoMinutosDia(start,'LACTEO',cfg), embAtual:null},
+    MAZ:{dataAtual:new Date(start), minutosRest:rpTurnoMinutosDia(start,'LACTEO',cfg), embAtual:null}
+  };
+  function ensureDia(d) { var iso=d.toISOString().slice(0,10); if(!dMap[iso]) dMap[iso]={dataISO:iso,eventos:[]}; return dMap[iso]; }
+  function registrar(maq, ev) { ensureDia(maqs[maq].dataAtual).eventos.push(ev); }
+  function advance(maq) { var m=maqs[maq]; m.dataAtual=rpProxDiaUtil(rpAddDays(m.dataAtual,1),'LACTEO',cfg); m.minutosRest=rpTurnoMinutosDia(m.dataAtual,'LACTEO',cfg); }
+  function consumirMin(maq, minNec, evBase) {
+    var rest = minNec;
+    while (rest > 0) {
+      var m = maqs[maq];
+      if (m.minutosRest <= 0) { advance(maq); continue; }
+      var usa = Math.min(rest, m.minutosRest); m.minutosRest -= usa; rest -= usa;
+      registrar(maq, Object.assign({}, evBase, {min:usa}));
+    }
+  }
+  function velLacteo(maq, emb) { var m = maq==='MAZ'?RP_VEL_MAZ:RP_VEL_IND; return m[emb] || (maq==='MAZ'?3.6:8); }
+  function setupSeNecessario(maq, item) {
+    var m = maqs[maq];
+    if (m.embAtual && m.embAtual !== item.embalagem) consumirMin(maq, RP_SETUP_MIN, {tipo:'setup', id:item.id});
+    m.embAtual = item.embalagem;
+  }
+  itens.forEach(function(item){
+    var maq = item.maquina === 'MAZ' ? 'MAZ' : 'IND';
+    setupSeNecessario(maq, item);
+    var cap = velLacteo(maq, item.embalagem) * RP_OEE;
+    var restKg = item.qtd;
+    while (restKg > 0) {
+      var m = maqs[maq];
+      if (m.minutosRest <= 0) { advance(maq); continue; }
+      var podeKg = cap * m.minutosRest;
+      var usaKg = Math.min(restKg, podeKg);
+      var minUsa = usaKg / cap;
+      m.minutosRest -= minUsa; restKg -= usaKg;
+      registrar(maq, {tipo:'producao', id:item.id, kg:usaKg});
+    }
+    if (rpTemCacau(item.produto)) consumirMin(maq, RP_CACAU_MIN, {tipo:'descontaminacao', id:item.id});
+  });
+  return Object.keys(dMap).map(function(k){ return dMap[k]; }).sort(function(a,b){ return a.dataISO.localeCompare(b.dataISO); });
+}
+
+// Roda a simulação e devolve, para cada item.id da fila, a última data (ISO) em que ele aparece no plano
+function rpCalcularNovasDatas(linha, itens, dataInicio) {
+  var cfg = rpGetCalendario();
+  var plano = linha === 'LACTEO' ? rpGerarPlanoLacteo(itens, dataInicio, cfg) : rpGerarPlanoLinha(linha, itens, dataInicio, cfg);
+  var ultimaData = {};
+  plano.forEach(function(dia){
+    dia.eventos.forEach(function(ev){
+      if (ev.tipo === 'producao' && ev.id) {
+        if (!ultimaData[ev.id] || dia.dataISO > ultimaData[ev.id]) ultimaData[ev.id] = dia.dataISO;
+      }
+    });
+  });
+  return ultimaData;
+}
+
+// ═══════════════════════════════════════════════
+// ENCERRAR COM PRODUÇÃO A MENOR
+// ═══════════════════════════════════════════════
+var REPROG_PENDENTE = [];
+var REPROG_LINHA = null;
+
+async function encerrarComProducaoMenor() {
+  if (!OP_SELECIONADA) { toast('Nenhuma OP selecionada','err'); return; }
+  var qtdPlanOriginal = parseFloat(OP_SELECIONADA.qtdPlan)||0;
+  var prod = 0;
+  for (var i=0;i<N_HORAS;i++) prod += parseFloat(document.getElementById('real-'+i).value)||0;
+  var falta = qtdPlanOriginal - prod;
+  if (falta <= 0.001) {
+    toast('A produção já atingiu o planejado — use "Fechar OP e Enviar para Qualidade".','info');
+    return;
+  }
+  showLoading(true);
+  try {
+    if (!OPS_CARREGADAS.length) { await abrirListaOPs(); }
+    var linha = detectarLinha(OP_SELECIONADA.descProd);
+    REPROG_LINHA = linha;
+    var abertas = OPS_CARREGADAS.filter(function(o){
+      return String(o.nCodOP) !== String(OP_SELECIONADA.nCodOP)
+        && detectarLinha(o.descProd) === linha
+        && (o.etapa === '10' || o.etapa === '20');
+    }).sort(function(a,b){
+      var da = new Date((a.dataPrevisao||'').split('/').reverse().join('-'));
+      var db = new Date((b.dataPrevisao||'').split('/').reverse().join('-'));
+      return da - db;
+    });
+
+    var obsAtualSel = ((OP_SELECIONADA.raw||{}).observacoes||{}).cObs || '';
+    var itens = [{
+      id:'NOVA', sku:OP_SELECIONADA.cCodProd, produto:OP_SELECIONADA.descProd, nCodOP:null,
+      qtd:falta, embalagem:detectarEmb(OP_SELECIONADA.descProd),
+      maquina:extrairMaquinaObs(obsAtualSel), dataAntiga:null
+    }];
+    abertas.forEach(function(o){
+      var obsO = ((o.raw||{}).observacoes||{}).cObs || '';
+      itens.push({
+        id:String(o.nCodOP), sku:o.cCodProd, produto:o.descProd, nCodOP:o.nCodOP,
+        qtd:parseFloat(o.qtdPlan)||0, embalagem:detectarEmb(o.descProd),
+        maquina:extrairMaquinaObs(obsO), dataAntiga:o.dataPrevisao
+      });
+    });
+
+    var dataFechamento = document.getElementById('ap-data').value || new Date().toISOString().slice(0,10);
+    var amanha = rpAddDays(new Date(dataFechamento+'T12:00:00'), 1);
+    var novasDatasISO = rpCalcularNovasDatas(linha, itens, amanha);
+
+    REPROG_PENDENTE = itens.map(function(it){
+      var novaISO = novasDatasISO[it.id] || null;
+      return Object.assign({}, it, { novaISO:novaISO, novaBR: novaISO ? fmtDtBRISO(novaISO) : null });
+    });
+    renderPreviaReprog(linha, prod);
+    document.getElementById('modal-reprog').classList.add('on');
+  } catch(e) {
+    toast('Erro ao calcular reprogramação: '+e.message.slice(0,100),'err');
+  }
+  showLoading(false);
+}
+
+function renderPreviaReprog(linha, prod) {
+  document.getElementById('reprog-sub').textContent =
+    'Linha ' + linha + ' — esta OP será encerrada com ' + prod.toLocaleString('pt-BR') + ' kg produzidos. '
+    + 'O saldo vira uma nova OP e as demais OPs em aberto dessa linha são reprogramadas conforme a capacidade da linha. Confira antes de aplicar no OMIE.';
+  var html = REPROG_PENDENTE.map(function(it){
+    var opLabel = it.id === 'NOVA' ? '<span class="reprog-badge-nova">NOVA OP</span>' : ('OP '+it.id);
+    var dataAntigaTxt = it.dataAntiga ? '<span class="reprog-antiga">'+it.dataAntiga+'</span>' : '—';
+    var dataNovaTxt = it.novaBR ? it.novaBR : '<span style="color:var(--red);">sem capacidade disponível</span>';
+    var mudou = it.id !== 'NOVA' && it.novaBR && it.novaBR !== it.dataAntiga;
+    return '<tr><td>'+opLabel+'</td><td>'+(it.sku||'—')+' · '+(it.produto||'').slice(0,40)+'</td>'
+      +'<td>'+(it.qtd||0).toLocaleString('pt-BR',{maximumFractionDigits:1})+'</td>'
+      +'<td>'+dataAntigaTxt+'</td>'
+      +'<td class="reprog-nova">'+dataNovaTxt+(mudou?' <span class="reprog-badge-nova">alterada</span>':'')+'</td></tr>';
+  }).join('');
+  document.getElementById('reprog-tbody').innerHTML = html;
+}
+function fecharModalReprog() { document.getElementById('modal-reprog').classList.remove('on'); }
+
+function confirmarReprogramacao() {
+  pedirSenha(
+    'Confirmar reprogramação',
+    'Isso vai criar a nova OP do saldo, alterar as datas das OPs em aberto listadas e encerrar a OP atual com a produção a menor. Informe sua senha para aplicar no OMIE.',
+    USUARIOS_PRODUCAO.map(function(u){return u.senha;}),
+    function(){ _executarReprogramacao(); }
+  );
+}
+
+async function _executarReprogramacao() {
+  showLoading(true);
+  try {
+    var linha = REPROG_LINHA || detectarLinha(OP_SELECIONADA.descProd);
+    var isCafeAtual = OP_SELECIONADA.empresa === 'CAFE';
+    var callFnAtual = isCafeAtual ? omieCall : omieCallDMS;
+    var erros = 0;
+
+    for (var i=0;i<REPROG_PENDENTE.length;i++) {
+      var it = REPROG_PENDENTE[i];
+      try {
+        if (it.id === 'NOVA') {
+          if (!it.novaBR) continue; // sem capacidade — não cria a OP do saldo
+          var codProdutoNovo = parseInt(OP_SELECIONADA.nCodProd) || 0;
+          await callFnAtual('IncluirOrdemProducao',[{
+            identificacao:{ cCodIntOP:('OPUS'+Date.now().toString(36)).slice(0,20), dDtPrevisao:it.novaBR, nCodProduto:codProdutoNovo, nQtde:it.qtd },
+            observacoes:{ cObs:'[OPUS '+new Date().toLocaleDateString('pt-BR')+'] Saldo replanejado da OP '+OP_SELECIONADA.nCodOP+' (produção a menor) | MAQUINA: '+it.maquina+' | LINHA: '+linha }
+          }], 'https://app.omie.com.br/api/v1/produtos/op/');
+        } else {
+          if (!it.novaBR || !it.dataAntiga || it.novaBR === it.dataAntiga) continue; // nada mudou
+          var opOutra = OPS_CARREGADAS.find(function(o){ return String(o.nCodOP)===String(it.nCodOP); });
+          var callFnOutra = (opOutra && opOutra.empresa==='CAFE') ? omieCall : omieCallDMS;
+          await callFnOutra('AlterarOrdemProducao',[{
+            identificacao:{ nCodOP: parseInt(it.nCodOP), dDtPrevisao: it.novaBR }
+          }], 'https://app.omie.com.br/api/v1/produtos/op/');
+        }
+      } catch(eIt) { erros++; console.warn('Reprogramação: erro no item', it, eIt); }
+      await new Promise(function(r){ setTimeout(r,350); });
+    }
+
+    // Encerra a OP atual com a quantidade realmente produzida
+    await _fecharOPComQuantidade(true);
+
+    fecharModalReprog();
+    toast(erros>0 ? ('Reprogramação aplicada com '+erros+' erro(s) — confira o OMIE.') : 'Reprogramação aplicada e OP encerrada com produção a menor!', erros>0?'err':'ok');
+  } catch(e) {
+    toast('Erro ao aplicar reprogramação: '+e.message.slice(0,100),'err');
+  }
+  showLoading(false);
+}
+
+// ═══════════════════════════════════════════════
+// CONFIGURAÇÃO / DIAGNÓSTICO DE ETAPAS OMIE
+// ═══════════════════════════════════════════════
+function abrirConfigEtapas() {
+  var cfg = getEtapasCfg();
+  document.getElementById('cfg-et-producao').value   = cfg.producao;
+  document.getElementById('cfg-et-qualidade').value  = cfg.qualidade;
+  document.getElementById('cfg-et-conferido').value  = cfg.conferido;
+  document.getElementById('cfg-et-concluido').value  = cfg.concluido;
+  document.getElementById('cfg-et-armazenado').value = cfg.armazenado;
+  document.getElementById('diag-etapas').style.display = 'none';
+  document.getElementById('modal-etapas').classList.add('on');
+}
+function fecharConfigEtapas() { document.getElementById('modal-etapas').classList.remove('on'); }
+function salvarConfigEtapas() {
+  var cfg = {
+    producao:   document.getElementById('cfg-et-producao').value.trim(),
+    qualidade:  document.getElementById('cfg-et-qualidade').value.trim(),
+    conferido:  document.getElementById('cfg-et-conferido').value.trim(),
+    concluido:  document.getElementById('cfg-et-concluido').value.trim(),
+    armazenado: document.getElementById('cfg-et-armazenado').value.trim()
+  };
+  salvarEtapasCfg(cfg);
+  ETAPAS_OMIE = getEtapasCfg();
+  ETAPAS_LABEL = buildEtapasLabel();
+  if (OP_SELECIONADA) { renderPipeline(OP_SELECIONADA.etapa); renderAcoes(OP_SELECIONADA.etapa); }
+  renderListaOPs();
+  fecharConfigEtapas();
+  toast('Códigos de etapa salvos.','ok');
+}
+async function diagnosticarEtapaOP() {
+  var box = document.getElementById('diag-etapas');
+  box.style.display = 'block';
+  if (!OP_SELECIONADA) { box.textContent = 'Selecione uma OP na tela principal antes de diagnosticar.'; return; }
+  box.textContent = 'Consultando OP '+OP_SELECIONADA.nCodOP+' no OMIE...';
+  try {
+    var callFn = OP_SELECIONADA.empresa === 'CAFE' ? omieCall : omieCallDMS;
+    var d = await callFn('ConsultarOrdemProducao',[{nCodOP:parseInt(OP_SELECIONADA.nCodOP)}],'https://app.omie.com.br/api/v1/produtos/op/');
+    var etapaAtual = (d.infAdicionais||{}).cEtapa;
+    if (etapaAtual === undefined || etapaAtual === null || etapaAtual === '') etapaAtual = '(não retornado pelo OMIE)';
+    box.textContent = 'cEtapa gravado no OMIE para a OP '+OP_SELECIONADA.nCodOP+': "'+etapaAtual+'"\n\n'
+      + 'Abra essa mesma OP na tela do OMIE e veja em qual etapa/coluna ela está.\n'
+      + 'Depois cole esse código no campo correspondente acima (ex.: se no OMIE ela aparece em "Conferido", cole "'+etapaAtual+'" no campo Conferido).\n\n'
+      + 'Resposta completa da consulta:\n' + JSON.stringify({infAdicionais:d.infAdicionais, observacoes:d.observacoes}, null, 2).slice(0,1500);
+  } catch(e) {
+    box.textContent = 'Erro ao consultar: '+e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RELATÓRIO DE OPs — Excel (uma aba por OP + resumo) e gráfico de análise
+// ═══════════════════════════════════════════════
+var REL_OPS = [];
+var REL_SELECIONADAS = {};
+var REL_CHART = null;
+
+function abrirRelatorio() { document.getElementById('modal-relatorio').classList.add('on'); }
+function fecharRelatorio() { document.getElementById('modal-relatorio').classList.remove('on'); }
+
+function parsePtBrNumero(str) {
+  if (str === undefined || str === null || str === '') return 0;
+  return parseFloat(String(str).replace(/\./g,'').replace(',','.')) || 0;
+}
+
+async function carregarOPsRelatorio() {
+  var btn = document.getElementById('btn-rel-carregar');
+  var status = document.getElementById('rel-status');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Carregando...';
+  status.textContent = '';
+  REL_OPS = [];
+  try {
+    var pag1 = 1;
+    while (true) {
+      var d1 = await omieCall('ListarOrdemProducao', [{ pagina:pag1, registros_por_pagina:50, apenas_importado_api:'N', ordenar_por:'DATA_PREVISAO', ordem_decrescente:'S' }], 'https://app.omie.com.br/api/v1/produtos/op/');
+      var l1 = d1.cadastros || [];
+      if (!l1.length) break;
+      l1.forEach(function(op){ op._empresa='CAFE'; REL_OPS.push(op); });
+      var t1 = d1.total_de_registros || l1.length;
+      if (pag1*50 >= t1 || l1.length < 50) break;
+      pag1++;
+      await new Promise(function(r){ setTimeout(r,350); });
+    }
+    await new Promise(function(r){ setTimeout(r,400); });
+    var pag2 = 1;
+    while (true) {
+      var d2 = await omieCallDMS('ListarOrdemProducao', [{ pagina:pag2, registros_por_pagina:50, apenas_importado_api:'N', ordenar_por:'DATA_PREVISAO', ordem_decrescente:'S' }], 'https://app.omie.com.br/api/v1/produtos/op/');
+      var l2 = d2.cadastros || [];
+      if (!l2.length) break;
+      l2.forEach(function(op){ op._empresa='DMS'; REL_OPS.push(op); });
+      var t2 = d2.total_de_registros || l2.length;
+      if (pag2*50 >= t2 || l2.length < 50) break;
+      pag2++;
+      await new Promise(function(r){ setTimeout(r,350); });
+    }
+  } catch(e) {
+    toast('Erro ao carregar OPs para relatório: '+e.message.slice(0,100),'err');
+  }
+
+  REL_OPS = REL_OPS.map(function(op){
+    var id = op.identificacao||{}, inf = op.infAdicionais||{};
+    return {
+      nCodOP: id.nCodOP||'', numOP: id.cNumOP||id.nCodOP||'', nCodProd: id.nCodProduto||0,
+      cCodProd: String(id.nCodProduto||''), descProd: 'Carregando...', qtdPlan: parseFloat(id.nQtde||0),
+      etapa: String(inf.cEtapa||'10'), dataPrevisao: id.dDtPrevisao||'', empresa: op._empresa, raw: op
+    };
+  });
+
+  renderRelatorioLista();
+  status.textContent = REL_OPS.length + ' OP(s) — buscando descrições...';
+
+  await Promise.all(REL_OPS.map(async function(op){
+    try {
+      var isCafe = op.empresa === 'CAFE';
+      var key    = isCafe ? OMIE_KEY    : OMIE_KEY_DMS;
+      var secret = isCafe ? OMIE_SECRET : OMIE_SECRET_DMS;
+      var ep = 'https://app.omie.com.br/api/v1/geral/produtos/';
+      var payload = { call:'ConsultarProduto', app_key:String(key), app_secret:String(secret), param:[{ codigo_produto: parseInt(op.nCodProd)||0 }] };
+      var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+      var data = await resp.json();
+      op.descProd = data.descricao || data.nome || ('OP '+op.numOP);
+    } catch(e) { op.descProd = 'OP '+op.numOP; }
+  }));
+
+  renderRelatorioLista();
+  status.textContent = REL_OPS.length + ' OP(s) carregada(s).';
+  btn.disabled = false; btn.innerHTML = '🔄 Carregar OPs';
+}
+
+function renderRelatorioLista() {
+  var cont = document.getElementById('rel-lista');
+  if (!REL_OPS.length) { cont.innerHTML = '<div class="mat-empty">Nenhuma OP encontrada.</div>'; return; }
+  cont.innerHTML = REL_OPS.map(function(op){
+    var checked = REL_SELECIONADAS[op.nCodOP] ? 'checked' : '';
+    var etapaLabel = ETAPAS_LABEL[op.etapa] || op.etapa;
+    return '<label class="rel-item">'
+      + '<input type="checkbox" '+checked+' onchange="toggleRelSelecao(\''+op.nCodOP+'\',this.checked)">'
+      + '<span class="ri-num">'+(op.numOP||op.nCodOP)+'</span>'
+      + '<span class="ri-prod">'+(op.descProd||'—')+'<div class="ri-det">'+(op.cCodProd||'—')+' · '+(op.qtdPlan||0).toLocaleString('pt-BR')+' kg · '+(op.dataPrevisao||'—')+' · '+etapaLabel+'</div></span>'
+      + '</label>';
+  }).join('');
+}
+function toggleRelSelecao(nCodOP, val) { REL_SELECIONADAS[nCodOP] = val; }
+function marcarTodosRelatorio(val) {
+  REL_OPS.forEach(function(op){ REL_SELECIONADAS[op.nCodOP] = val; });
+  renderRelatorioLista();
+}
+
+async function gerarGraficoRelatorio() {
+  var selecionadas = REL_OPS.filter(function(op){ return REL_SELECIONADAS[op.nCodOP]; });
+  if (!selecionadas.length) { toast('Marque ao menos uma OP na lista.','err'); return; }
+  if (!window.Chart) { toast('Aguarde o carregamento do gráfico e tente de novo.','info'); return; }
+  var btn = document.getElementById('btn-rel-grafico');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner spinner-dark"></div> Calculando...';
+  await fbAutenticar();
+
+  var labels=[], planejado=[], produzido=[], refugo=[];
+  for (var i=0;i<selecionadas.length;i++) {
+    var op = selecionadas[i];
+    var prod = 0, refugoVal = 0;
+    try {
+      var ref = fbRefOP(op.nCodOP);
+      if (ref) {
+        var snap = await ref.once('value');
+        var fb = snap.val();
+        ((fb && fb.horas) || []).forEach(function(h){ prod += parseFloat(h.real)||0; });
+      }
+    } catch(e) { /* segue sem dado do Firebase */ }
+    var obsOP = ((op.raw||{}).observacoes||{}).cObs || '';
+    var refugoM = obsOP.match(/Divergência\/Refugo:\s*([\d.,]+)/i);
+    if (refugoM) refugoVal = parsePtBrNumero(refugoM[1]);
+
+    labels.push(String(op.numOP||op.nCodOP));
+    planejado.push(parseFloat(op.qtdPlan)||0);
+    produzido.push(prod);
+    refugo.push(refugoVal);
+  }
+
+  document.getElementById('rel-chart-wrap').style.display = 'block';
+  var ctx = document.getElementById('rel-chart').getContext('2d');
+  if (REL_CHART) REL_CHART.destroy();
+  REL_CHART = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      { label:'Planejado (kg)', data: planejado, backgroundColor:'rgba(30,64,175,.55)' },
+      { label:'Produzido (kg)', data: produzido, backgroundColor:'rgba(21,128,61,.65)' },
+      { label:'Refugo (kg)',    data: refugo,    backgroundColor:'rgba(220,38,38,.65)' }
+    ]},
+    options: { responsive:true, plugins:{ legend:{position:'top'} }, scales:{ y:{ beginAtZero:true } } }
+  });
+  document.getElementById('btn-rel-png').disabled = false;
+  btn.disabled = false; btn.innerHTML = '📈 Gerar gráfico';
+}
+
+function baixarGraficoRelatorioPNG() {
+  var canvas = document.getElementById('rel-chart');
+  if (!canvas || !REL_CHART) { toast('Gere o gráfico primeiro.','err'); return; }
+  var link = document.createElement('a');
+  link.download = 'grafico_relatorio_ops_'+new Date().toISOString().slice(0,10)+'.png';
+  link.href = canvas.toDataURL('image/png',1.0);
+  link.click();
+}
+
+async function gerarRelatorioExcel() {
+  var selecionadas = REL_OPS.filter(function(op){ return REL_SELECIONADAS[op.nCodOP]; });
+  if (!selecionadas.length) { toast('Marque ao menos uma OP na lista.','err'); return; }
+  if (!window.XLSX) { toast('Aguarde o carregamento da biblioteca de Excel e tente de novo.','info'); return; }
+  var btn = document.getElementById('btn-rel-excel');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Gerando...';
+  await fbAutenticar();
+  try {
+    var wb = XLSX.utils.book_new();
+    var resumoRows = [['OP','SKU','Produto','Linha','Empresa','Etapa','Data Previsão','Planejado (kg)','Produzido (kg)','Aprovado Qualidade (kg)','Refugo (kg)','Operadores','Auxiliares','Paradas (min)','Nº Paradas','Disponibilidade (%)']];
+
+    for (var i=0;i<selecionadas.length;i++) {
+      var op = selecionadas[i];
+      var fb = null;
+      try {
+        var ref = fbRefOP(op.nCodOP);
+        if (ref) { var snap = await ref.once('value'); fb = snap.val(); }
+      } catch(e) { fb = null; }
+
+      var horas = (fb && fb.horas) || [];
+      var plan=0, prod=0, minT=0, nP=0;
+      horas.forEach(function(h){
+        plan += parseFloat(h.meta)||0;
+        prod += parseFloat(h.real)||0;
+        var d = diffMin(h.pi, h.pf);
+        if (d>0) { minT+=d; nP++; }
+      });
+      var disp = (prod>0||nP>0) ? Math.max(0,Math.round((1-minT/480)*100)) : '';
+
+      var obsOP = ((op.raw||{}).observacoes||{}).cObs || '';
+      var aprovM  = obsOP.match(/Quantidade aprovada \(apta para armazenagem\):\s*([\d.,]+)/i);
+      var refugoM = obsOP.match(/Divergência\/Refugo:\s*([\d.,]+)/i);
+      var aprovado = aprovM ? parsePtBrNumero(aprovM[1]) : '';
+      var refugoVal = refugoM ? parsePtBrNumero(refugoM[1]) : '';
+
+      resumoRows.push([
+        op.numOP||op.nCodOP, op.cCodProd, op.descProd, detectarLinha(op.descProd), op.empresa,
+        ETAPAS_LABEL[op.etapa]||op.etapa, op.dataPrevisao, plan||op.qtdPlan, prod,
+        aprovado, refugoVal, (fb&&fb.numOperadores)||'', (fb&&fb.numAuxiliares)||'', minT, nP, disp
+      ]);
+
+      var aoa = [];
+      aoa.push(['OP '+(op.numOP||op.nCodOP)+' — '+(op.descProd||'')]);
+      aoa.push([]);
+      aoa.push(['Identificação']);
+      aoa.push(['SKU', op.cCodProd]);
+      aoa.push(['Produto', op.descProd]);
+      aoa.push(['Linha', detectarLinha(op.descProd)]);
+      aoa.push(['Empresa', op.empresa]);
+      aoa.push(['Etapa atual', ETAPAS_LABEL[op.etapa]||op.etapa]);
+      aoa.push(['Data previsão', op.dataPrevisao]);
+      aoa.push(['Planejado (kg)', op.qtdPlan]);
+      aoa.push(['Turno', (fb&&fb.turno)||'']);
+      aoa.push(['Operador', (fb&&fb.operadorNome)||'']);
+      aoa.push(['Qtd. Operadores', (fb&&fb.numOperadores)||'']);
+      aoa.push(['Qtd. Auxiliares', (fb&&fb.numAuxiliares)||'']);
+      aoa.push([]);
+      aoa.push(['Hora a hora']);
+      aoa.push(['Hora','Meta (kg)','Realizado (kg)','P. Início','P. Fim','Min. parado','Causa','Equipamento','Retrab./Desc.','Observações']);
+      for (var h=0; h<N_HORAS; h++) {
+        var hh = horas[h] || {};
+        var lbl = String(8+h).padStart(2,'0')+':00–'+String(9+h).padStart(2,'0')+':00';
+        aoa.push([lbl, hh.meta||'', hh.real||'', hh.pi||'', hh.pf||'', diffMin(hh.pi,hh.pf)||'', hh.causa||'', hh.equip||'', hh.ret||'', hh.obs||'']);
+      }
+      aoa.push([]);
+      aoa.push(['Totais do turno']);
+      aoa.push(['Planejado (kg)', plan]);
+      aoa.push(['Produzido (kg)', prod]);
+      aoa.push(['Parado (min)', minT]);
+      aoa.push(['Nº paradas', nP]);
+      aoa.push(['Disponibilidade (%)', disp]);
+      aoa.push([]);
+      aoa.push(['Qualidade']);
+      aoa.push(['Quantidade aprovada (apta para armazenagem)', aprovado]);
+      aoa.push(['Refugo/perda', refugoVal]);
+      aoa.push([]);
+      aoa.push(['Materiais utilizados']);
+      aoa.push(['Cód. MP','Descrição','Necessário (kg)','Utilizado (kg)']);
+      ((fb&&fb.materiais)||[]).forEach(function(m){
+        aoa.push([m.codMp||'', m.descMp||'', m.necessario||'', m.utilizado||'']);
+      });
+      aoa.push([]);
+      aoa.push(['Observações completas do OMIE']);
+      aoa.push([obsOP]);
+
+      var wsName = ('OP '+(op.numOP||op.nCodOP)).slice(0,31).replace(/[\[\]\*\/\\\?:]/g,'_');
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{wch:20},{wch:34},{wch:14},{wch:14},{wch:12},{wch:12},{wch:16},{wch:16},{wch:14},{wch:34}];
+      XLSX.utils.book_append_sheet(wb, ws, wsName);
+    }
+
+    var wsResumo = XLSX.utils.aoa_to_sheet(resumoRows);
+    wsResumo['!cols'] = resumoRows[0].map(function(){ return {wch:16}; });
+    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo Comparativo');
+
+    var graficoRows = [['OP','Planejado (kg)','Produzido (kg)','Refugo (kg)']];
+    resumoRows.slice(1).forEach(function(r){ graficoRows.push([r[0], r[7], r[8], r[10]]); });
+    var wsGraf = XLSX.utils.aoa_to_sheet(graficoRows);
+    XLSX.utils.book_append_sheet(wb, wsGraf, 'Dados Gráfico');
+
+    var nomeArq = 'Relatorio_OPs_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    XLSX.writeFile(wb, nomeArq);
+    toast('Relatório gerado: '+nomeArq, 'ok');
+  } catch(e) {
+    toast('Erro ao gerar relatório: '+e.message.slice(0,100),'err');
+  }
+  btn.disabled = false; btn.innerHTML = '⬇ Baixar Excel';
+}
+
+// ═══════════════════════════════════════════════
+// MODAL DE SENHA
+// ═══════════════════════════════════════════════
+function pedirSenha(titulo, sub, senhasValidas, callback) {
+  _modalCallback = { senhas: senhasValidas, fn: callback };
+  document.getElementById('modal-titulo').textContent = titulo;
+  document.getElementById('modal-sub').textContent = sub;
+  document.getElementById('modal-input').value = '';
+  document.getElementById('modal-err').textContent = '';
+  document.getElementById('modal-senha').classList.add('on');
+  setTimeout(function(){ document.getElementById('modal-input').focus(); }, 80);
+}
+
+function confirmarModal() {
+  var val = document.getElementById('modal-input').value;
+  if (!_modalCallback) { fecharModal(); return; }
+  var ok = _modalCallback.senhas.some(function(s){ return s === val; });
+  if (ok) {
+    fecharModal();
+    _modalCallback.fn();
+    _modalCallback = null;
+  } else {
+    document.getElementById('modal-err').textContent = '✗ Senha incorreta';
+    document.getElementById('modal-input').value = '';
+    document.getElementById('modal-input').focus();
+  }
+}
+
+function fecharModal() {
+  document.getElementById('modal-senha').classList.remove('on');
+}
+
+document.getElementById('modal-input').addEventListener('keydown', function(e){
+  if (e.key==='Enter') confirmarModal();
+  if (e.key==='Escape') fecharModal();
+});
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('on', v);
+}
+
+function toast(msg, tipo) {
+  var cont = document.getElementById('toast');
+  var el = document.createElement('div');
+  el.className = 'toast-item toast-'+(tipo||'info');
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3500);
+}
+
+// INIT
+document.getElementById('ap-data').value = new Date().toISOString().slice(0,10);
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="UTF-8"/>
+<title>Teste Proxy OMIE</title>
+<style>body{font-family:sans-serif;padding:40px;background:#f5f5f5;}
+button{padding:12px 24px;font-size:14px;cursor:pointer;background:#1A2B4A;color:#fff;border:none;border-radius:8px;}
+pre{background:#1A2B4A;color:#7dd3fc;padding:16px;border-radius:8px;margin-top:16px;white-space:pre-wrap;}
+</style></head>
+<body>
+<h2>Teste de Conexão OMIE via Proxy Vercel</h2>
+<button onclick="testar()">Testar Conexão OMIE</button>
+<pre id="resultado">Clique no botão para testar...</pre>
+<script>
+async function testar() {
+  const el = document.getElementById('resultado');
+  el.textContent = 'Testando...';
+  try {
+    const resp = await fetch('/api/omie', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        endpoint: 'https://app.omie.com.br/api/v1/produtos/produto/',
+        payload: {
+          call: 'ListarProdutos',
+          app_key: '952260381072',
+          app_secret: '8300b385eeec583c71439709ab866fc7',
+          param: [{ pagina:1, registros_por_pagina:3, apenas_importado_api:'N' }]
+        }
+      })
+    });
+    const data = await resp.json();
+    el.textContent = JSON.stringify(data, null, 2).slice(0, 2000);
+  } catch(e) {
+    el.textContent = 'ERRO: ' + e.message;
+  }
+}
+</script>
+<script src="js/sidebar.js" defer></script>
+</body></html>

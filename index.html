@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPUS — Grupo MF Paris</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%;}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;color:#e8eaf3;background:#050912;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+  body::before{content:'';position:fixed;inset:-20%;z-index:-1;pointer-events:none;background:radial-gradient(35% 25% at 18% 22%,rgba(232,201,106,.10) 0,transparent 60%),radial-gradient(40% 30% at 82% 78%,rgba(82,140,255,.12) 0,transparent 60%);filter:blur(20px);animation:drift 26s ease-in-out infinite alternate;}
+  @keyframes drift{0%{transform:translate(0,0)}100%{transform:translate(2%,-1%)}}
+  .hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px 20px;text-align:center;position:relative;}
+  .logo-outer{position:relative;margin-bottom:20px;animation:logoIn .8s cubic-bezier(.4,0,.2,1);}
+  .logo-wrap{width:140px;height:140px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;box-shadow:0 0 0 2px rgba(184,144,42,.6),0 16px 40px -8px rgba(0,0,0,.5),0 0 40px rgba(232,201,106,.2);padding:8px;}
+  .logo-wrap img{width:100%;height:100%;object-fit:contain;border-radius:12px;}
+  @keyframes logoIn{from{opacity:0;transform:translateY(20px) scale(.85)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .welcome{font-family:'Playfair Display',Georgia,serif;font-size:36px;font-weight:700;font-style:italic;color:#e8c96a;letter-spacing:-0.5px;line-height:1.05;margin-bottom:6px;text-shadow:0 4px 24px rgba(232,201,106,.3);animation:fadeUp .9s .15s both cubic-bezier(.4,0,.2,1);}
+  .opus-name{font-family:'Playfair Display',Georgia,serif;font-size:80px;font-weight:900;background:linear-gradient(180deg,#fff 0%,#e8c96a 60%,#b8902a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:6px;line-height:1;margin-bottom:4px;animation:fadeUp .9s .3s both cubic-bezier(.4,0,.2,1);}
+  .opus-sub{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:#7a8fa8;font-weight:500;margin-bottom:20px;animation:fadeUp .9s .45s both cubic-bezier(.4,0,.2,1);}
+  .opus-sub strong{color:#e8c96a;font-weight:700}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .cards-wrap{max-width:1100px;margin:0 auto 24px;padding:0 24px;width:100%;animation:fadeUp .9s .55s both cubic-bezier(.4,0,.2,1);}
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+  .card-mod{background:linear-gradient(180deg,rgba(13,31,60,.8) 0%,rgba(10,23,40,.8) 100%);border:1px solid rgba(184,144,42,.2);border-radius:12px;padding:16px;transition:all .2s;}
+  .card-mod:hover{border-color:rgba(184,144,42,.4);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .card-icon{width:28px;height:28px;border-radius:6px;background:rgba(232,201,106,.08);display:flex;align-items:center;justify-content:center;color:#e8c96a;}
+  .card-icon svg{width:14px;height:14px}
+  .card-title{font-size:12.5px;font-weight:700;color:#fff;}
+  .card-desc{font-size:11px;color:#b8c4d9;line-height:1.5;}
+  .impacto-wrap{max-width:800px;margin:0 auto 24px;padding:0 24px;text-align:center;animation:fadeUp .9s .75s both cubic-bezier(.4,0,.2,1);}
+  .impacto-txt{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;font-style:italic;color:#fff;line-height:1.5;text-shadow:0 2px 12px rgba(232,201,106,.15);}
+
+  .cd-wrap{display:flex;justify-content:center;padding:0 24px 24px;animation:fadeUp .9s .85s both cubic-bezier(.4,0,.2,1);}
+  .cd{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.04);border:1px solid rgba(232,201,106,.25);padding:10px 18px;border-radius:999px;font-size:12px;color:#b8c4d9;}
+  .cd-ring{width:32px;height:32px;position:relative;}
+  .cd-ring svg{transform:rotate(-90deg)}
+  .cd-ring circle{fill:none;stroke-width:3}
+  .cd-ring .bg{stroke:rgba(255,255,255,.1)}
+  .cd-ring .fg{stroke:#e8c96a;stroke-linecap:round;stroke-dasharray:88;stroke-dashoffset:88;animation:ring 17s linear forwards;}
+  @keyframes ring{to{stroke-dashoffset:0}}
+  .cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#e8c96a;font-variant-numeric:tabular-nums;}
+  .cd button{background:transparent;border:none;color:#7a8fa8;font-family:inherit;font-size:11px;text-decoration:underline;cursor:pointer;padding:0;}
+  .cd button:hover{color:#e8c96a}
+  .pw-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 40%,rgba(10,15,40,.85) 0%,rgba(5,9,18,.95) 100%);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;}
+  .pw-overlay.on{display:flex;animation:pwIn .25s ease}
+  @keyframes pwIn{from{opacity:0}to{opacity:1}}
+  .pw-box{background:linear-gradient(180deg,rgba(13,31,60,.95) 0%,rgba(10,23,40,.95) 100%);border:1px solid rgba(232,201,106,.3);padding:32px 36px;border-radius:18px;box-shadow:0 32px 80px -16px rgba(0,0,0,.6);width:380px;max-width:90vw;animation:pwBox .3s cubic-bezier(.4,0,.2,1);}
+  @keyframes pwBox{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .pw-title{font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;color:#e8c96a;margin-bottom:8px;font-style:italic;}
+  .pw-msg{font-size:12.5px;color:#b8c4d9;margin-bottom:18px;line-height:1.6}
+  .pw-input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(232,201,106,.2);padding:11px 14px;border-radius:10px;color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:6px;letter-spacing:.05em;transition:all .2s;}
+  .pw-input:focus{border-color:#e8c96a;background:rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(232,201,106,.12)}
+  .pw-err{font-size:11.5px;color:#fca5a5;min-height:18px;margin-bottom:10px}
+  .pw-actions{display:flex;gap:10px;margin-top:8px}
+  .pw-btn{flex:1;padding:10px;border-radius:10px;border:none;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.04em;}
+  .pw-btn.p{background:linear-gradient(135deg,#e8c96a 0%,#b8902a 100%);color:#0a1728;box-shadow:0 6px 18px -4px rgba(232,201,106,.4)}
+  .pw-btn.p:hover{transform:translateY(-1px);box-shadow:0 10px 24px -4px rgba(232,201,106,.55)}
+  .pw-btn.c{background:rgba(255,255,255,.08);color:#b8c4d9;border:1px solid rgba(255,255,255,.1)}
+  .pw-btn.c:hover{background:rgba(255,255,255,.14)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  @media (max-width:640px){
+    .welcome{font-size:28px}
+    .opus-name{font-size:56px;letter-spacing:3px}
+    .logo-wrap{width:110px;height:110px}
+    .impacto-txt{font-size:15px}
+    .cards-grid{grid-template-columns:repeat(5,1fr);gap:8px;}
+.card-mod{padding:12px;}
+.card-desc{font-size:10px;}
+.cards-wrap{margin-bottom:12px;}
+.impacto-wrap{margin-bottom:8px;}
+.hero{padding:16px 24px 10px;}
+.welcome{font-size:28px;margin-bottom:2px;}
+.opus-name{font-size:60px;}
+.opus-sub{margin-bottom:12px;}
+.logo-wrap{width:100px;height:100px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo-outer">
+    <div class="logo-wrap">
+      <img src="logo-gmf.png" alt="Grupo MF Paris">
+    </div>
+  </div>
+  <div class="welcome">Bem-vindo ao</div>
+  <div class="opus-name">OPUS</div>
+  <div class="opus-sub"><strong>O</strong>perações · <strong>P</strong>rogramação · <strong>U</strong>nificada · <strong>S</strong>istema</div>
+</div>
+
+<div class="cards-wrap">
+  <div style="font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#7a8fa8;font-weight:600;margin-bottom:12px;text-align:center;">Consulta</div>
+  <div class="cards-grid" style="margin-bottom:24px;grid-template-columns:repeat(5,1fr);">
+    <a href="calendario.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="3" height="3" rx="0.5"/><rect x="14" y="13" width="3" height="3" rx="0.5"/></svg></div><div class="card-title">Calendário</div></div>
+      <p class="card-desc">Programação visual da produção e entregas com controle de capacidade operacional.</p>
+    </a>
+    <a href="apontamento.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><div class="card-title">Produtividade</div></div>
+      <p class="card-desc">Registro e acompanhamento da execução das OPs, atualizando status operacional em tempo real.</p>
+    </a>
+    <a href="simulador.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="card-title">Simulador de Frete</div></div>
+      <p class="card-desc">Simulação e cálculo de custos logísticos para comparação entre cenários de transporte.</p>
+    </a>
+    <a href="farol.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="4"/><path d="M9 4h6l1 4H8L9 4z"/><path d="M8 8l-1 8h10l-1-8"/><line x1="7" y1="16" x2="5" y2="20"/><line x1="17" y1="16" x2="19" y2="20"/><line x1="5" y1="20" x2="19" y2="20"/></svg></div><div class="card-title">Farol de Entregas</div></div>
+      <p class="card-desc">Monitoramento de pedidos e entregas com alertas de atraso e priorização operacional.</p>
+    </a>
+    <a href="estoque.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/><circle cx="6" cy="19.5" r="1.5"/><circle cx="15" cy="19.5" r="1.5"/></svg></div><div class="card-title">Estoque</div></div>
+      <p class="card-desc">Visão consolidada de saldos, rupturas e integração automática com o OMIE.</p>
+    </a>
+  </div>
+
+  <div style="font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#7a8fa8;font-weight:600;margin-bottom:12px;text-align:center;">Produtivo</div>
+  <div class="cards-grid" style="grid-template-columns:repeat(5,1fr);">
+    <a href="programacao.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="card-title">Programação da Produção</div></div>
+      <p class="card-desc">Planejamento e abertura de ordens de produção com cálculo automático de matéria-prima e prazos.</p>
+    </a>
+    <a href="simulador-producao.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div><div class="card-title">Simulador de Programação</div></div>
+      <p class="card-desc">Simulação de cenários de produção com análise de capacidade, OEE e necessidade de recursos.</p>
+    </a>
+    <a href="fechamento-op.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></div><div class="card-title">Fechamento de OP</div></div>
+      <p class="card-desc">Registro de produção hora a hora, movimentação de etapas e aprovação por qualidade, conferência e logística.</p>
+    </a>
+     <a href="carteira.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div><div class="card-title">Carteira de Pedidos</div></div>
+      <p class="card-desc">Fila de entrada dos pedidos OMIE. Filtra estoque, separa por departamento e envia para roteirização.</p>
+    </a>
+    <a href="roteirizador.html" class="card-mod" style="text-decoration:none;">
+      <div class="card-head"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></div><div class="card-title">Roteirização</div></div>
+      <p class="card-desc">Otimização inteligente de rotas de distribuição para redução de custos operacionais.</p>
+    </a>
+  </div>
+</div>
+
+<div class="impacto-wrap">
+  <p class="impacto-txt" style="font-size:13px;color:#7a8fa8;margin-bottom:10px;font-style:normal;font-family:'Inter',sans-serif;letter-spacing:.05em;">
+    <em style="color:#e8c96a;font-family:'Playfair Display',serif;font-size:15px;">Opus</em> — do latim <em>opus, operis</em>: obra, trabalho, criação. Aquilo que se constrói com esforço, método e propósito.
+  </p>
+  <p class="impacto-txt">"Uma única plataforma para planejar, controlar, executar e monitorar toda a operação do Grupo MF Paris."</p>
+</div>
+
+<div class="cd-wrap">
+  <div class="cd">
+    <div class="cd-ring">
+      <svg width="32" height="32" viewBox="0 0 32 32">
+        <circle class="bg" cx="16" cy="16" r="14"/>
+        <circle class="fg" cx="16" cy="16" r="14"/>
+      </svg>
+      <div class="cd-num" id="cdNum">10</div>
+    </div>
+    <span>edirecionando para <strong style="color:#e8c96a">Calendário</strong> em <span id="cdTxt">10</span>s</span>
+    <button onclick="cancelarRedir()">cancelar</button>
+  </div>
+</div>
+
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-box">
+    <div class="pw-title">Acesso restrito</div>
+    <div class="pw-msg" id="pwMsg">Digite a senha para entrar no módulo selecionado.</div>
+    <input type="password" class="pw-input" id="pwInput" placeholder="Senha" autocomplete="off">
+    <div class="pw-err" id="pwErr"></div>
+    <div class="pw-actions">
+      <button class="pw-btn c" onclick="fecharSenha()">Cancelar</button>
+      <button class="pw-btn p" onclick="validarSenha()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var SENHA='mfparis@2026',SENHA_KEY='opus_auth_ok',_destino=null;
+function precisaSenha(){try{return sessionStorage.getItem(SENHA_KEY)!=='1';}catch(e){return true;}}
+function liberarAcesso(){try{sessionStorage.setItem(SENHA_KEY,'1');}catch(e){}}
+function abrirSenha(destino){_destino=destino;document.getElementById('pwErr').textContent='';document.getElementById('pwInput').value='';document.getElementById('pwOverlay').classList.add('on');setTimeout(function(){document.getElementById('pwInput').focus();},50);}
+function fecharSenha(){_destino=null;document.getElementById('pwOverlay').classList.remove('on');}
+function validarSenha(){var v=document.getElementById('pwInput').value;if(v===SENHA){liberarAcesso();var dest=_destino;fecharSenha();if(dest)window.location.href=dest;}else{document.getElementById('pwErr').textContent='✗ Senha incorreta. Tente novamente.';document.getElementById('pwInput').value='';document.getElementById('pwInput').focus();}}
+document.getElementById('pwInput').addEventListener('keydown',function(ev){if(ev.key==='Enter')validarSenha();if(ev.key==='Escape')fecharSenha();});
+
+var SEGUNDOS=10,_restante=SEGUNDOS,_tickTimer=null,_redirTimer=null,_cancelado=false;
+function tick(){_restante--;if(_restante<0)return;document.getElementById('cdNum').textContent=_restante;document.getElementById('cdTxt').textContent=_restante;}
+function iniciarRedir(){_tickTimer=setInterval(tick,1000);_redirTimer=setTimeout(function(){if(_cancelado)return;window.location.href='calendario.html';},SEGUNDOS*1000);}
+function cancelarRedir(){_cancelado=true;if(_tickTimer)clearInterval(_tickTimer);if(_redirTimer)clearTimeout(_redirTimer);document.querySelector('.cd').style.display='none';}
+iniciarRedir();
+
+</script>
+
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

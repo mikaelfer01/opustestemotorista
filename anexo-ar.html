@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>OPUS · Anexar AR aos Pedidos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Libs necessárias: JSZip (compactar) e SparkMD5 (hash exigido pelo Omie) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+
+<style>
+  :root{
+    --navy:#0d1f3c; --gold:#b8902a; --gold3:#f3e6c5; --cream:#faf7f0; --cream2:#f1ebdc;
+    --ink2:#2a2f38; --ink3:#5c6470; --ink4:#8a91a0; --border:#d8d0bd; --white:#fff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--cream);color:var(--ink2)}
+  header{background:var(--navy);color:var(--gold3);padding:18px 28px;display:flex;align-items:center;justify-content:space-between}
+  header h1{font-size:17px;margin:0;font-weight:700}
+  header .sub{font-size:12px;color:var(--gold);margin-top:2px}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 60px}
+  .card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+  .card h2{font-size:14px;margin:0 0 12px;color:var(--navy)}
+  .aviso{background:rgba(184,144,42,.08);border:1px solid rgba(184,144,42,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#6b3a00;margin-bottom:18px}
+  .aviso.erro{background:rgba(190,18,60,.08);border-color:rgba(190,18,60,.3);color:#9f1239;display:none}
+
+  #btn-selecionar-pasta{background:var(--navy);color:var(--gold3);border:none;border-radius:8px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer}
+  #pasta-label{font-size:12px;color:var(--ink3);margin-top:8px}
+
+  #numeros-texto{width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;background:var(--cream)}
+  .dica{font-size:11.5px;color:var(--ink4);margin:6px 0 12px}
+
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--ink3);padding:6px 8px;border-bottom:1px solid var(--border)}
+  td{border-bottom:1px solid var(--cream2)}
+  td.vazio{padding:20px 8px;text-align:center;color:var(--ink4);font-size:12px}
+
+  .est{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .est.ok{background:rgba(22,163,74,.09);color:#166534;border:1px solid rgba(22,163,74,.2)}
+  .est.sem{background:rgba(190,18,60,.08);color:#9f1239;border:1px solid rgba(190,18,60,.2)}
+  .est.na{background:var(--cream2);color:var(--ink3);border:1px solid var(--border)}
+
+  .botoes{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  button{cursor:pointer;font-family:inherit}
+  #btn-anexar-tudo{background:var(--navy);color:var(--gold3);border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700}
+  #btn-anexar-tudo:disabled{opacity:.45;cursor:not-allowed}
+  #btn-add-numeros{background:var(--cream2);border:1px solid var(--border);border-radius:7px;padding:8px 16px;font-size:12.5px;font-weight:600;color:var(--ink2)}
+  #btn-limpar-lista{background:none;border:1px solid var(--border);border-radius:7px;padding:9px 14px;font-size:12.5px;color:var(--ink3)}
+  #status-sync{font-size:12px;color:var(--ink3)}
+  #count-info{font-size:12px;color:var(--ink3);margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Anexar AR aos Pedidos</h1>
+    <div class="sub">Cola os números dos pedidos — o programa acha o PDF na pasta e anexa no Omie</div>
+  </div>
+  <div id="status-sync"></div>
+</header>
+
+<main>
+
+  <div class="aviso" id="aviso-navegador" style="display:none">
+    ⚠ Seu navegador não suporta seleção de pastas locais. Abra esta página no <b>Chrome</b> ou <b>Edge</b>.
+  </div>
+
+  <div class="aviso">
+    ⚠ Ferramenta separada do Carteira de Pedidos. Antes de usar em lote, teste com <b>1 pedido</b> só,
+    confirme no Omie que o anexo apareceu certinho, e só depois processe o resto.
+  </div>
+
+  <div class="card">
+    <h2>1. Pasta com os PDFs de AR</h2>
+    <p style="font-size:12px;color:var(--ink3);margin:0 0 10px">
+      Selecione uma vez a pasta do seu PC onde ficam os arquivos. O nome de cada arquivo precisa seguir o padrão
+      <b>NÚMERO-EMPRESA.pdf</b> (ex: <code>961-PROFI.pdf</code>, <code>452-MFP.pdf</code>, <code>78-DMS.pdf</code>).
+      O navegador vai lembrar da pasta da próxima vez (só pede pra confirmar o acesso de novo).
+    </p>
+    <button id="btn-selecionar-pasta">📁 Selecionar pasta</button>
+    <div id="pasta-label">Nenhuma pasta selecionada.</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Números dos pedidos</h2>
+    <textarea id="numeros-texto" placeholder="Cole aqui os números dos pedidos, um por linha (ou separados por vírgula)&#10;Ex:&#10;961&#10;452&#10;78"></textarea>
+    <div class="dica">Um número por linha, ou separados por vírgula. O programa procura o arquivo correspondente sozinho na pasta selecionada.</div>
+    <button id="btn-add-numeros">+ Adicionar à lista</button>
+  </div>
+
+  <div class="card">
+    <h2>3. Lista para anexar</h2>
+    <div id="count-info">Nenhum pedido adicionado ainda.</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Nº Pedido</th>
+          <th>Arquivo encontrado</th>
+          <th>Empresa</th>
+          <th>Status envio</th>
+          <th>Erro</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-anexos">
+        <tr><td colspan="6" class="vazio">Nenhum pedido na lista. Cole os números acima e clique em "Adicionar à lista".</td></tr>
+      </tbody>
+    </table>
+
+    <div class="botoes">
+      <button id="btn-anexar-tudo" disabled>➡ Anexar tudo (0)</button>
+      <button id="btn-limpar-lista">🗑 Limpar lista</button>
+    </div>
+  </div>
+
+</main>
+
+<script type="module" src="./anexo-ar.js"></script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

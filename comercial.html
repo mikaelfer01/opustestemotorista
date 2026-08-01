@@ -1,0 +1,806 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OPUS — Estoque Comercial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+  --purple:#5b21b6;--purple-l:rgba(109,40,217,.1);
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+nav{background:var(--navy-d);border-bottom:2px solid var(--gold);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99;}
+.nav-left{display:flex;align-items:center;gap:10px;}
+.nav-opus{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:var(--gold);letter-spacing:-.5px;}
+.nav-sep{color:rgba(200,185,154,.3);font-size:14px;}
+.nav-title{font-size:12px;font-weight:500;color:rgba(220,210,195,.7);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.nav-dot.ok{background:var(--green);animation:pulse 2s infinite;}
+.nav-dot.err{background:var(--red);}
+.nav-dot.idle{background:var(--div);}
+.nav-status{font-size:10px;color:var(--div);}
+.btn-cfg{font-size:10px;font-weight:500;color:var(--div);background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-cfg:hover{background:rgba(255,255,255,.06);color:#fff;}
+
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:14px;max-width:1500px;margin:0 auto;}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kpi{background:var(--card);border:0.5px solid var(--gold-b);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;animation:fadeUp .35s ease both;}
+.kpi-label{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;}
+.kpi-value{font-size:24px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
+.kpi-sub{font-size:10px;color:var(--muted);}
+.kpi.danger .kpi-value{color:var(--red);}
+.kpi.warn .kpi-value{color:var(--amber);}
+.kpi.ok .kpi-value{color:var(--green);}
+
+/* Visão tabs (Comercial / Licitação) */
+.view-tabs{display:flex;gap:0;background:var(--card);border:0.5px solid var(--gold-b);border-radius:12px;padding:4px;width:fit-content;}
+.view-tab{padding:9px 22px;border:none;background:transparent;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.04em;transition:all .15s;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.view-tab.active{background:var(--navy);color:#fff;}
+.view-tab:not(.active):hover{color:var(--navy);}
+.view-tab .count{background:rgba(255,255,255,.15);font-size:10px;padding:1px 7px;border-radius:8px;}
+.view-tab:not(.active) .count{background:var(--icon);color:var(--muted);}
+
+/* Filtros */
+.filters{background:var(--card);border:0.5px solid var(--gold-b);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;animation:fadeUp .35s ease both;}
+.filter-group{display:flex;align-items:center;gap:6px;}
+.filter-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.filter-select,.filter-input{padding:7px 10px;border:1.5px solid var(--gold-b);border-radius:7px;background:#fff;font-family:inherit;font-size:11px;color:var(--navy);outline:none;min-width:120px;}
+.filter-select:focus,.filter-input:focus{border-color:var(--gold);}
+.filter-search{min-width:220px;}
+.filter-spacer{flex:1;}
+
+/* Tabela */
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:18px 20px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;}
+.estoque-table{width:100%;border-collapse:collapse;font-size:12px;}
+.estoque-table thead tr{background:var(--navy);}
+.estoque-table th{padding:10px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;position:sticky;top:0;}
+.estoque-table th.num,.estoque-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.estoque-table th.center,.estoque-table td.center{text-align:center;}
+.estoque-table tbody tr{border-bottom:0.5px solid var(--gold-l);cursor:pointer;transition:background .12s;}
+.estoque-table tbody tr:hover{background:var(--cream);}
+.estoque-table td{padding:10px 12px;vertical-align:middle;}
+.estoque-table td.cod{font-family:monospace;font-size:11px;color:var(--muted);}
+.estoque-table td.produto{font-weight:600;color:var(--navy);max-width:340px;}
+.estoque-table td.qtd-disp{font-weight:800;font-size:13px;}
+.disp-ok{color:var(--green);}
+.disp-zero{color:var(--red);}
+.disp-baixo{color:var(--amber);}
+
+.badge-empresa{display:inline-block;font-size:8px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.05em;text-transform:uppercase;}
+.emp-dms{background:var(--blue-l);color:var(--blue);}
+.emp-mfp{background:rgba(154,107,26,.15);color:#6B3A00;}
+.emp-profi{background:var(--purple-l);color:var(--purple);}
+
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:11px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.s-ok{background:var(--green-l);color:var(--green);}
+.s-zero{background:var(--red-l);color:var(--red);}
+.s-baixo{background:var(--amber-l);color:var(--amber);}
+
+.vazio{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;}
+.vazio-icon{font-size:36px;margin-bottom:10px;}
+
+.btn-primary{padding:9px 18px;border:none;border-radius:10px;background:var(--navy);color:#fff;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary:hover{background:var(--navy-d);transform:translateY(-1px);}
+.btn-secondary{padding:9px 16px;border:1.5px solid var(--gold-b);border-radius:10px;background:transparent;color:var(--navy);font-family:inherit;font-size:11.5px;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-green{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;}
+.btn-green:hover{background:#1a5c32;}
+
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+
+.toast{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;animation:fadeUp .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+.toast-ok{background:var(--green);color:#fff;}
+.toast-err{background:var(--red);color:#fff;}
+.toast-info{background:var(--navy);color:#fff;}
+
+/* Modal drill-down (pedidos vinculados ao SKU) */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;}
+.modal.open{display:flex;}
+.modal-box{background:var(--card);border-radius:18px;padding:24px;width:760px;max-width:94vw;max-height:86vh;overflow-y:auto;border:0.5px solid var(--gold-b);}
+.modal-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:2px;}
+.modal-sub{font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.modal-close{float:right;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:0;margin-left:8px;}
+.modal-close:hover{color:var(--navy);}
+.modal-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.modal-resumo-card{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:10px;padding:10px 12px;}
+.modal-resumo-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.modal-resumo-value{font-size:18px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
+.pedidos-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+.pedidos-table th{background:var(--navy);color:var(--gold);padding:8px 9px;text-align:left;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.pedidos-table td{padding:7px 9px;border-bottom:0.5px solid var(--gold-l);}
+.pedidos-table th.num,.pedidos-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+
+/* Popover de pedidos (hover na celula da coluna Pedidos) */
+.ped-cell{position:relative;cursor:pointer;}
+.ped-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;border-radius:10px;background:var(--icon);color:var(--navy);font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;border:0.5px solid var(--gold-b);}
+.ped-badge.has-ped{background:var(--amber-l);color:var(--amber);border-color:rgba(154,107,26,.25);}
+.ped-pop{display:none;position:fixed;z-index:400;background:#fff;border:1px solid var(--gold-b);border-radius:12px;padding:10px 12px 12px;min-width:340px;max-width:420px;max-height:360px;overflow-y:auto;box-shadow:0 12px 32px rgba(15,29,51,.22);font-family:'DM Sans',sans-serif;}
+.ped-pop.open{display:block;animation:fadeUp .15s ease both;}
+.ped-pop-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--gold-l);}
+.ped-pop-row{display:grid;grid-template-columns:46px 1fr 70px;column-gap:8px;row-gap:2px;padding:7px 0;border-bottom:0.5px solid var(--gold-l);font-size:11px;align-items:start;}
+.ped-pop-row:last-child{border-bottom:none;}
+.ped-pop-num{font-family:monospace;font-weight:700;color:var(--navy);font-size:10.5px;background:var(--cream);padding:2px 5px;border-radius:4px;text-align:center;}
+.ped-pop-cliente{font-weight:600;color:var(--navy);line-height:1.3;}
+.ped-pop-vend{font-size:9.5px;color:var(--muted);grid-column:2;}
+.ped-pop-prev{font-size:9.5px;color:var(--muted);}
+.ped-pop-qtd{font-weight:700;font-variant-numeric:tabular-nums;color:var(--amber);text-align:right;font-size:11.5px;}
+.ped-pop-empty{font-size:11px;color:var(--muted);text-align:center;padding:6px 0;}
+.ped-pop-footer{font-size:9.5px;color:var(--muted);text-align:center;margin-top:8px;padding-top:6px;border-top:0.5px solid var(--gold-l);font-style:italic;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <span class="nav-opus">OPUS</span>
+    <span class="nav-sep">·</span>
+    <span class="nav-title">Estoque Comercial</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-dot idle" id="omie-dot"></div>
+    <span class="nav-status" id="omie-status">Mock — dados de demonstração</span>
+    <button class="btn-cfg" onclick="atualizar()">↻ Atualizar</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi ok"><span class="kpi-label">SKUs ativos</span><span class="kpi-value" id="kpi-skus">—</span><span class="kpi-sub">com estoque ou pedido</span></div>
+    <div class="kpi"><span class="kpi-label">Estoque total</span><span class="kpi-value" id="kpi-estoque">—</span><span class="kpi-sub">unidades contadas</span></div>
+    <div class="kpi warn"><span class="kpi-label">Comprometido</span><span class="kpi-value" id="kpi-comp">—</span><span class="kpi-sub">em pedidos etapa 20</span></div>
+    <div class="kpi danger"><span class="kpi-label">SKUs negativos</span><span class="kpi-value" id="kpi-neg">—</span><span class="kpi-sub">venda &gt; estoque</span></div>
+  </div>
+
+  <!-- View tabs Comercial/Licitação -->
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div class="view-tabs" id="view-tabs">
+      <button class="view-tab active" data-view="comercial" onclick="trocarView('comercial')">
+        Comercial <span class="count" id="cnt-comercial">0</span>
+      </button>
+      <button class="view-tab" data-view="licitacao" onclick="trocarView('licitacao')">
+        Licitação <span class="count" id="cnt-licitacao">0</span>
+      </button>
+    </div>
+    <div style="flex:1;"></div>
+    <button class="btn-secondary" onclick="exportarExcel()">📊 Exportar Excel</button>
+    <button class="btn-primary" onclick="atualizar()"><span id="btn-atualizar-txt">↻ Atualizar dados</span></button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Vendedor</span>
+      <select class="filter-select" id="f-vendedor" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Status</span>
+      <select class="filter-select" id="f-status" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+        <option value="ok">Disponível</option>
+        <option value="baixo">Estoque baixo</option>
+        <option value="zero">Sem estoque</option>
+      </select>
+    </div>
+    <div class="filter-group" style="flex:1;min-width:240px;">
+      <span class="filter-label">Buscar</span>
+      <input type="text" class="filter-input filter-search" id="f-busca" placeholder="SKU ou descrição..." oninput="aplicarFiltros()" style="width:100%;"/>
+    </div>
+  </div>
+
+  <!-- Tabela principal -->
+  <div class="sec">
+    <div class="sec-title">
+      <span id="tabela-titulo">Estoque disponível para venda — Comercial</span>
+      <span style="font-size:10px;color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0;" id="tabela-info"></span>
+    </div>
+    <div style="overflow-x:auto;max-height:62vh;overflow-y:auto;">
+      <table class="estoque-table">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Descrição</th>
+            <th class="num">Estoque</th>
+            <th class="num">Comprometido</th>
+            <th class="num">Em Produção</th>
+            <th>Previsão Conclusão</th>
+            <th class="num">Disponível</th>
+            <th class="center">Pedidos</th>
+            <th class="center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-estoque"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal drill-down -->
+<div class="modal" id="drill-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="fecharDrill()">×</button>
+    <div class="modal-title" id="drill-titulo">—</div>
+    <div class="modal-sub" id="drill-sub">—</div>
+    <div class="modal-resumo">
+      <div class="modal-resumo-card"><div class="modal-resumo-label">Estoque</div><div class="modal-resumo-value" id="drill-estq">—</div></div>
+      <div class="modal-resumo-card"><div class="modal-resumo-label">Comprometido</div><div class="modal-resumo-value" id="drill-comp">—</div></div>
+      <div class="modal-resumo-card"><div class="modal-resumo-label">Disponível</div><div class="modal-resumo-value" id="drill-disp">—</div></div>
+    </div>
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Pedidos vinculados (etapa 20)</div>
+    <table class="pedidos-table">
+      <thead>
+        <tr>
+          <th>Nº Pedido</th>
+          <th>Cliente</th>
+          <th>Vendedor</th>
+          <th>Empresa</th>
+          <th>Previsão</th>
+          <th class="num">Qtd</th>
+          <th class="num">Valor</th>
+        </tr>
+      </thead>
+      <tbody id="drill-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Popover global de pedidos (posicionado dinamicamente) -->
+<div class="ped-pop" id="ped-pop"></div>
+
+<script>
+/* ============================================================
+   FONTES DE DADOS
+   ============================================================
+   estoque[]: vem do Google Sheets (planilha publica via gviz/tq)
+   pedidos[]: vem do OMIE (etapa=20, cancelado=N, faturado=N) - ainda mock
+   ============================================================ */
+
+// Google Sheets: id da planilha + nomes EXATOS das abas
+const SHEETS_ID = '1Z939E63719MpVGnGmJzixKRFToe4-maSpqBsmsfPYnw';
+const SHEETS_ABAS = { comercial: 'Comercial', licitacao: 'Licitação' };
+
+// Cache do estoque carregado das abas (preenchido pelo fetch)
+let ESTOQUE_REAL = { comercial: null, licitacao: null };
+
+// ============================================================
+// MAPA DE DEPARTAMENTOS POR EMPRESA (cCodDepto do OMIE)
+// Confirmado via ListarDepartamentos em 11/06/2026:
+//   MFP e DMS compartilham os MESMOS códigos de depto
+//   Profi tem 1 só depto ativo (todo o faturamento é licitação)
+// ============================================================
+const DEPTOS = {
+  MFP:   { comercial: '1097661809',  licitacao: '9578977933'  },
+  DMS:   { comercial: '1097661809',  licitacao: '9578977933'  },  // mesmas chaves que MFP
+  PROFI: { comercial: null,          licitacao: '10977160821' }   // 100% licitação
+};
+
+// A empresa de cada pedido é identificada pela app_key usada na chamada,
+// não pelo codigo_empresa do retorno. Cada pedido recebe a tag "empresa"
+// ao ser buscado via /api/omie-pedidos?empresa=MFP|DMS|PROFI
+
+// Classifica um pedido em 'comercial' | 'licitacao' | null
+// Recebe o nome da empresa ('MFP'|'DMS'|'PROFI') e o cCodDepto do pedido.
+function classificarPedido(empresa, cCodDepto) {
+  const m = DEPTOS[empresa]; if (!m) return null;
+  if (m.comercial && String(cCodDepto) === m.comercial) return 'comercial';
+  if (m.licitacao && String(cCodDepto) === m.licitacao) return 'licitacao';
+  return null;
+}
+
+const VENDEDORES = {
+  '9505905992': 'João Silva',
+  '10973267526': 'Maria Oliveira',
+  '10973222724': 'Pedro Santos',
+  '2070998367': 'Ana Costa',
+  '2070998352': 'Carlos Lima',
+  '4239398832': 'Beatriz Souza'
+};
+
+// Mock: estoque vindo das abas do Google Sheets
+const MOCK_ESTOQUE = {
+  comercial: [
+    {sku:'123058',  desc:'CAFE VACUO BELVEDER 500G L 1225',       empresa:'PROFI', qtd:540,  un:'KG'},
+    {sku:'1230027', desc:'LEITE EM PO INTEGRAL HORIZONTE 400g',   empresa:'PROFI', qtd:120,  un:'KG'},
+    {sku:'1210008', desc:'PO PARA BEBIDA LACTEA HORIZONTE 400G',  empresa:'MFP',   qtd:380,  un:'KG'},
+    {sku:'12300002',desc:'MANIMALTO - MALTODEXTRINA 25 KG',       empresa:'MFP',   qtd:1750, un:'KG'},
+    {sku:'1230045', desc:'SORO DE LEITE EM PO HORIZONTE 25KG',    empresa:'MFP',   qtd:2200, un:'KG'},
+    {sku:'3230050', desc:'LEITE EM PO INTEGRAL 25KG',             empresa:'MFP',   qtd:75,   un:'KG'},
+    {sku:'4501',    desc:'SACO POLIPROPILENO 50KG',               empresa:'DMS',   qtd:1200, un:'UN'},
+    {sku:'4502',    desc:'ROTULO LACTEO HORIZONTE 400G',          empresa:'DMS',   qtd:8500, un:'UN'}
+  ],
+  licitacao: [
+    {sku:'123058',  desc:'CAFE VACUO BELVEDER 500G L 1225',      empresa:'PROFI', qtd:180,  un:'KG'},
+    {sku:'1230027', desc:'LEITE EM PO INTEGRAL HORIZONTE 400g',  empresa:'PROFI', qtd:60,   un:'KG'},
+    {sku:'5001',    desc:'KIT MERENDA ESCOLAR 5KG',              empresa:'PROFI', qtd:340,  un:'UN'},
+    {sku:'5002',    desc:'CESTA BÁSICA NUTRICIONAL',             empresa:'PROFI', qtd:90,   un:'UN'}
+  ]
+};
+
+// Mock: OPs em aberto no OMIE (ordens de produção ainda não concluídas)
+const MOCK_OPS = [
+  // SKU | Qtd a produzir | Previsão de conclusão | Empresa | Descrição (caso SKU não esteja no estoque)
+  {sku:'1230027', qtd:500,  previsao:'20/06/2026', empresa:'PROFI', op:'OP-2026-0145', desc:'LEITE EM PO INTEGRAL HORIZONTE 400g'},
+  {sku:'1230027', qtd:300,  previsao:'05/07/2026', empresa:'PROFI', op:'OP-2026-0162', desc:'LEITE EM PO INTEGRAL HORIZONTE 400g'},
+  {sku:'1210008', qtd:1000, previsao:'18/06/2026', empresa:'MFP',   op:'OP-2026-0148', desc:'PO PARA BEBIDA LACTEA HORIZONTE 400G'},
+  {sku:'3230050', qtd:800,  previsao:'25/06/2026', empresa:'MFP',   op:'OP-2026-0151', desc:'LEITE EM PO INTEGRAL 25KG'},
+  {sku:'123058',  qtd:200,  previsao:'15/06/2026', empresa:'PROFI', op:'OP-2026-0140', desc:'CAFE VACUO BELVEDER 500G L 1225'},
+  {sku:'5001',    qtd:600,  previsao:'30/07/2026', empresa:'PROFI', op:'OP-2026-0170', desc:'KIT MERENDA ESCOLAR 5KG'}
+];
+
+// Mock: pedidos OMIE em etapa 20 (não cancelados, não faturados)
+const MOCK_PEDIDOS = [
+  // Comercial
+  {num:'1618',  cliente:'CAMILO CONTABILIDADE',          empresa:'MFP',   depto:'COMERCIAL', codVend:'2070998367', sku:'1230045', qtd:1000,valor:4150,  previsao:'03/05/2026'},
+  {num:'1877',  cliente:'LUANA SOLDATELLI',              empresa:'MFP',   depto:'COMERCIAL', codVend:'2070998367', sku:'12300002',qtd:1000, valor:6500,  previsao:'26/06/2026'},
+  {num:'1937',  cliente:'ROTINA FISCAL',                 empresa:'MFP',   depto:'COMERCIAL', codVend:'2070998367', sku:'3230050', qtd:25,   valor:650,   previsao:'04/06/2026'},
+  {num:'1982',  cliente:'BH MINAS CESTAS',               empresa:'MFP',   depto:'COMERCIAL', codVend:'2070998338', sku:'1210008', qtd:200,  valor:1780,  previsao:'10/06/2026'},
+  {num:'2003',  cliente:'STEKER COMÉRCIO',               empresa:'MFP',   depto:'COMERCIAL', codVend:'2070998352', sku:'12300002',qtd:250,  valor:1525,  previsao:'11/06/2026'},
+  {num:'2150',  cliente:'DIST. NORTE LTDA',              empresa:'DMS',   depto:'COMERCIAL', codVend:'4239398832', sku:'4502',    qtd:2000, valor:600,   previsao:'15/07/2026'},
+  // Licitação
+  {num:'336',   cliente:'CISURG MÉDIO PIRACICABA',       empresa:'PROFI', depto:'LICITACAO', codVend:'10973267526',sku:'123058',  qtd:90,   valor:3778.2,previsao:'12/05/2026'},
+  {num:'369',   cliente:'PREFEITURA ENG. CALDAS',        empresa:'PROFI', depto:'LICITACAO', codVend:'10973222724',sku:'1230027', qtd:3.2,  valor:123.2, previsao:'21/05/2026'},
+  {num:'432',   cliente:'PREFEITURA ENG. CALDAS',        empresa:'PROFI', depto:'LICITACAO', codVend:'10973222724',sku:'1230027', qtd:20,   valor:748.5, previsao:'28/05/2026'},
+  {num:'433',   cliente:'PREFEITURA ENG. CALDAS',        empresa:'PROFI', depto:'LICITACAO', codVend:'10973222724',sku:'1230027', qtd:6,    valor:224.55,previsao:'28/05/2026'},
+  {num:'434',   cliente:'PREFEITURA ENG. CALDAS',        empresa:'PROFI', depto:'LICITACAO', codVend:'10973222724',sku:'1230027', qtd:6,    valor:224.55,previsao:'28/05/2026'},
+  {num:'520',   cliente:'PREF. MUN. ITABIRA',            empresa:'PROFI', depto:'LICITACAO', codVend:'10973267526',sku:'5001',    qtd:400,  valor:18000, previsao:'05/08/2026'}
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let viewAtual = 'comercial';      // 'comercial' | 'licitacao'
+let dadosCalc = [];               // SKUs consolidados com estoque + comprometido + disponível
+
+/* ============================================================
+   GOOGLE SHEETS — leitura via endpoint publico (gviz/tq)
+   ============================================================
+   Requer que a planilha esteja com "Qualquer pessoa com o link" Leitor.
+   Endpoint: https://docs.google.com/spreadsheets/d/{ID}/gviz/tq?tqx=out:csv&sheet={NOME_ABA}
+   ============================================================ */
+function csvParse(txt) {
+  const linhas = []; let cur=[], val='', dentro=false;
+  for (let i=0;i<txt.length;i++) {
+    const c = txt[i];
+    if (dentro) {
+      if (c==='"' && txt[i+1]==='"') { val+='"'; i++; }
+      else if (c==='"') dentro=false;
+      else val+=c;
+    } else {
+      if (c==='"') dentro=true;
+      else if (c===',') { cur.push(val); val=''; }
+      else if (c==='\n') { cur.push(val); linhas.push(cur); cur=[]; val=''; }
+      else if (c!=='\r') val+=c;
+    }
+  }
+  if (val.length || cur.length) { cur.push(val); linhas.push(cur); }
+  return linhas.filter(l => l.length && l.some(x => String(x).trim()!==''));
+}
+
+function normHeader(h) {
+  return String(h||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+async function fetchEstoqueSheet(viewKey) {
+  const aba = SHEETS_ABAS[viewKey];
+  const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(aba)}`;
+  const resp = await fetch(url, { cache:'no-store' });
+  if (!resp.ok) throw new Error('HTTP '+resp.status+' lendo aba '+aba);
+  const linhas = csvParse(await resp.text());
+  if (!linhas.length) return [];
+
+  const headers = linhas[0].map(normHeader);
+  const idx = {
+    sku:  headers.findIndex(h => /^(sku|codigo|cod produto|c[oó]digo)$/i.test(h)),
+    desc: headers.findIndex(h => /(descricao|descri|produto|nome)/i.test(h)),
+    emp:  headers.findIndex(h => /(empresa|emp)/i.test(h)),
+    qtd:  headers.findIndex(h => /(quantidade|qtd|estoque|saldo)/i.test(h)),
+    un:   headers.findIndex(h => /(unidade|un|um)/i.test(h)),
+  };
+  if (idx.sku<0 || idx.qtd<0) {
+    throw new Error('Planilha sem colunas obrigatorias (SKU e Quantidade). Cabecalho lido: '+headers.join(' | '));
+  }
+
+  const itens = [];
+  for (let r=1; r<linhas.length; r++) {
+    const row = linhas[r];
+    const sku = String(row[idx.sku]||'').trim();
+    if (!sku) continue;
+    const qtdRaw = String(row[idx.qtd]||'0').replace(/\./g,'').replace(',','.');
+    const qtd = Number(qtdRaw) || 0;
+    itens.push({
+      sku,
+      desc: idx.desc>=0 ? String(row[idx.desc]||'').trim() : '',
+      empresa: idx.emp>=0 ? String(row[idx.emp]||'').trim().toUpperCase() : '',
+      qtd,
+      un:   idx.un>=0 ? String(row[idx.un]||'').trim().toUpperCase() : 'UN'
+    });
+  }
+  return itens;
+}
+
+async function carregarEstoqueDoSheets() {
+  setOmieStatus('idle', 'Lendo Google Sheets...');
+  const [com, lic] = await Promise.all([
+    fetchEstoqueSheet('comercial').catch(e => { console.error('Aba Comercial:', e); return null; }),
+    fetchEstoqueSheet('licitacao').catch(e => { console.error('Aba Licitação:', e); return null; }),
+  ]);
+  ESTOQUE_REAL.comercial = com;
+  ESTOQUE_REAL.licitacao = lic;
+  const okCom = Array.isArray(com), okLic = Array.isArray(lic);
+  if (okCom && okLic) {
+    setOmieStatus('ok', `Sheets OK · ${com.length} + ${lic.length} SKUs`);
+  } else if (okCom || okLic) {
+    setOmieStatus('idle', 'Sheets parcial (1 aba falhou)');
+  } else {
+    setOmieStatus('err', 'Sheets indisponivel — usando mock');
+  }
+  return { com, lic };
+}
+
+function setOmieStatus(state, txt) {
+  const dot = document.getElementById('omie-dot');
+  const st = document.getElementById('omie-status');
+  if (dot) dot.className = 'nav-dot ' + (state==='ok'?'ok':state==='err'?'err':'idle');
+  if (st)  st.textContent = txt;
+}
+
+function getEstoqueView(viewKey) {
+  // Usa dados reais se carregados, senão cai pro mock
+  const real = ESTOQUE_REAL[viewKey];
+  return Array.isArray(real) ? real : (MOCK_ESTOQUE[viewKey] || []);
+}
+
+/* ============================================================
+   CÁLCULO
+   ============================================================ */
+function recalcular() {
+  const estoque = getEstoqueView(viewAtual);
+  const pedidos = MOCK_PEDIDOS.filter(p => p.depto === (viewAtual === 'comercial' ? 'COMERCIAL' : 'LICITACAO'));
+
+  // Indexa pedidos por SKU
+  const pedPorSku = {};
+  pedidos.forEach(p => {
+    if (!pedPorSku[p.sku]) pedPorSku[p.sku] = [];
+    pedPorSku[p.sku].push(p);
+  });
+
+  // Mescla: começa com itens do estoque, depois adiciona SKUs vendidos sem estoque
+  const map = {};
+  estoque.forEach(e => {
+    map[e.sku] = {
+      sku: e.sku, desc: e.desc, empresa: e.empresa, un: e.un,
+      estoque: e.qtd, comprometido: 0, emProducao: 0, previsaoConclusao: null, ops: [], pedidos: []
+    };
+  });
+  Object.entries(pedPorSku).forEach(([sku, peds]) => {
+    if (!map[sku]) {
+      const p0 = peds[0];
+      map[sku] = {sku, desc: '(sem cadastro de estoque)', empresa: p0.empresa, un: '—', estoque: 0, comprometido: 0, emProducao: 0, previsaoConclusao: null, ops: [], pedidos: []};
+    }
+    peds.forEach(p => {
+      map[sku].comprometido += p.qtd;
+      map[sku].pedidos.push(p);
+    });
+  });
+  // OPs em aberto somam à projeção
+  MOCK_OPS.forEach(op => {
+    if (!map[op.sku]) {
+      map[op.sku] = {sku: op.sku, desc: op.desc || '(sem cadastro)', empresa: op.empresa, un: '—', estoque: 0, comprometido: 0, emProducao: 0, previsaoConclusao: null, ops: [], pedidos: []};
+    }
+    map[op.sku].emProducao += op.qtd;
+    map[op.sku].ops.push(op);
+    // mantém a previsão mais cedo
+    if (!map[op.sku].previsaoConclusao || op.previsao < map[op.sku].previsaoConclusao) {
+      map[op.sku].previsaoConclusao = op.previsao;
+    }
+  });
+
+  dadosCalc = Object.values(map).map(d => {
+    d.disponivel = d.estoque + d.emProducao - d.comprometido;
+    if (d.disponivel <= 0)         d.status = 'zero';
+    else if (d.disponivel < d.comprometido * 0.3) d.status = 'baixo';
+    else                            d.status = 'ok';
+    return d;
+  }).sort((a, b) => {
+    // Críticos primeiro, depois por descrição
+    const ord = {zero:0, baixo:1, ok:2};
+    if (ord[a.status] !== ord[b.status]) return ord[a.status] - ord[b.status];
+    return a.desc.localeCompare(b.desc);
+  });
+
+  atualizarKPIs();
+  atualizarContadores();
+  popularVendedores();
+  aplicarFiltros();
+}
+
+function atualizarKPIs() {
+  const total = dadosCalc.length;
+  const estoqueTotal = dadosCalc.reduce((s,d)=>s+d.estoque,0);
+  const compTotal = dadosCalc.reduce((s,d)=>s+d.comprometido,0);
+  const neg = dadosCalc.filter(d=>d.disponivel <= 0 && d.comprometido > 0).length;
+  document.getElementById('kpi-skus').textContent = total;
+  document.getElementById('kpi-estoque').textContent = fmt(estoqueTotal);
+  document.getElementById('kpi-comp').textContent = fmt(compTotal);
+  document.getElementById('kpi-neg').textContent = neg;
+}
+
+function atualizarContadores() {
+  // Conta SKUs em cada view
+  ['comercial','licitacao'].forEach(v => {
+    const estq = getEstoqueView(v);
+    const peds = MOCK_PEDIDOS.filter(p => p.depto === (v === 'comercial' ? 'COMERCIAL' : 'LICITACAO'));
+    const skus = new Set([...estq.map(e=>e.sku), ...peds.map(p=>p.sku)]);
+    document.getElementById('cnt-'+v).textContent = skus.size;
+  });
+}
+
+function popularVendedores() {
+  const sel = document.getElementById('f-vendedor');
+  const atual = sel.value;
+  // pega todos os vendedores que aparecem nos pedidos da view atual
+  const peds = MOCK_PEDIDOS.filter(p => p.depto === (viewAtual === 'comercial' ? 'COMERCIAL' : 'LICITACAO'));
+  const vendCods = [...new Set(peds.map(p=>p.codVend))];
+  sel.innerHTML = '<option value="">Todos</option>' + vendCods.map(c =>
+    `<option value="${c}">${VENDEDORES[c] || c}</option>`
+  ).join('');
+  sel.value = atual;
+}
+
+/* ============================================================
+   FILTROS + RENDER
+   ============================================================ */
+function aplicarFiltros() {
+  const fVend = document.getElementById('f-vendedor').value;
+  const fStat = document.getElementById('f-status').value;
+  const fBusca = document.getElementById('f-busca').value.trim().toLowerCase();
+
+  const filtrado = dadosCalc.filter(d => {
+    if (fStat && d.status !== fStat) return false;
+    if (fVend) {
+      const temVend = d.pedidos.some(p => p.codVend === fVend);
+      if (!temVend) return false;
+    }
+    if (fBusca) {
+      const txt = (d.sku + ' ' + d.desc).toLowerCase();
+      if (!txt.includes(fBusca)) return false;
+    }
+    return true;
+  });
+
+  renderTabela(filtrado);
+  document.getElementById('tabela-info').textContent =
+    `${filtrado.length} de ${dadosCalc.length} SKUs`;
+}
+
+function renderTabela(dados) {
+  const tbody = document.getElementById('tbody-estoque');
+  if (!dados.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="vazio"><div class="vazio-icon">📦</div>Nenhum SKU encontrado com os filtros atuais.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = dados.map(d => {
+    const dispCls = d.status==='zero'?'disp-zero':d.status==='baixo'?'disp-baixo':'disp-ok';
+    const statusHtml = d.status==='zero'
+      ? '<span class="status-pill s-zero">✗ Sem estoque</span>'
+      : d.status==='baixo'
+        ? '<span class="status-pill s-baixo">⚠ Estoque baixo</span>'
+        : '<span class="status-pill s-ok">✓ Disponível</span>';
+    const opCell = d.emProducao>0
+      ? `<span style="color:var(--blue);font-weight:700;">${fmt(d.emProducao)}</span> <span style="font-size:9px;color:var(--muted);">(${d.ops.length} OP${d.ops.length>1?'s':''})</span>`
+      : '<span style="color:var(--muted);">—</span>';
+    const prevCell = d.previsaoConclusao
+      ? `<span style="font-size:11px;color:var(--navy);font-weight:600;">${d.previsaoConclusao}</span>`
+      : '<span style="color:var(--muted);">—</span>';
+    const nPed = d.pedidos.length;
+    const badgeCls = nPed>0 ? 'ped-badge has-ped' : 'ped-badge';
+    const pedCell = `<td class="center ped-cell" data-sku="${d.sku}" onmouseenter="mostrarPedPop(event,'${d.sku}')" onmouseleave="esconderPedPop()" onclick="event.stopPropagation();abrirDrill('${d.sku}')"><span class="${badgeCls}">${nPed||'—'}</span></td>`;
+    return `<tr onclick="abrirDrill('${d.sku}')">
+      <td class="cod">${d.sku}</td>
+      <td class="produto">${d.desc}</td>
+      <td class="num">${fmt(d.estoque)} <span style="font-size:9px;color:var(--muted);">${d.un}</span></td>
+      <td class="num" style="color:${d.comprometido>0?'var(--amber)':'var(--muted)'};font-weight:${d.comprometido>0?700:400};">${fmt(d.comprometido)}</td>
+      <td class="num">${opCell}</td>
+      <td>${prevCell}</td>
+      <td class="num qtd-disp ${dispCls}">${fmt(d.disponivel)}</td>
+      ${pedCell}
+      <td class="center">${statusHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   DRILL-DOWN (pedidos vinculados ao SKU)
+   ============================================================ */
+function abrirDrill(sku) {
+  const d = dadosCalc.find(x => x.sku === sku);
+  if (!d) return;
+  document.getElementById('drill-titulo').textContent = d.desc;
+  document.getElementById('drill-sub').textContent = `SKU ${d.sku} · ${d.un} · ${d.empresa==='MFP'?'MF Paris':d.empresa}`;
+  document.getElementById('drill-estq').textContent = fmt(d.estoque);
+  document.getElementById('drill-comp').textContent = fmt(d.comprometido);
+  const dispEl = document.getElementById('drill-disp');
+  dispEl.textContent = fmt(d.disponivel);
+  dispEl.style.color = d.disponivel<=0 ? 'var(--red)' : d.disponivel<d.comprometido*0.3 ? 'var(--amber)' : 'var(--green)';
+
+  const tb = document.getElementById('drill-tbody');
+  if (!d.pedidos.length) {
+    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Nenhum pedido em aberto para este SKU.</td></tr>';
+  } else {
+    tb.innerHTML = d.pedidos.map(p => {
+      const empCls = p.empresa==='MFP'?'emp-mfp':p.empresa==='DMS'?'emp-dms':'emp-profi';
+      const empLabel = p.empresa==='MFP'?'MF Paris':p.empresa;
+      return `<tr>
+        <td style="font-family:monospace;font-weight:700;">${p.num}</td>
+        <td>${p.cliente}</td>
+        <td>${VENDEDORES[p.codVend] || p.codVend}</td>
+        <td><span class="badge-empresa ${empCls}">${empLabel}</span></td>
+        <td>${p.previsao}</td>
+        <td class="num">${fmt(p.qtd)}</td>
+        <td class="num">R$ ${p.valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('drill-modal').classList.add('open');
+}
+function fecharDrill() { document.getElementById('drill-modal').classList.remove('open'); }
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function trocarView(v) {
+  viewAtual = v;
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('tabela-titulo').textContent =
+    'Estoque disponível para venda — ' + (v==='comercial'?'Comercial':'Licitação');
+  document.getElementById('f-vendedor').value = '';
+  recalcular();
+}
+
+async function atualizar() {
+  toast('Atualizando estoque do Google Sheets...', 'info');
+  try {
+    await carregarEstoqueDoSheets();
+    recalcular();
+    toast('Estoque atualizado','ok');
+  } catch(e) {
+    console.error(e);
+    toast('Falha ao ler Sheets — usando mock','err');
+    recalcular();
+  }
+  // TODO: substituir pedidos por /api/omie-pedidos?etapa=20
+}
+
+/* ============================================================
+   POPOVER DE PEDIDOS (hover na celula "Pedidos")
+   ============================================================ */
+function mostrarPedPop(ev, sku) {
+  const d = dadosCalc.find(x => x.sku === sku);
+  if (!d) return;
+  const pop = document.getElementById('ped-pop');
+  if (!d.pedidos.length) {
+    pop.innerHTML = `<div class="ped-pop-title">${d.desc}</div><div class="ped-pop-empty">Nenhum pedido em aberto</div>`;
+  } else {
+    const total = d.pedidos.reduce((s,p)=>s+(p.qtd||0),0);
+    const linhas = d.pedidos.map(p => {
+      const vend = (typeof VENDEDORES==='object' && VENDEDORES[p.codVend]) || p.codVend || '';
+      return `<div class="ped-pop-row">
+        <div class="ped-pop-num">${p.num}</div>
+        <div class="ped-pop-cliente">${p.cliente}<div class="ped-pop-vend">${vend} · prev. ${p.previsao||'—'}</div></div>
+        <div class="ped-pop-qtd">${fmt(p.qtd)}</div>
+      </div>`;
+    }).join('');
+    pop.innerHTML = `<div class="ped-pop-title">${d.pedidos.length} pedido${d.pedidos.length>1?'s':''} · ${fmt(total)} ${d.un}</div>${linhas}<div class="ped-pop-footer">clique para abrir detalhes</div>`;
+  }
+  // Posiciona ao lado da celula (a esquerda se nao couber a direita)
+  const cell = ev.currentTarget.getBoundingClientRect();
+  pop.classList.add('open');
+  const popW = pop.offsetWidth, popH = pop.offsetHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = cell.right + 8;
+  if (left + popW > vw - 8) left = Math.max(8, cell.left - popW - 8);
+  let top = cell.top + (cell.height/2) - (popH/2);
+  if (top + popH > vh - 8) top = vh - popH - 8;
+  if (top < 8) top = 8;
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+}
+function esconderPedPop() {
+  document.getElementById('ped-pop').classList.remove('open');
+}
+
+function exportarExcel() {
+  if (!window.XLSX) { toast('Aguarde SheetJS...','info'); return; }
+  const fVend = document.getElementById('f-vendedor').value;
+  const fStat = document.getElementById('f-status').value;
+  const fBusca = document.getElementById('f-busca').value.trim().toLowerCase();
+  const dados = dadosCalc.filter(d => {
+    if (fStat && d.status !== fStat) return false;
+    if (fVend && !d.pedidos.some(p => p.codVend === fVend)) return false;
+    if (fBusca && !((d.sku+' '+d.desc).toLowerCase().includes(fBusca))) return false;
+    return true;
+  });
+
+  const wb = XLSX.utils.book_new();
+  const aoa = [
+    ['ESTOQUE ' + (viewAtual==='comercial'?'COMERCIAL':'LICITAÇÃO') + ' — ' + new Date().toLocaleDateString('pt-BR')],
+    [],
+    ['SKU','Descrição','Unidade','Estoque','Comprometido','Em Produção','Previsão Conclusão','Disponível','Status','Qtd Pedidos','Qtd OPs']
+  ];
+  dados.forEach(d => aoa.push([
+    d.sku, d.desc, d.un,
+    d.estoque, d.comprometido, d.emProducao, d.previsaoConclusao||'',
+    d.disponivel,
+    d.status==='zero'?'SEM ESTOQUE':d.status==='baixo'?'BAIXO':'DISPONÍVEL',
+    d.pedidos.length, d.ops.length
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:12},{wch:42},{wch:8},{wch:11},{wch:12},{wch:12},{wch:15},{wch:11},{wch:13},{wch:11},{wch:9}];
+  XLSX.utils.book_append_sheet(wb, ws, viewAtual.toUpperCase());
+  XLSX.writeFile(wb, 'EstoqueComercial_'+viewAtual+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel exportado','ok');
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function fmt(n) { return Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+function toast(msg, tipo) {
+  const cont = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-' + (tipo==='ok'?'ok':tipo==='err'?'err':'info');
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+// Fechar modal ao clicar no fundo
+document.getElementById('drill-modal').addEventListener('click', e => {
+  if (e.target.id === 'drill-modal') fecharDrill();
+});
+
+// Init: carrega estoque do Sheets, depois calcula
+(async function init() {
+  recalcular();   // render inicial com mock para nao deixar tela vazia
+  try {
+    await carregarEstoqueDoSheets();
+    recalcular(); // re-render com dados reais
+  } catch(e) {
+    console.error('Init Sheets falhou:', e);
+    setOmieStatus('err','Sheets indisponivel — mock ativo');
+  }
+})();
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

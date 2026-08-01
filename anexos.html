@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anexos do Pedido — Omie</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:24px;background:#f5f6f8;color:#1c2126}
+  .box{max-width:820px;margin:0 auto;background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px}
+  h1{font-size:19px;margin:0 0 4px}
+  p.sub{margin:0 0 20px;color:#6b7280;font-size:13px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  input{padding:9px 11px;border:1px solid #cbd2d9;border-radius:6px;font-size:14px;width:170px}
+  button{padding:9px 16px;border:0;border-radius:6px;background:#1f6feb;color:#fff;font-size:14px;cursor:pointer}
+  button:disabled{background:#9db8e0;cursor:default}
+  button.sec{background:#e8ebef;color:#1c2126}
+  #status{font-size:13px;margin-bottom:14px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid #eceff2;vertical-align:middle}
+  th{color:#6b7280;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  pre{background:#0f1620;color:#c9d6e4;padding:14px;border-radius:8px;font-size:11.5px;overflow:auto;max-height:340px}
+  details{margin-top:18px}
+  summary{cursor:pointer;font-size:13px;color:#6b7280}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Anexos do Pedido de Venda</h1>
+  <p class="sub">Resolve o número do pedido para o código interno e lista os anexos via <code>geral/anexo</code>.</p>
+
+  <div class="row">
+    <input id="num" type="text" placeholder="Nº do pedido (ex: 759)" value="759">
+    <button id="go">Buscar anexos</button>
+    <button id="sweep" class="sec">Diagnóstico (testar IDs)</button>
+    <button id="raw" class="sec">Ver JSON bruto</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="result"></div>
+
+  <details id="dbg" style="display:none">
+    <summary>Resposta bruta</summary>
+    <pre id="json"></pre>
+  </details>
+</div>
+
+<script>
+// ── Credenciais (mesmas usadas nas outras telas do projeto) ────────────────
+const OMIE_KEY    = '952260381072';
+const OMIE_SECRET = '8300b385eeec583c71439709ab866fc7';
+
+// Local chama a Omie direto; em produção passa pelo proxy da Netlify/Vercel.
+const USE_PROXY = !['localhost','127.0.0.1',''].includes(location.hostname);
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+const EP_ANEXO  = 'https://app.omie.com.br/api/v1/geral/anexo/';
+
+// cTabela do pedido de venda (confirmado pela própria API).
+// Outros: 'cliente','produto','servico','remessa-produto','ordem-servico',
+// 'contrato-servico','pedido-compra','nota-entrada','ordem-producao',
+// 'conta-pagar','conta-receber','conta-corrente','conta-corrente-lancamento',
+// 'crm-contas','crm-contatos','crm-oportunidades','com-recebimento'
+const C_TABELA = 'pedido-venda';
+
+let ultimaResposta = null;
+
+async function omie(endpoint, call, param){
+  const payload = { call, app_key: OMIE_KEY, app_secret: OMIE_SECRET, param: [param] };
+  const resp = USE_PROXY
+    ? await fetch('/api/omie', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ endpoint, payload })
+      })
+    : await fetch(endpoint, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+  const data = await resp.json();
+  if (data.faultstring) throw new Error(data.faultstring);
+  return data;
+}
+
+function setStatus(msg, cor){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.style.color = cor || '#6b7280';
+}
+
+async function buscar(){
+  const numero = document.getElementById('num').value.trim();
+  if(!numero) return setStatus('Informe o número do pedido.', '#b42318');
+
+  document.getElementById('go').disabled = true;
+  document.getElementById('result').innerHTML = '';
+  setStatus('Consultando pedido ' + numero + '…');
+
+  try{
+    // 1) numero_pedido -> codigo_pedido
+    const ped = await omie(EP_PEDIDO, 'ConsultarPedido', { numero_pedido: numero });
+    const codigo = ped?.pedido_venda_produto?.cabecalho?.codigo_pedido;
+    if(!codigo) throw new Error('Pedido não encontrado ou sem codigo_pedido na resposta.');
+
+    setStatus('Pedido ' + numero + ' = codigo_pedido ' + codigo + '. Listando anexos…');
+
+    // 2) lista os anexos
+    const res = await omie(EP_ANEXO, 'ListarAnexo', {
+      nPagina: 1,
+      nRegPorPagina: 50,
+      cTabela: C_TABELA,
+      nId: codigo
+    });
+
+    ultimaResposta = res;
+    const lista = extrairLista(res);
+    if(!lista.length){
+      setStatus('Nada reconhecido como lista de anexos — veja o JSON bruto abaixo.', '#b42318');
+      mostrarJson();
+      return;
+    }
+
+    setStatus(lista.length + ' anexo(s) encontrado(s).', '#166534');
+    render(lista, codigo);
+
+  }catch(e){
+    setStatus('Erro: ' + e.message, '#b42318');
+  }finally{
+    document.getElementById('go').disabled = false;
+  }
+}
+
+// Acha o array de anexos independente do nome do campo na resposta.
+function extrairLista(obj){
+  if(Array.isArray(obj)) return obj.filter(x => x && typeof x === 'object');
+  if(!obj || typeof obj !== 'object') return [];
+  for(const k of Object.keys(obj)){
+    const v = obj[k];
+    if(Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
+  }
+  // desce um nível (às vezes vem aninhado em cabecalho/registros)
+  for(const k of Object.keys(obj)){
+    if(obj[k] && typeof obj[k] === 'object'){
+      const r = extrairLista(obj[k]);
+      if(r.length) return r;
+    }
+  }
+  return [];
+}
+
+// Pega o primeiro campo cujo nome bate com algum dos padrões.
+function campo(o, padroes){
+  for(const p of padroes){
+    const k = Object.keys(o).find(k => k.toLowerCase().includes(p));
+    if(k && o[k] !== null && o[k] !== '') return o[k];
+  }
+  return null;
+}
+
+function render(lista, codigo){
+  let html = '<table><tr><th>Arquivo</th><th>Tipo</th><th>Tamanho</th><th></th></tr>';
+  lista.forEach(a => {
+    const nome = campo(a, ['nomearquivo','arquivo','nome']) || '(sem nome)';
+    const tipo = campo(a, ['tipoarquivo','tipo','mime']) || '—';
+    const tam  = campo(a, ['tamanho','size']) || '—';
+    const id   = campo(a, ['idanexo','anexo','id']);
+    html += `<tr><td>${nome}</td><td>${tipo}</td><td>${tam}</td>
+      <td><button class="sec" onclick="baixar(${codigo},${JSON.stringify(id)})">Abrir</button></td></tr>`;
+  });
+  html += '</table>';
+  document.getElementById('result').innerHTML = html;
+  mostrarJson(); // deixa o bruto à mão pra conferir os nomes reais dos campos
+}
+
+async function baixar(codigo, idAnexo){
+  setStatus('Obtendo link do anexo…');
+  try{
+    const r = await omie(EP_ANEXO, 'ObterAnexo', {
+      cTabela: C_TABELA, nId: codigo, nIdAnexo: idAnexo
+    });
+    ultimaResposta = r;
+    const link = campo(r, ['linkdownload','download','url','link']);
+    if(link){ window.open(link, '_blank'); setStatus('Link aberto em nova aba.', '#166534'); }
+    else { setStatus('Sem link na resposta — veja o JSON bruto.', '#b42318'); mostrarJson(); }
+  }catch(e){
+    setStatus('Erro ao obter anexo: ' + e.message, '#b42318');
+  }
+}
+
+function mostrarJson(){
+  const d = document.getElementById('dbg');
+  d.style.display = 'block'; d.open = true;
+  document.getElementById('json').textContent =
+    ultimaResposta ? JSON.stringify(ultimaResposta, null, 2) : 'Nada ainda — faça uma busca primeiro.';
+}
+
+// ── Diagnóstico: testa vários candidatos a nId ────────────────────────────
+// Coleta todo valor numérico do pedido e tenta cada um no ListarAnexo.
+function coletarCandidatos(obj, achados, caminho){
+  achados = achados || {}; caminho = caminho || '';
+  if(!obj || typeof obj !== 'object') return achados;
+  for(const k of Object.keys(obj)){
+    const v = obj[k];
+    const p = caminho ? caminho + '.' + k : k;
+    if(typeof v === 'object' && v !== null){ coletarCandidatos(v, achados, p); }
+    else if(v !== null && v !== '' && /^\d{2,}$/.test(String(v))){
+      const n = String(v);
+      if(!achados[n]) achados[n] = p;   // guarda de onde veio
+    }
+  }
+  return achados;
+}
+
+async function diagnostico(){
+  const numero = document.getElementById('num').value.trim();
+  document.getElementById('sweep').disabled = true;
+  document.getElementById('result').innerHTML = '';
+  setStatus('Consultando pedido ' + numero + '…');
+
+  try{
+    const ped = await omie(EP_PEDIDO, 'ConsultarPedido', { numero_pedido: numero });
+    const cands = coletarCandidatos(ped);
+    const ids = Object.keys(cands).slice(0, 12);   // limita pra não estourar rate limit
+
+    setStatus('Testando ' + ids.length + ' identificador(es) no ListarAnexo…');
+
+    let html = '<table><tr><th>nId testado</th><th>Origem no pedido</th><th>Anexos</th></tr>';
+    for(const id of ids){
+      let n = '—';
+      try{
+        const r = await omie(EP_ANEXO, 'ListarAnexo', {
+          nPagina: 1, nRegPorPagina: 50, cTabela: C_TABELA, nId: Number(id)
+        });
+        n = r.nTotRegistros != null ? r.nTotRegistros : extrairLista(r).length;
+      }catch(e){ n = 'erro: ' + e.message.slice(0, 40); }
+      const ok = (n !== 0 && n !== '—' && String(n).indexOf('erro') !== 0);
+      html += `<tr${ok ? ' style="background:#e8f7ee;font-weight:600"' : ''}>
+        <td>${id}</td><td style="color:#6b7280">${cands[id]}</td><td>${n}</td></tr>`;
+      await new Promise(r => setTimeout(r, 350));   // respeita rate limit da Omie
+    }
+    html += '</table>';
+    document.getElementById('result').innerHTML = html;
+    setStatus('Diagnóstico concluído. A linha verde (se houver) tem o nId correto.', '#166534');
+
+  }catch(e){
+    setStatus('Erro: ' + e.message, '#b42318');
+  }finally{
+    document.getElementById('sweep').disabled = false;
+  }
+}
+
+document.getElementById('go').onclick = buscar;
+document.getElementById('raw').onclick = mostrarJson;
+document.getElementById('sweep').onclick = diagnostico;
+document.getElementById('num').addEventListener('keydown', e => { if(e.key === 'Enter') buscar(); });
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

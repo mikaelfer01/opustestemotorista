@@ -1,0 +1,614 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simulador de Frete — Grupo MF Paris</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--gold:#B8864A;--gold-b:rgba(184,134,74,.2);
+  --gold-l:rgba(184,134,74,.12);--div:#C8B99A;--muted:#8A8578;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.nav-logo{width:40px;height:45px;}
+.nav-brand-txt .name{color:#fff;font-size:13px;font-weight:600;}
+.nav-brand-txt .sub{color:var(--div);font-size:9px;letter-spacing:.1em;text-transform:uppercase;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.back-btn{color:var(--div);font-size:11px;font-weight:500;text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,.1);border-radius:8px;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.back-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+
+
+.sheets-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 32px;background:var(--card);border-top:0.5px solid var(--gold-b);border-bottom:0.5px solid var(--gold-b);}
+.sheets-left{display:flex;align-items:center;gap:8px;}
+.sheets-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sheets-dot.ok{background:var(--green);animation:pulse 2s infinite;}
+.sheets-dot.err{background:var(--red);}
+.sheets-text{font-size:11px;color:var(--muted);}
+.sheets-btn{font-size:11px;font-weight:500;color:var(--gold);background:transparent;border:1px solid var(--gold-b);border-radius:7px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.sheets-btn:hover{background:rgba(184,134,74,.08);}
+
+.hero{padding:20px 32px 14px;animation:fadeUp .4s ease both;}
+.hero-eye{font-size:9px;font-weight:600;color:var(--gold);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.hero-eye::before{content:'';display:block;width:20px;height:1px;background:var(--gold);}
+.hero-title{font-size:24px;font-weight:300;color:var(--navy);}
+.hero-title strong{font-weight:600;}
+.hero-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.hero-origin{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--navy);background:var(--icon);padding:5px 12px;border-radius:8px;margin-top:8px;border:0.5px solid var(--gold-b);}
+
+.wrap{padding:20px 32px 60px;display:flex;flex-direction:column;gap:20px;}
+
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:18px;padding:22px 24px;animation:fadeUp .4s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px;padding-bottom:10px;border-bottom:0.5px solid var(--gold-l);}
+
+.calc-row{display:grid;grid-template-columns:1.4fr 1.4fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.field input,.field select{padding:9px 12px;border:1.5px solid var(--gold-b);border-radius:10px;background:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--navy);outline:none;transition:border-color .15s;width:100%;}
+.field input:focus,.field select:focus{border-color:var(--gold);}
+.field input.err{border-color:var(--red);}
+.cep-wrap{position:relative;}
+.cep-wrap input{padding-right:38px;}
+.cep-spin{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;border:2px solid var(--gold-b);border-top-color:var(--gold);border-radius:50%;display:none;}
+.cep-spin.on{display:block;animation:spin .8s linear infinite;}
+.cep-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:15px;display:none;}
+.cep-icon.show{display:block;}
+
+.btn-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.btn-calc{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px;}
+.btn-calc:hover{background:#243d68;transform:translateY(-1px);}
+.btn-calc:active{transform:scale(.98);}
+.calc-err{font-size:11px;color:var(--red);display:none;}
+
+.resultado{margin-top:18px;border-top:0.5px solid var(--gold-l);padding-top:18px;display:none;}
+.resultado.show{display:block;}
+.dest-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.dest-badge{font-size:12px;font-weight:600;background:var(--blue-l);color:#0C447C;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(26,86,160,.3);}
+.dest-note{font-size:11px;color:var(--muted);}
+
+.res-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+@media (max-width:1200px){.res-grid{grid-template-columns:repeat(3,1fr);}}
+.res-card{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:14px;padding:14px 14px 12px;transition:transform .15s;position:relative;overflow:hidden;}
+.res-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;}
+.res-card.best::before{background:var(--green);}
+.res-card.mid::before{background:var(--amber);}
+.res-card.high::before{background:var(--red);}
+.res-card:hover{transform:translateY(-2px);}
+.res-card.best{background:var(--green-l);border-color:rgba(46,125,82,.3);}
+.res-card.high{border-color:rgba(176,58,46,.2);}
+.res-badge-best{font-size:8px;font-weight:700;background:var(--green);color:#fff;padding:2px 7px;border-radius:20px;display:inline-block;margin-bottom:4px;}
+.res-nome{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:2px;}
+.res-valor{font-size:18px;font-weight:600;line-height:1;margin:6px 0 2px;}
+.res-card.best .res-valor{color:var(--green);}
+.res-card.high .res-valor{color:var(--red);}
+.res-sub{font-size:10px;color:var(--muted);}
+.res-prazo{font-size:10px;color:var(--muted);margin-top:4px;}
+.res-mensal{font-size:11px;font-weight:600;color:var(--navy);margin-top:5px;padding-top:5px;border-top:0.5px solid var(--gold-l);}
+.res-economia{font-size:10px;color:var(--red);font-weight:500;}
+
+/* FILTROS */
+.filtros-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.ftab-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+.ftab-btn{padding:6px 14px;border-radius:8px;border:1.5px solid var(--gold-b);background:var(--cream);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.ftab-btn:hover{border-color:var(--gold);color:var(--navy);}
+.ftab-btn.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.search-tbl{padding:8px 12px;border:1.5px solid var(--gold-b);border-radius:9px;background:var(--cream);font-family:'DM Sans',sans-serif;font-size:12px;color:var(--navy);outline:none;width:200px;}
+.search-tbl:focus{border-color:var(--gold);}
+
+/* TABELA */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:var(--navy);}
+th{padding:10px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap;cursor:pointer;user-select:none;}
+th:hover{color:#fff;}
+th.sorted{color:#fff;}
+th.num,td.num{text-align:right;}
+tbody tr{border-bottom:0.5px solid var(--gold-l);transition:background .1s;}
+tbody tr:hover{background:var(--cream);}
+td{padding:9px 12px;vertical-align:middle;}
+td.est{font-weight:600;color:var(--navy);}
+.tag-reg{display:inline-block;font-size:8px;font-weight:700;padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;}
+.tag-nordeste{background:rgba(184,134,74,.15);color:#6B3A00;}
+.tag-sudeste{background:var(--blue-l);color:#0C447C;}
+.tag-sul{background:var(--green-l);color:#1a5c32;}
+.tag-centro{background:rgba(109,40,217,.07);color:#5b21b6;}
+.tag-norte{background:var(--red-l);color:#7a1a14;}
+td.best-val{color:var(--green);font-weight:700;}
+td.high-val{color:var(--red);}
+.tag-prazo{font-size:9px;font-weight:600;background:var(--icon);color:var(--muted);padding:2px 8px;border-radius:5px;}
+.arrow{opacity:.4;font-size:9px;margin-left:2px;}
+th.sorted .arrow{opacity:1;}
+
+/* CONTATOS */
+.contatos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.contato-card{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:12px;padding:14px;}
+.contato-card.destaque{background:var(--green-l);border-color:rgba(46,125,82,.3);}
+.contato-nome{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:3px;}
+.contato-site{font-size:10px;color:var(--blue);margin-bottom:2px;}
+.contato-tel{font-size:10px;color:var(--muted);margin-bottom:8px;}
+.contato-nota{font-size:10px;color:var(--muted);}
+.contato-card.destaque .contato-nota{color:var(--green);font-weight:500;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border-radius:20px;padding:28px;width:520px;max-width:92vw;}
+.modal-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:6px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.modal-input{width:100%;padding:10px 12px;border:1.5px solid var(--gold-b);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--navy);outline:none;margin-bottom:8px;}
+.modal-input:focus{border-color:var(--gold);}
+.modal-hint{font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;}
+.modal-hint code{background:var(--icon);padding:1px 5px;border-radius:4px;}
+.modal-code{background:var(--icon);border-radius:8px;padding:10px 12px;font-size:10px;font-family:monospace;color:var(--muted);line-height:1.7;margin-bottom:16px;white-space:pre;overflow-x:auto;}
+.modal-cols{font-size:10px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:var(--cream);border-radius:8px;border:0.5px solid var(--gold-b);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.btn-cancel{padding:8px 16px;border:1.5px solid var(--gold-b);border-radius:8px;background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;}
+.btn-save{padding:8px 20px;border:none;border-radius:8px;background:var(--navy);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:#fff;cursor:pointer;}
+</style>
+</head>
+<body>
+<div style="display:none;" id="js-date"></div>
+ <div class="sheets-bar">
+  <div class="sheets-left">
+    <span class="sheets-dot" id="sheets-dot"></span>
+    <span class="sheets-text" id="sheets-text">Tarifas padrao — conecte ao Google Sheets para atualizar quando mudar contratos</span>
+  </div>
+  <button class="sheets-btn" onclick="openModal()">Conectar Planilha de Tarifas</button>
+</div>
+
+<div class="hero">
+  <div class="hero-eye">Modulo Logistica — Frete Fracionado</div>
+  <h1 class="hero-title">Simulador de <strong>Frete</strong></h1>
+  <p class="hero-sub">Digite o CEP de destino para calcular o frete estimado por transportadora. Brasil inteiro.</p>
+  <div class="hero-origin">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    Origem: Rua Beta 385, Vila Paris — Contagem, MG · CEP 32210-110
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- CALCULADORA -->
+  <div class="sec">
+    <div class="sec-title">Calculadora por CEP de Destino</div>
+
+    <div class="calc-row">
+      <div class="field">
+        <label>CEP de Destino</label>
+        <div class="cep-wrap">
+          <input type="text" id="cep-input" placeholder="00000-000" maxlength="9"
+            oninput="formatCEP(this)" onblur="buscarCEP()" onkeydown="if(event.key==='Enter')buscarCEP()"/>
+          <div class="cep-spin" id="cep-spin"></div>
+          <span class="cep-icon" id="cep-icon"></span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Cidade — Estado</label>
+        <input type="text" id="cep-cidade" placeholder="Busque o CEP ao lado..."
+          readonly style="background:var(--icon);color:var(--muted);"/>
+      </div>
+      <div class="field">
+        <label>Peso (kg)</label>
+        <input type="number" id="peso" value="200" min="1" max="10000" step="10"/>
+      </div>
+      <div class="field">
+        <label>Valor NF (R$)</label>
+        <input type="number" id="nf" value="3000" min="100" step="100"/>
+      </div>
+      <div class="field">
+        <label>Pedidos / mes</label>
+        <input type="number" id="pedidos" value="10" min="1" max="500" step="1"/>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-calc" onclick="calcular()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Calcular Frete
+      </button>
+      <span class="calc-err" id="calc-err">Informe o CEP e o peso para calcular.</span>
+    </div>
+
+    <div class="resultado" id="resultado">
+      <div class="dest-row">
+        <span class="dest-badge" id="dest-label">—</span>
+        <span class="dest-note">Estimativas de mercado · Solicite cotacao formal antes de fechar contrato</span>
+      </div>
+      <div class="res-grid" id="res-grid"></div>
+      <p style="margin-top:10px;font-size:10px;color:var(--muted);">
+        * Fretebras: seguro nao incluso — contrate a parte. GRIS calculado sobre valor da NF. Nao inclui ICMS-ST nem taxas de coleta.
+      </p>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="sec">
+    <div class="sec-title">Tabela Brasil Completo — Referencia por Estado (200 kg)</div>
+
+    <div class="filtros-row">
+      <span class="ftab-label">Regiao:</span>
+      <button class="ftab-btn on" onclick="setFiltro('todos',this)">Todos</button>
+      <button class="ftab-btn" onclick="setFiltro('nordeste',this)">Nordeste</button>
+      <button class="ftab-btn" onclick="setFiltro('sudeste',this)">Sudeste</button>
+      <button class="ftab-btn" onclick="setFiltro('sul',this)">Sul</button>
+      <button class="ftab-btn" onclick="setFiltro('centro',this)">Centro-Oeste</button>
+      <button class="ftab-btn" onclick="setFiltro('norte',this)">Norte</button>
+      <input type="text" class="search-tbl" id="search-tbl" placeholder="Buscar estado..." oninput="renderTabela()"/>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTabela('estado')">Estado <span class="arrow">↕</span></th>
+            <th>Regiao</th>
+            <th class="num" onclick="sortTabela('jadlog')">Jadlog <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('log')">LOG <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('patrus')">Patrus <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('totalexpress')">Total Express <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('correios')">Correios <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('fretebras')">Fretebras* <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('prazo')">Prazo <span class="arrow">↕</span></th>
+            <th class="num" onclick="sortTabela('mensal')">Custo Mensal (10x) <span class="arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <p style="margin-top:10px;font-size:10px;color:var(--muted);">
+      Verde = menor preco por linha. * Fretebras sem seguro. Valores para 200 kg, carga seca, interior (ate 200 km da capital). Origem: Contagem/MG. Estimativas 2025/2026 baseadas em tabelas publicadas.
+    </p>
+  </div>
+
+  <!-- CONTATOS -->
+  <div class="sec">
+    <div class="sec-title">Contatos e Recomendacoes</div>
+    <div class="contatos-grid" id="contatos-grid"></div>
+  </div>
+
+</div>
+
+<!-- MODAL GOOGLE SHEETS -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Conectar Planilha de Tarifas</div>
+    <div class="modal-sub">Cole a URL do Apps Script da sua planilha de tarifas. Quando conectado, os valores serao atualizados automaticamente sem precisar alterar o codigo.</div>
+    <input class="modal-input" type="text" id="modal-url" placeholder="https://script.google.com/macros/s/.../exec"/>
+    <div class="modal-cols">
+      Colunas esperadas na aba <strong>"Tarifas"</strong>:
+      uf | estado | regiao | jadlog | log | patrus | totalexpress | correios | fretebras | prazo
+    </div>
+    <div class="modal-hint">Regiao deve ser: <code>nordeste</code>, <code>sudeste</code>, <code>sul</code>, <code>centro</code> ou <code>norte</code>. Tarifa em R$/kg, prazo em dias uteis.</div>
+    <div class="modal-code">function doGet() {
+  var sh = SpreadsheetApp.getActive().getSheetByName("Tarifas");
+  var data = sh.getDataRange().getValues();
+  var h = data[0];
+  var rows = data.slice(1).map(function(r){
+    var o={};h.forEach(function(k,i){o[k]=r[i];});return o;
+  });
+  var out = JSON.stringify({ok:true,tarifas:rows});
+  if(arguments[0]&&arguments[0].parameter.callback)
+    return ContentService.createTextOutput(
+      arguments[0].parameter.callback+"("+out+")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(out)
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveSheets()">Salvar e Conectar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TARIFAS PADRÃO — Origem: Contagem/MG ─────────────────────────────
+// Transportadoras: Jadlog, LOG (Magalu), Patrus (sede MG), Total Express, Correios, Fretebras
+let TARIFAS = [
+  {uf:"AL", estado:"Alagoas",          regiao:"nordeste", jadlog:4.2, log:4.0, patrus:3.6, totalexpress:4.5, correios:5.8, fretebras:2.9, prazo:3},
+  {uf:"BA", estado:"Bahia",            regiao:"nordeste", jadlog:3.2, log:3.0, patrus:2.6, totalexpress:3.4, correios:4.4, fretebras:2.2, prazo:2},
+  {uf:"CE", estado:"Ceara",            regiao:"nordeste", jadlog:4.5, log:4.3, patrus:3.9, totalexpress:4.8, correios:6.1, fretebras:3.2, prazo:4},
+  {uf:"MA", estado:"Maranhao",         regiao:"nordeste", jadlog:5.0, log:4.8, patrus:4.4, totalexpress:5.2, correios:6.6, fretebras:3.6, prazo:5},
+  {uf:"PB", estado:"Paraiba",          regiao:"nordeste", jadlog:4.4, log:4.2, patrus:3.8, totalexpress:4.6, correios:5.9, fretebras:3.1, prazo:4},
+  {uf:"PE", estado:"Pernambuco",       regiao:"nordeste", jadlog:4.3, log:4.1, patrus:3.7, totalexpress:4.5, correios:5.8, fretebras:3.0, prazo:4},
+  {uf:"PI", estado:"Piaui",            regiao:"nordeste", jadlog:4.8, log:4.6, patrus:4.1, totalexpress:5.0, correios:6.3, fretebras:3.4, prazo:5},
+  {uf:"RN", estado:"Rio Gr. Norte",    regiao:"nordeste", jadlog:4.6, log:4.4, patrus:4.0, totalexpress:4.8, correios:6.2, fretebras:3.3, prazo:4},
+  {uf:"SE", estado:"Sergipe",          regiao:"nordeste", jadlog:4.0, log:3.8, patrus:3.4, totalexpress:4.2, correios:5.5, fretebras:2.8, prazo:3},
+  {uf:"ES", estado:"Espirito Santo",   regiao:"sudeste",  jadlog:2.2, log:2.0, patrus:1.7, totalexpress:2.4, correios:3.2, fretebras:1.6, prazo:1},
+  {uf:"MG", estado:"Minas Gerais",     regiao:"sudeste",  jadlog:1.5, log:1.2, patrus:0.85, totalexpress:1.6, correios:2.4, fretebras:0.9, prazo:1},
+  {uf:"RJ", estado:"Rio de Janeiro",   regiao:"sudeste",  jadlog:2.0, log:1.7, patrus:1.4, totalexpress:2.1, correios:2.9, fretebras:1.4, prazo:1},
+  {uf:"SP", estado:"Sao Paulo",        regiao:"sudeste",  jadlog:1.8, log:1.5, patrus:1.2, totalexpress:1.9, correios:2.7, fretebras:1.2, prazo:1},
+  {uf:"DF", estado:"Dist. Federal",    regiao:"centro",   jadlog:2.5, log:2.3, patrus:2.0, totalexpress:2.6, correios:3.6, fretebras:1.8, prazo:2},
+  {uf:"GO", estado:"Goias",            regiao:"centro",   jadlog:2.7, log:2.5, patrus:2.2, totalexpress:2.8, correios:3.8, fretebras:1.9, prazo:2},
+  {uf:"MS", estado:"Mato Grosso Sul",  regiao:"centro",   jadlog:3.3, log:3.1, patrus:2.8, totalexpress:3.4, correios:4.6, fretebras:2.4, prazo:3},
+  {uf:"MT", estado:"Mato Grosso",      regiao:"centro",   jadlog:3.7, log:3.5, patrus:3.1, totalexpress:3.8, correios:5.1, fretebras:2.7, prazo:4},
+  {uf:"PR", estado:"Parana",           regiao:"sul",      jadlog:2.4, log:2.1, patrus:1.9, totalexpress:2.5, correios:3.4, fretebras:1.7, prazo:2},
+  {uf:"RS", estado:"Rio Gr. Sul",      regiao:"sul",      jadlog:3.0, log:2.7, patrus:2.5, totalexpress:3.1, correios:4.2, fretebras:2.2, prazo:3},
+  {uf:"SC", estado:"Santa Catarina",   regiao:"sul",      jadlog:2.7, log:2.4, patrus:2.2, totalexpress:2.8, correios:3.8, fretebras:1.9, prazo:2},
+  {uf:"AC", estado:"Acre",             regiao:"norte",    jadlog:8.2, log:7.8, patrus:7.2, totalexpress:8.4, correios:10.2,fretebras:6.2, prazo:9},
+  {uf:"AM", estado:"Amazonas",         regiao:"norte",    jadlog:8.8, log:8.4, patrus:7.8, totalexpress:9.0, correios:11.0,fretebras:6.7, prazo:10},
+  {uf:"AP", estado:"Amapa",            regiao:"norte",    jadlog:8.6, log:8.2, patrus:7.6, totalexpress:8.8, correios:10.8,fretebras:6.5, prazo:10},
+  {uf:"PA", estado:"Para",             regiao:"norte",    jadlog:5.4, log:5.0, patrus:4.6, totalexpress:5.6, correios:7.0, fretebras:3.9, prazo:6},
+  {uf:"RO", estado:"Rondonia",         regiao:"norte",    jadlog:6.2, log:5.8, patrus:5.4, totalexpress:6.4, correios:8.0, fretebras:4.6, prazo:7},
+  {uf:"RR", estado:"Roraima",          regiao:"norte",    jadlog:9.0, log:8.6, patrus:8.0, totalexpress:9.2, correios:11.5,fretebras:6.9, prazo:11},
+  {uf:"TO", estado:"Tocantins",        regiao:"norte",    jadlog:4.6, log:4.4, patrus:3.9, totalexpress:4.8, correios:6.2, fretebras:3.3, prazo:5},
+];
+
+// Mapa prefixo CEP → UF
+const CEP_MAP = {
+  "01":"SP","02":"SP","03":"SP","04":"SP","05":"SP","06":"SP","07":"SP","08":"SP","09":"SP",
+  "11":"SP","12":"SP","13":"SP","14":"SP","15":"SP","16":"SP","17":"SP","18":"SP","19":"SP",
+  "20":"RJ","21":"RJ","22":"RJ","23":"RJ","24":"RJ","25":"RJ","26":"RJ","27":"RJ","28":"RJ",
+  "29":"ES",
+  "30":"MG","31":"MG","32":"MG","33":"MG","34":"MG","35":"MG","36":"MG","37":"MG","38":"MG","39":"MG",
+  "40":"BA","41":"BA","42":"BA","43":"BA","44":"BA","45":"BA","46":"BA","47":"BA","48":"BA",
+  "49":"SE",
+  "50":"PE","51":"PE","52":"PE","53":"PE","54":"PE","55":"PE","56":"PE",
+  "57":"AL",
+  "58":"PB",
+  "59":"RN",
+  "60":"CE","61":"CE","62":"CE","63":"CE",
+  "64":"PI",
+  "65":"MA","66":"MA",
+  "67":"PA","68":"PA","69":"PA",
+  "70":"DF","71":"DF","72":"DF","73":"DF",
+  "74":"GO","75":"GO","76":"GO",
+  "77":"TO",
+  "78":"MT","79":"MS",
+  "80":"PR","81":"PR","82":"PR","83":"PR","84":"PR","85":"PR","86":"PR","87":"PR",
+  "88":"SC","89":"SC",
+  "90":"RS","91":"RS","92":"RS","93":"RS","94":"RS","95":"RS","96":"RS","97":"RS","98":"RS","99":"RS",
+};
+
+const GRIS = {jadlog:0.0025, log:0.003, patrus:0.003, totalexpress:0.0025, correios:0.002, fretebras:0};
+const MIN_FRETE = {jadlog:90, log:130, patrus:110, totalexpress:100, correios:60, fretebras:180};
+
+const CONTATOS = [
+  {nome:"Patrus Transportes", site:"www.patrus.com.br",         tel:"0800 942 0073", nota:"Sediada em Betim/MG · Imbativel em MG/SP/RJ", destaque:true},
+  {nome:"LOG (Magalu)",       site:"www.log.com.br",            tel:"(31) 3033-7800",nota:"Sediada em BH/MG · Forte SE e Sul", destaque:true},
+  {nome:"Total Express",      site:"www.totalexpress.com.br",   tel:"0800 707 0107", nota:"Marketplace e B2C — bom ate 100 kg", destaque:false},
+  {nome:"Jadlog",             site:"www.jadlog.com.br",         tel:"0800 722 0044", nota:"Mais rapida. Ideal ate 100 kg.", destaque:false},
+  {nome:"Correios",           site:"www.correios.com.br",       tel:"3003 0100",     nota:"Maior capilaridade — qualquer CEP", destaque:false},
+  {nome:"Fretebras",          site:"www.fretebras.com.br",      tel:"0800 591 0219", nota:"Mais barato. Exige mais gestao.", destaque:false},
+  {nome:"Expresso Raquel",    site:"www.expressoraquel.com.br", tel:"(83) 3232-8300",nota:"Especialista Nordeste interior", destaque:false},
+  {nome:"TPC Logistica",      site:"www.tpc.com.br",            tel:"0800 770 7872", nota:"Brasil completo — tabela publica", destaque:false},
+];
+
+// ── GOOGLE SHEETS ────────────────────────────────────────────────────
+const LS_KEY = "mfparis_frete_url_v3";
+let sheetsUrl = localStorage.getItem(LS_KEY) || "";
+
+function openModal(){document.getElementById("modal-overlay").classList.add("open");document.getElementById("modal-url").value=sheetsUrl;}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
+function saveSheets(){
+  const url=document.getElementById("modal-url").value.trim();
+  if(!url)return;
+  sheetsUrl=url;localStorage.setItem(LS_KEY,url);closeModal();carregarSheets();
+}
+
+function carregarSheets(){
+  if(!sheetsUrl)return;
+  setStatus("","Carregando tarifas da planilha...");
+  const cb="__freteCallback"+Date.now();
+  window[cb]=function(json){
+    delete window[cb];document.getElementById("_sheets_script")?.remove();
+    if(json.ok&&json.tarifas?.length){
+      TARIFAS=json.tarifas.map(r=>({
+        uf:String(r.uf),estado:String(r.estado),regiao:String(r.regiao),
+        jadlog:+r.jadlog||0, log:+r.log||0, patrus:+r.patrus||0,
+        totalexpress:+r.totalexpress||0, correios:+r.correios||0,
+        fretebras:+r.fretebras||0, prazo:+r.prazo||3
+      }));
+      setStatus("ok","Tarifas atualizadas via Google Sheets · "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}));
+      renderTabela();
+    } else setStatus("err","Erro ao carregar planilha — usando tarifas padrao");
+  };
+  const s=document.createElement("script");
+  s.id="_sheets_script";
+  s.src=sheetsUrl+(sheetsUrl.includes("?")?"&":"?")+"callback="+cb+"&t="+Date.now();
+  s.onerror=()=>setStatus("err","Erro de conexao — usando tarifas padrao");
+  document.head.appendChild(s);
+}
+
+function setStatus(state,txt){
+  const dot=document.getElementById("sheets-dot");
+  dot.className="sheets-dot"+(state==="ok"?" ok":state==="err"?" err":"");
+  document.getElementById("sheets-text").textContent=txt;
+}
+
+// ── CEP ──────────────────────────────────────────────────────────────
+function formatCEP(el){
+  let v=el.value.replace(/\D/g,"");
+  if(v.length>5)v=v.slice(0,5)+"-"+v.slice(5,8);
+  el.value=v;
+  if(v.replace(/\D/g,"").length<8){
+    document.getElementById("cep-icon").className="cep-icon";
+    document.getElementById("cep-cidade").value="";
+    document.getElementById("cep-cidade").dataset.uf="";
+  }
+}
+
+async function buscarCEP(){
+  const raw=document.getElementById("cep-input").value.replace(/\D/g,"");
+  if(raw.length!==8)return;
+  const spin=document.getElementById("cep-spin");
+  const icon=document.getElementById("cep-icon");
+  const cidEl=document.getElementById("cep-cidade");
+  spin.classList.add("on");icon.className="cep-icon";
+  cidEl.value="Buscando...";
+  try{
+    const r=await fetch("https://viacep.com.br/ws/"+raw+"/json/");
+    const j=await r.json();
+    if(j.erro)throw new Error("nao encontrado");
+    cidEl.value=j.localidade+" — "+j.uf;
+    cidEl.dataset.uf=j.uf;
+    cidEl.dataset.cidade=j.localidade;
+    icon.textContent="✓";icon.className="cep-icon show";icon.style.color="var(--green)";
+    document.getElementById("cep-input").classList.remove("err");
+  }catch{
+    const pref=raw.slice(0,2);
+    const ufFb=CEP_MAP[pref];
+    const tarFb=TARIFAS.find(t=>t.uf===ufFb);
+    if(ufFb&&tarFb){
+      cidEl.value="Cidade nao identificada — "+ufFb+" (via prefixo CEP)";
+      cidEl.dataset.uf=ufFb;
+      cidEl.dataset.cidade="Interior de "+tarFb.estado;
+      icon.textContent="✓";icon.className="cep-icon show";icon.style.color="var(--amber)";
+      document.getElementById("cep-input").classList.remove("err");
+    } else {
+      cidEl.value="CEP nao encontrado";cidEl.dataset.uf="";
+      icon.textContent="✗";icon.className="cep-icon show";icon.style.color="var(--red)";
+      document.getElementById("cep-input").classList.add("err");
+    }
+  }
+  spin.classList.remove("on");
+}
+
+// ── CALCULAR ─────────────────────────────────────────────────────────
+const COLS  = ["jadlog","log","patrus","totalexpress","correios","fretebras"];
+const NOMES = ["Jadlog","LOG","Patrus","Total Express","Correios","Fretebras*"];
+
+function calcular(){
+  const uf=document.getElementById("cep-cidade").dataset.uf||"";
+  const peso=parseFloat(document.getElementById("peso").value)||0;
+  const nf=parseFloat(document.getElementById("nf").value)||0;
+  const pedidos=parseInt(document.getElementById("pedidos").value)||10;
+  const errEl=document.getElementById("calc-err");
+  if(!uf||peso<=0){errEl.style.display="block";return;}
+  errEl.style.display="none";
+
+  let tar=TARIFAS.find(t=>t.uf===uf);
+  if(!tar){
+    const pref=document.getElementById("cep-input").value.replace(/\D/g,"").slice(0,2);
+    const ufFb=CEP_MAP[pref];
+    tar=TARIFAS.find(t=>t.uf===ufFb);
+  }
+
+  const res=document.getElementById("resultado");
+  const grid=document.getElementById("res-grid");
+  const destLbl=document.getElementById("dest-label");
+  const cidade=document.getElementById("cep-cidade").dataset.cidade||uf;
+  destLbl.textContent=cidade+" — "+(uf||"?");
+
+  if(!tar){
+    grid.innerHTML=`<div style="grid-column:span 6;text-align:center;padding:24px;font-size:13px;color:var(--muted);">Nao temos tabela para este estado ainda. Solicite cotacao diretamente as transportadoras.</div>`;
+    res.classList.add("show");return;
+  }
+
+  const resultados=COLS.map((c,i)=>{
+    const frete=Math.max(tar[c]*peso, MIN_FRETE[c]||100);
+    const gris=nf*(GRIS[c]||0);
+    const total=frete+gris;
+    return{nome:NOMES[i],frete,gris,total,mensal:total*pedidos,porKg:total/peso};
+  }).sort((a,b)=>a.total-b.total);
+
+  const min=resultados[0].total;
+  const fmt=v=>"R$ "+Math.round(v).toLocaleString("pt-BR");
+
+  grid.innerHTML=resultados.map((r,i)=>{
+    const cls=i===0?"best":r.total>min*1.35?"high":"mid";
+    const economia=i>0?Math.round(r.total-min):0;
+    return`<div class="res-card ${cls}">
+      ${i===0?'<div class="res-badge-best">Menor preco</div>':""}
+      <div class="res-nome">${r.nome}</div>
+      <div class="res-valor">${fmt(r.total)}</div>
+      <div class="res-sub">${fmt(r.porKg)}/kg · GRIS ${fmt(r.gris)}</div>
+      <div class="res-prazo">Prazo ~${tar.prazo} dias uteis</div>
+      <div class="res-mensal">${fmt(r.mensal)}/mes (${pedidos}x)</div>
+      ${economia>0?`<div class="res-economia">+${fmt(economia)} vs melhor</div>`:""}
+    </div>`;
+  }).join("");
+
+  res.classList.add("show");
+  res.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+// ── TABELA ───────────────────────────────────────────────────────────
+let filtroReg="todos", sortCol="estado", sortDir=1;
+
+function setFiltro(f,btn){
+  filtroReg=f;
+  document.querySelectorAll(".ftab-btn").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  renderTabela();
+}
+
+function sortTabela(col){
+  sortDir=(sortCol===col)?-sortDir:1;
+  sortCol=col;
+  renderTabela();
+}
+
+function renderTabela(){
+  const peso=200,nf=3000;
+  const q=(document.getElementById("search-tbl").value||"").toLowerCase();
+  const dados=TARIFAS
+    .filter(t=>(filtroReg==="todos"||t.regiao===filtroReg)&&(!q||t.estado.toLowerCase().includes(q)||t.uf.toLowerCase().includes(q)))
+    .map(t=>{
+      const tots=COLS.map(c=>Math.round(Math.max(t[c]*peso,MIN_FRETE[c]||100)+nf*(GRIS[c]||0)));
+      return{...t,tots,mensal:Math.min(...tots)*10};
+    })
+    .sort((a,b)=>{
+      const idx=COLS.indexOf(sortCol);
+      let va=sortCol==="mensal"?a.mensal:sortCol==="prazo"?a.prazo:sortCol==="estado"?a.estado:a.tots[idx]||0;
+      let vb=sortCol==="mensal"?b.mensal:sortCol==="prazo"?b.prazo:sortCol==="estado"?b.estado:b.tots[idx]||0;
+      if(typeof va==="string")return sortDir*va.localeCompare(vb);
+      return sortDir*(va-vb);
+    });
+
+  const regCls={nordeste:"tag-nordeste",sudeste:"tag-sudeste",sul:"tag-sul",centro:"tag-centro",norte:"tag-norte"};
+  const regLabel={nordeste:"Nordeste",sudeste:"Sudeste",sul:"Sul",centro:"Centro-Oeste",norte:"Norte"};
+  const fmt=v=>"R$ "+v.toLocaleString("pt-BR");
+
+  document.getElementById("tbl-body").innerHTML=dados.map(t=>{
+    const min=Math.min(...t.tots);const max=Math.max(...t.tots);
+    const mensal=min*10;
+    return`<tr>
+      <td class="est">${t.uf} — ${t.estado}</td>
+      <td><span class="tag-reg ${regCls[t.regiao]||""}">${regLabel[t.regiao]||t.regiao}</span></td>
+      ${t.tots.map(v=>`<td class="num ${v===min?"best-val":v===max?"high-val":""}">${fmt(v)}</td>`).join("")}
+      <td class="num"><span class="tag-prazo">${t.prazo} dias</span></td>
+      <td class="num" style="font-weight:600;">${fmt(mensal)}</td>
+    </tr>`;
+  }).join("");
+
+  document.querySelectorAll("thead th").forEach(th=>{
+    th.classList.remove("sorted");
+    const ar=th.querySelector(".arrow");
+    if(ar)ar.textContent="↕";
+  });
+}
+
+// ── CONTATOS ─────────────────────────────────────────────────────────
+function renderContatos(){
+  document.getElementById("contatos-grid").innerHTML=CONTATOS.map(c=>`
+    <div class="contato-card ${c.destaque?"destaque":""}">
+      <div class="contato-nome">${c.nome}</div>
+      <div class="contato-site">${c.site}</div>
+      <div class="contato-tel">${c.tel}</div>
+      <div class="contato-nota">${c.nota}</div>
+    </div>`).join("");
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+document.getElementById("js-date").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"short",year:"numeric"});
+renderTabela();
+renderContatos();
+if(sheetsUrl)carregarSheets();
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

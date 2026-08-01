@@ -1,0 +1,1447 @@
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OPUS — Programação de Produção</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+nav{background:var(--navy-d);border-bottom:2px solid var(--gold);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99;}
+.nav-left{display:flex;align-items:center;gap:10px;}
+.nav-opus{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:var(--gold);letter-spacing:-.5px;}
+.nav-sep{color:rgba(200,185,154,.3);font-size:14px;}
+.nav-title{font-size:12px;font-weight:500;color:rgba(220,210,195,.7);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.nav-dot.ok{background:var(--green);animation:pulse 2s infinite;}
+.nav-dot.err{background:var(--red);}
+.nav-dot.idle{background:var(--div);}
+.nav-status{font-size:10px;color:var(--div);}
+.btn-cfg{font-size:10px;font-weight:500;color:var(--div);background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-cfg:hover{background:rgba(255,255,255,.06);color:#fff;}
+
+.cfg-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:center;justify-content:center;}
+.cfg-modal.open{display:flex;}
+.cfg-box{background:var(--card);border-radius:18px;padding:26px;width:480px;max-width:92vw;border:0.5px solid var(--gold-b);}
+.cfg-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+.cfg-sub{font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+.cfg-empresa{margin-bottom:14px;padding:12px 14px;background:var(--cream);border-radius:10px;border:0.5px solid var(--gold-b);}
+.cfg-empresa-nome{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.cfg-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cfg-field{display:flex;flex-direction:column;gap:3px;}
+.cfg-field label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.cfg-field input{padding:7px 10px;border:1.5px solid var(--gold-b);border-radius:7px;background:#fff;font-family:inherit;font-size:11px;color:var(--navy);outline:none;}
+.cfg-field input:focus{border-color:var(--gold);}
+.cfg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.btn-cancel{padding:7px 14px;border:1.5px solid var(--gold-b);border-radius:7px;background:transparent;font-family:inherit;font-size:11px;color:var(--muted);cursor:pointer;}
+.btn-save{padding:7px 18px;border:none;border-radius:7px;background:var(--navy);font-family:inherit;font-size:11px;font-weight:600;color:#fff;cursor:pointer;}
+
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1400px;margin:0 auto;}
+
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;}
+
+.prog-grid{display:grid;grid-template-columns:140px 1fr 80px 84px 168px 60px 60px 34px;gap:6px;align-items:center;margin-bottom:8px;}
+.prog-header{font-size:9px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:.06em;padding:0 4px;}
+.prog-input{padding:8px 10px;border:1.5px solid var(--gold-b);border-radius:8px;background:#fff;font-family:inherit;font-size:12px;font-weight:700;color:#000;outline:none;transition:border-color .15s;width:100%;}
+.prog-input::placeholder{color:#8a8a8a;font-weight:500;}
+.prog-input:focus{border-color:var(--gold);background:#fff;}
+.prog-input.readonly{background:var(--icon);color:#000;font-weight:700;cursor:default;}
+.prog-input.ok{background:var(--green-l);border-color:rgba(46,125,82,.3);color:var(--green);}
+.prog-input.err-field{background:var(--red-l);border-color:rgba(176,58,46,.3);}
+.btn-del{width:28px;height:28px;border-radius:6px;border:1px solid rgba(176,58,46,.3);background:transparent;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.btn-del:hover{background:var(--red-l);}
+.btn-add-row{display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px dashed var(--gold-b);border-radius:8px;background:transparent;font-family:inherit;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;width:fit-content;}
+.btn-add-row:hover{border-color:var(--gold);color:var(--navy);}
+
+.linha-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.linha-lacteo{background:var(--blue-l);color:var(--blue);}
+.linha-sacaria{background:rgba(109,40,217,.1);color:#5b21b6;}
+.linha-cafe{background:rgba(154,107,26,.15);color:#6B3A00;}
+
+.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.cal-card{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:12px;padding:13px 14px;}
+
+.mp-filtros{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.mp-ftab{padding:5px 12px;border-radius:6px;border:1.5px solid var(--gold-b);background:var(--cream);font-family:inherit;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;}
+.mp-ftab:hover{border-color:var(--gold);color:var(--navy);}
+.mp-ftab.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+.mp-table{width:100%;border-collapse:collapse;font-size:12px;}
+.mp-table thead tr{background:var(--navy);}
+.mp-table th{padding:9px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+.mp-table th.num,.mp-table td.num{text-align:right;}
+.mp-table tbody tr{border-bottom:0.5px solid var(--gold-l);}
+.mp-table tbody tr:hover{background:var(--cream);}
+.mp-table td{padding:8px 10px;vertical-align:middle;}
+.mp-table td.cod{font-family:monospace;font-size:11px;color:var(--muted);}
+.mp-table td.produto{font-weight:500;color:var(--navy);}
+.status-ok{color:var(--green);font-weight:700;}
+.status-falta{color:var(--red);font-weight:700;}
+.status-parcial{color:var(--amber);font-weight:700;}
+.tag-tipo{display:inline-block;font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;}
+.tag-mp{background:var(--blue-l);color:var(--blue);}
+.tag-emb{background:rgba(109,40,217,.1);color:#5b21b6;}
+.tag-ins{background:var(--icon);color:var(--muted);}
+
+.btn-primary{padding:10px 22px;border:none;border-radius:10px;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px;}
+.btn-primary:hover{background:var(--navy-d);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.btn-secondary{padding:10px 18px;border:1.5px solid var(--gold-b);border-radius:10px;background:transparent;color:var(--navy);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-green{background:var(--green);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px;}
+.btn-green:hover{background:#1a5c32;transform:translateY(-1px);}
+.btn-green:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.spinner-dark{border-color:var(--gold-b);border-top-color:var(--gold);}
+
+.toast{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;animation:fadeUp .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+.toast-ok{background:var(--green);color:#fff;}
+.toast-err{background:var(--red);color:#fff;}
+.toast-info{background:var(--navy);color:#fff;}
+
+.vazio{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+.vazio-icon{font-size:32px;margin-bottom:8px;}
+
+.op-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center;}
+.op-modal.open{display:flex;}
+.op-box{background:var(--card);border-radius:18px;padding:26px;width:540px;max-width:92vw;max-height:85vh;overflow-y:auto;border:0.5px solid var(--gold-b);}
+.op-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+.op-sub{font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.op-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.op-item{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:10px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.op-item-info{flex:1;}
+.op-item-sku{font-size:10px;font-weight:700;color:var(--muted);font-family:monospace;}
+.op-item-prod{font-size:12px;font-weight:600;color:var(--navy);line-height:1.3;}
+.op-item-det{font-size:11px;color:var(--muted);margin-top:2px;}
+.op-item-empresa{font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;flex-shrink:0;}
+.emp-dms{background:var(--blue-l);color:var(--blue);}
+.emp-mfparis{background:rgba(154,107,26,.15);color:#6B3A00;}
+.op-status{font-size:11px;padding:3px 8px;border-radius:5px;flex-shrink:0;}
+.op-status.pendente{background:var(--icon);color:var(--muted);}
+.op-status.enviando{background:var(--amber-l);color:var(--amber);}
+.op-status.ok{background:var(--green-l);color:var(--green);font-weight:700;}
+.op-status.erro{background:var(--red-l);color:var(--red);font-weight:700;}
+
+/* Máquina selector + data início */
+.maquina-select{padding:6px 8px;border:1.5px solid var(--gold-b);border-radius:8px;background:#fff;font-family:inherit;font-size:11px;font-weight:700;color:#000;outline:none;cursor:pointer;width:100%;}
+.maquina-select:focus{border-color:var(--gold);}
+.maquina-ind{background:rgba(25,118,210,.1);color:#1565c0;}
+.maquina-maz{background:rgba(106,27,154,.1);color:#6a1b9a;}
+.data-inicio-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;display:block;}
+.data-inicio-input{padding:8px 10px;border:1.5px solid var(--gold-b);border-radius:8px;background:var(--cream);font-family:inherit;font-size:12px;color:var(--navy);outline:none;cursor:pointer;}
+.data-inicio-input:focus{border-color:var(--gold);background:#fff;}
+
+/* IA Modal */
+.ia-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;}
+.ia-modal.open{display:flex;}
+.ia-box{background:var(--card);border-radius:18px;padding:26px;width:640px;max-width:92vw;max-height:85vh;overflow-y:auto;border:0.5px solid var(--gold-b);}
+.ia-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+.ia-sub{font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.ia-sugestao{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:10px;padding:14px;font-size:12px;color:var(--navy);line-height:1.6;white-space:pre-wrap;max-height:400px;overflow-y:auto;}
+.ia-loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;padding:20px;}
+.btn-ia{padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1 0%,#4f46e5 100%);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px;}
+.btn-ia:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.35);}
+</style>
+</head>
+<body>
+
+<!-- ============ OPUS LOCK — modo visualização / edição ============ -->
+<style>
+#opus-lock-badge{
+  position:fixed;bottom:18px;right:18px;z-index:99998;
+  display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border-radius:999px;cursor:pointer;
+  font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:.04em;
+  background:linear-gradient(135deg,#0d1f3c 0%,#0a1728 100%);
+  color:#e8c96a;border:1px solid rgba(232,201,106,.4);
+  box-shadow:0 8px 24px -4px rgba(0,0,0,.4);
+  transition:all .2s;user-select:none;
+}
+#opus-lock-badge:hover{transform:translateY(-2px);box-shadow:0 12px 32px -4px rgba(0,0,0,.5)}
+#opus-lock-badge.unlocked{
+  background:linear-gradient(135deg,#15803d 0%,#16a34a 100%);
+  color:#fff;border-color:rgba(255,255,255,.3);
+}
+#opus-lock-overlay{
+  position:fixed;inset:0;z-index:99999;display:none;
+  background:radial-gradient(circle at 50% 40%,rgba(10,15,40,.85) 0%,rgba(5,9,18,.95) 100%);
+  backdrop-filter:blur(8px);align-items:center;justify-content:center;
+  font-family:'Inter',system-ui,sans-serif;
+}
+#opus-lock-overlay.on{display:flex}
+#opus-lock-overlay .box{
+  background:linear-gradient(180deg,rgba(13,31,60,.97) 0%,rgba(10,23,40,.97) 100%);
+  border:1px solid rgba(232,201,106,.35);
+  padding:30px 34px;border-radius:18px;width:380px;max-width:90vw;
+  box-shadow:0 32px 80px -16px rgba(0,0,0,.6);
+}
+#opus-lock-overlay h3{
+  font-family:'Playfair Display',Georgia,serif;font-style:italic;
+  font-size:22px;font-weight:700;color:#e8c96a;margin:0 0 8px;
+}
+#opus-lock-overlay p{font-size:12.5px;color:#b8c4d9;margin:0 0 16px;line-height:1.6}
+#opus-lock-overlay input{
+  width:100%;background:rgba(255,255,255,.06);
+  border:1px solid rgba(232,201,106,.2);
+  padding:11px 14px;border-radius:10px;color:#fff;
+  font-size:14px;font-family:inherit;outline:none;letter-spacing:.05em;
+  margin-bottom:6px;transition:all .2s;
+}
+#opus-lock-overlay input:focus{border-color:#e8c96a;background:rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(232,201,106,.12)}
+#opus-lock-overlay .err{font-size:11.5px;color:#fca5a5;min-height:18px;margin-bottom:10px}
+#opus-lock-overlay .acts{display:flex;gap:10px;margin-top:8px}
+#opus-lock-overlay button{
+  flex:1;padding:10px;border-radius:10px;border:none;
+  font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  transition:all .2s;letter-spacing:.04em;
+}
+#opus-lock-overlay .p{background:linear-gradient(135deg,#e8c96a 0%,#b8902a 100%);color:#0a1728}
+#opus-lock-overlay .p:hover{transform:translateY(-1px)}
+#opus-lock-overlay .c{background:rgba(255,255,255,.08);color:#b8c4d9;border:1px solid rgba(255,255,255,.1)}
+</style>
+<div id="opus-lock-badge" title="Clique para desbloquear edição">
+  <span id="opus-lock-ic">👁</span><span id="opus-lock-tx">Modo visualização</span>
+</div>
+<div id="opus-lock-overlay">
+  <div class="box">
+    <h3>Desbloquear edição</h3>
+    <p>Digite a senha para liberar inputs, botões e edição de dados nesta sessão.</p>
+    <input type="password" id="opus-lock-input" placeholder="Senha" autocomplete="off">
+    <div class="err" id="opus-lock-err"></div>
+    <div class="acts">
+      <button class="c" onclick="OpusLock.fechar()">Cancelar</button>
+      <button class="p" onclick="OpusLock.validar()">Desbloquear</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var SENHA = 'mfparis@2026';
+  var KEY   = 'opus_auth_ok';
+  var badge = document.getElementById('opus-lock-badge');
+  var ovl   = document.getElementById('opus-lock-overlay');
+  var inp   = document.getElementById('opus-lock-input');
+  var err   = document.getElementById('opus-lock-err');
+
+  function autenticado(){
+    try { return sessionStorage.getItem(KEY) === '1'; } catch(e){ return false; }
+  }
+  function liberar(){
+    try { sessionStorage.setItem(KEY,'1'); } catch(e){}
+    atualizarBadge();
+  }
+  function atualizarBadge(){
+    if (autenticado()) {
+      badge.classList.add('unlocked');
+      document.getElementById('opus-lock-ic').textContent = '✏️';
+      document.getElementById('opus-lock-tx').textContent = 'Edição liberada';
+      badge.title = 'Edição habilitada nesta sessão';
+    } else {
+      badge.classList.remove('unlocked');
+      document.getElementById('opus-lock-ic').textContent = '👁';
+      document.getElementById('opus-lock-tx').textContent = 'Modo visualização';
+      badge.title = 'Clique para desbloquear edição';
+    }
+  }
+  function abrir(){
+    err.textContent=''; inp.value='';
+    ovl.classList.add('on');
+    setTimeout(function(){ inp.focus(); }, 50);
+  }
+  function fechar(){ ovl.classList.remove('on'); }
+  function validar(){
+    if (inp.value === SENHA) { liberar(); fechar(); }
+    else {
+      err.textContent = '✗ Senha incorreta';
+      inp.value=''; inp.focus();
+    }
+  }
+
+  function ehControleEdicao(el){
+    if (!el || !el.tagName) return false;
+    if (el.closest && el.closest('#opus-lock-badge,#opus-lock-overlay')) return false;
+    var tag = el.tagName.toLowerCase();
+    if (tag === 'a') return false;
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (tag === 'button') return true;
+    if (el.getAttribute && (el.getAttribute('role') === 'button' || el.hasAttribute('onclick'))) return true;
+    return false;
+  }
+  function bloquearSeNecessario(ev){
+    if (autenticado()) return;
+    var ctrl = ev.target;
+    while (ctrl && ctrl !== document.body) {
+      if (ehControleEdicao(ctrl)) break;
+      ctrl = ctrl.parentElement;
+    }
+    if (!ctrl || ctrl === document.body) return;
+    if (ctrl.closest && ctrl.closest('#opus-lock-badge,#opus-lock-overlay')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    abrir();
+  }
+
+  ['click','keydown','input','change'].forEach(function(evt){
+    document.addEventListener(evt, function(ev){
+      if (evt === 'keydown') {
+        if (['Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Escape','Home','End','PageUp','PageDown'].indexOf(ev.key) >= 0) return;
+      }
+      bloquearSeNecessario(ev);
+    }, true);
+  });
+
+  badge.addEventListener('click', function(){
+    if (autenticado()) {
+      if (confirm('Sair do modo edição e voltar para visualização?')) {
+        try { sessionStorage.removeItem(KEY); } catch(e){}
+        atualizarBadge();
+      }
+    } else {
+      abrir();
+    }
+  });
+  inp.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter') validar();
+    if (ev.key === 'Escape') fechar();
+  });
+
+  window.OpusLock = { abrir:abrir, fechar:fechar, validar:validar, autenticado:autenticado };
+  atualizarBadge();
+})();
+</script>
+
+<div class="cfg-modal" id="cfg-modal">
+  <div class="cfg-box">
+    <div class="cfg-title">Configuração OMIE — Chaves de API</div>
+    <div class="cfg-sub">As chaves são salvas localmente no seu navegador.</div>
+    <div class="cfg-empresa">
+      <div class="cfg-empresa-nome">🏭 MF Paris Indústria</div>
+      <div class="cfg-row">
+        <div class="cfg-field"><label>App Key</label><input type="text" id="cfg-mfp-key"/></div>
+        <div class="cfg-field"><label>App Secret</label><input type="password" id="cfg-mfp-secret"/></div>
+      </div>
+    </div>
+    <div class="cfg-empresa">
+      <div class="cfg-empresa-nome">🏗️ DMS Alimentos (Lácteo & Sacaria)</div>
+      <div class="cfg-row">
+        <div class="cfg-field"><label>App Key</label><input type="text" id="cfg-dms-key"/></div>
+        <div class="cfg-field"><label>App Secret</label><input type="password" id="cfg-dms-secret"/></div>
+      </div>
+    </div>
+    <div class="cfg-empresa">
+      <div class="cfg-empresa-nome">☕ Profi Comércio (Café)</div>
+      <div class="cfg-row">
+        <div class="cfg-field"><label>App Key</label><input type="text" id="cfg-profi-key"/></div>
+        <div class="cfg-field"><label>App Secret</label><input type="password" id="cfg-profi-secret"/></div>
+      </div>
+    </div>
+    <div class="cfg-actions">
+      <button class="btn-cancel" onclick="fecharConfig()">Cancelar</button>
+      <button class="btn-save" onclick="salvarConfig()">Salvar e Testar</button>
+    </div>
+  </div>
+</div>
+
+<div class="ia-modal" id="ia-modal">
+  <div class="ia-box">
+    <div class="ia-title">Sugestão de Programação — IA</div>
+    <div class="ia-sub">Analisa os últimos meses de programação e sugere otimizações.</div>
+    <div id="ia-conteudo">
+      <div class="ia-loading" id="ia-loading" style="display:none;">
+        <div class="spinner spinner-dark"></div> Consultando histórico e gerando sugestão...
+      </div>
+      <div class="ia-sugestao" id="ia-sugestao" style="display:none;"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn-cancel" onclick="fecharIAModal()">Fechar</button>
+      <button class="btn-ia" onclick="buscarSugestaoIA()">Gerar Sugestão</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="sec">
+    <div class="sec-title">
+      <span>Simulação de Produção (cenários)</span>
+      <span id="data-prog" style="font-size:10px;font-weight:400;color:var(--muted);"></span>
+    </div>
+    <div class="prog-grid" style="margin-bottom:4px;">
+      <span class="prog-header">Código SKU</span>
+      <span class="prog-header">Produto</span>
+      <span class="prog-header">Qtd (kg)</span>
+      <span class="prog-header">Linha</span>
+      <span class="prog-header">Máquinas (Lácteo)</span>
+      <span class="prog-header">Dias Prod.</span>
+      <span class="prog-header">% Ocup.</span>
+      <span></span>
+    </div>
+    <div id="prog-rows"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn-add-row" onclick="addRow()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adicionar produto
+      </button>
+      <button class="btn-add-row" onclick="testarSKU()" style="border-color:var(--blue);color:var(--blue);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Diagnóstico SKU
+      </button>
+    </div>
+    <div id="diag-box" style="display:none;margin-top:10px;background:var(--navy-d);border-radius:10px;padding:12px;font-size:11px;color:#a0c0e0;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;"></div>
+  </div>
+
+  <div class="sec" id="sec-efic">
+    <div class="sec-title">Eficiência da Produção (efetividade)</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+        <span style="font-size:9px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:.06em;">Lácteo · Indumak</span>
+        <input type="number" id="efic-ind" min="1" max="100" value="100" class="prog-input" style="max-width:120px;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+        <span style="font-size:9px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:.06em;">Lácteo · Mazipak</span>
+        <input type="number" id="efic-maz" min="1" max="100" value="100" class="prog-input" style="max-width:120px;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+        <span style="font-size:9px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:.06em;">Sacaria</span>
+        <input type="number" id="efic-sac" min="1" max="100" value="100" class="prog-input" style="max-width:120px;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+        <span style="font-size:9px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:.06em;">Café</span>
+        <input type="number" id="efic-cafe" min="1" max="100" value="100" class="prog-input" style="max-width:120px;">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;">100% = produção estipulada (padrão). Ex.: 70% considera 70% do total; a diferença aparece como perda em kg e %.</div>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:4px;">
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <span style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Modo de Cálculo</span>
+      <select id="modo-calc" style="padding:9px 12px;border:1.5px solid var(--gold-b);border-radius:8px;background:var(--cream);font-family:inherit;font-size:12px;font-weight:600;color:var(--navy);outline:none;cursor:pointer;">
+        <option value="produtividade">⚡ Produtividade (agrupa gramaturas)</option>
+        <option value="sequencia">📋 Sequência (ordem digitada)</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <span class="data-inicio-label">Data de Início</span>
+      <input type="date" id="data-inicio" class="data-inicio-input" />
+    </div>
+    <button class="btn-primary" onclick="calcularProgramacao()" id="btn-calcular">Calcular Simulação</button>
+    <button class="btn-secondary" onclick="buscarListaTecnica()" id="btn-lt">Buscar Lista Técnica</button>
+    <button class="btn-secondary" onclick="buscarEstoque()" id="btn-est">Buscar Estoque</button>
+    <button class="btn-secondary" onclick="exportarExcel()" id="btn-xls" style="border-color:var(--green);color:var(--green);">📊 Exportar Excel</button>
+    <button class="btn-ia" onclick="abrirIAModal()" id="btn-ia">✨ Sugestão IA</button>
+  </div>
+
+  <div class="sec" id="sec-calendario" style="display:none;">
+    <div class="sec-title">Calendário de Produção · 3 Linhas</div>
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="linha-badge linha-lacteo">LÁCTEO</span>
+          <span id="cal-lacteo-resumo" style="font-size:10px;color:var(--muted);"></span>
+        </div>
+        <div id="cal-lacteo" class="cal-grid"></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="linha-badge linha-sacaria">SACARIA</span>
+          <span id="cal-sacaria-resumo" style="font-size:10px;color:var(--muted);"></span>
+        </div>
+        <div id="cal-sacaria" class="cal-grid"></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="linha-badge linha-cafe">CAFÉ</span>
+          <span id="cal-cafe-resumo" style="font-size:10px;color:var(--muted);"></span>
+        </div>
+        <div id="cal-cafe" class="cal-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-perdas" style="display:none;">
+    <div class="sec-title"><span>Perdas por Eficiência</span><span id="perdas-resumo" style="font-size:10px;font-weight:600;color:var(--red);"></span></div>
+    <div style="overflow-x:auto;">
+      <table class="mp-table">
+        <thead><tr><th>Linha / Máquina</th><th class="num">Estipulado (kg)</th><th class="num">Eficiência</th><th class="num">Real (kg)</th><th class="num">Perda (kg)</th><th class="num">Perda (%)</th></tr></thead>
+        <tbody id="perdas-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-mao" style="display:none;">
+    <div class="sec-title"><span>Mão de Obra por Dia</span><span id="mao-resumo" style="font-size:10px;color:var(--muted);"></span></div>
+    <div style="overflow-x:auto;">
+      <table class="mp-table">
+        <thead><tr><th>Data</th><th>Dia</th><th>Linhas ativas</th><th class="num">Misturador</th><th class="num">Op. Máquina</th><th class="num">Operador</th><th class="num">Auxiliar</th><th class="num">Descascador</th><th class="num">Torrador</th><th class="num">Total</th></tr></thead>
+        <tbody id="mao-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-mp" style="display:none;">
+    <div class="sec-title">
+      <span>Necessidade de Matéria-Prima</span>
+      <div style="display:flex;gap:6px;">
+        <span id="mp-resumo-falta" style="font-size:10px;font-weight:600;color:var(--red);"></span>
+      </div>
+    </div>
+    <div class="mp-filtros">
+      <button class="mp-ftab on" onclick="filtrarMP('todos',this)">Todos</button>
+      <button class="mp-ftab" onclick="filtrarMP('falta',this)">⚠ Faltando</button>
+      <button class="mp-ftab" onclick="filtrarMP('ok',this)">✓ Em estoque</button>
+      <button class="mp-ftab" onclick="filtrarMP('mp',this)">Matéria-Prima</button>
+      <button class="mp-ftab" onclick="filtrarMP('embalagem',this)">Embalagem</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="mp-table">
+        <thead>
+          <tr>
+            <th>Cód. MP</th><th>Descrição</th><th>Tipo</th><th>SKU Origem</th>
+            <th class="num">Nec. Bruta</th><th class="num">Estoque</th>
+            <th class="num">Saldo</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="mp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const LS_CFG = 'opus_omie_config_v1';
+function getConfig() {
+  const DEFAULTS = {
+    mfp_key:'952260381072', mfp_secret:'8300b385eeec583c71439709ab866fc7',
+    dms_key:'1340821992510', dms_secret:'dac287f9b3ec422dc93da6cdbcc3e0b2',
+    profi_key:'6625695374298', profi_secret:'588e34aa9429edcae86f5e87c47a65df',
+  };
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_CFG)) || {};
+    return {
+      mfp_key:s.mfp_key||DEFAULTS.mfp_key, mfp_secret:s.mfp_secret||DEFAULTS.mfp_secret,
+      dms_key:s.dms_key||DEFAULTS.dms_key, dms_secret:s.dms_secret||DEFAULTS.dms_secret,
+      profi_key:s.profi_key||DEFAULTS.profi_key, profi_secret:s.profi_secret||DEFAULTS.profi_secret,
+    };
+  } catch(e) { return DEFAULTS; }
+}
+function abrirConfig() {
+  const c = getConfig();
+  document.getElementById('cfg-mfp-key').value=c.mfp_key||'';
+  document.getElementById('cfg-mfp-secret').value=c.mfp_secret||'';
+  document.getElementById('cfg-dms-key').value=c.dms_key||'';
+  document.getElementById('cfg-dms-secret').value=c.dms_secret||'';
+  document.getElementById('cfg-profi-key').value=c.profi_key||'';
+  document.getElementById('cfg-profi-secret').value=c.profi_secret||'';
+  document.getElementById('cfg-modal').classList.add('open');
+}
+function fecharConfig(){ document.getElementById('cfg-modal').classList.remove('open'); }
+async function salvarConfig() {
+  const cfg = {
+    mfp_key:document.getElementById('cfg-mfp-key').value.trim(),
+    mfp_secret:document.getElementById('cfg-mfp-secret').value.trim(),
+    dms_key:document.getElementById('cfg-dms-key').value.trim(),
+    dms_secret:document.getElementById('cfg-dms-secret').value.trim(),
+    profi_key:document.getElementById('cfg-profi-key').value.trim(),
+    profi_secret:document.getElementById('cfg-profi-secret').value.trim(),
+  };
+  localStorage.setItem(LS_CFG, JSON.stringify(cfg));
+  fecharConfig();
+  toast('Configuração salva! Testando conexão...', 'info');
+  await testarConexao(cfg);
+}
+async function testarConexao(cfg) {
+  if (!cfg.mfp_key) { setOmieStatus('idle', 'Chaves não configuradas'); return; }
+  setOmieStatus('idle', 'Conectando...');
+  try {
+    const r = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/', 'ListarProdutos', cfg.mfp_key, cfg.mfp_secret, [{pagina:1,registros_por_pagina:1,apenas_importado_api:'N'}]);
+    const total = r.total_de_registros ?? r.total ?? '?';
+    setOmieStatus('ok', 'OMIE conectado · ' + total + ' produtos');
+    toast('OMIE conectado!', 'ok');
+  } catch(e) {
+    setOmieStatus('err', 'Erro na conexão');
+    toast('Erro: ' + (e.message||'').slice(0,80), 'err');
+  }
+}
+function setOmieStatus(state, txt) {
+  document.getElementById('omie-dot').className = 'nav-dot '+state;
+  document.getElementById('omie-status').textContent = txt;
+}
+async function omieCall(endpoint, call, key, secret, param) {
+  const payload = { call, app_key:String(key), app_secret:String(secret), param };
+  const isProxy = !['localhost','127.0.0.1',''].includes(window.location.hostname);
+  let resp;
+  if (isProxy) {
+    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,payload})});
+  } else {
+    resp = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }
+  if (!resp.ok) throw new Error('HTTP '+resp.status);
+  const data = await resp.json();
+  if (data.faultstring) throw new Error(data.faultstring);
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+const TURNOS = { seg_qui:510, sexta:390 };
+const VELOCIDADES_IND = {'200g':8,'400g':8,'800g':10,'1kg':12};
+const VELOCIDADES_MAZ = {'200g':3.6,'400g':3.6,'800g':5.6,'1kg':8};
+const VELOCIDADES = {
+  'SACARIA':{'25kg':11},'CAFE':{'200g':8,'400g':16,'800g':9.6,'1kg':12,'500g':9.6}
+};
+const OEE = 0.7;
+const SETUP_TROCA_MIN = 120;
+const CACAU_POS_MIN   = 60;
+
+// SUBSTITUA detectarLinha por:
+function detectarLinha(desc) {
+  if (!desc) return '';
+  const d = desc.toUpperCase();
+  // Café primeiro (tem prioridade sobre gramatura)
+  if (d.includes('CAFE')||d.includes('CAFÉ')||d.includes('BELVEDER')||d.includes('ALMOFADA')||d.includes('VACUO')) return 'CAFE';
+  // Sacaria
+  if (d.includes('25KG') || d.includes('25 KG') || d.includes('SACARIA')) return 'SACARIA';
+  // Lácteo por gramatura
+  if (d.includes('200G') || d.includes('200 G') ||
+      d.includes('400G') || d.includes('400 G') ||
+      d.includes('800G') || d.includes('800 G') ||
+      (d.includes('1KG') && !d.includes('25KG')) ||
+      (d.includes('1 KG') && !d.includes('25 KG'))) return 'LACTEO';
+  return 'LACTEO';
+}
+// DEPOIS:
+function detectarEmbalagem(desc) {
+  if (!desc) return '';
+  const d = desc.toUpperCase();
+  if (d.includes('200G') || d.includes('200 G')) return '200g';
+  if (d.includes('250G') || d.includes('250 G')) return '250g';
+  if (d.includes('400G') || d.includes('400 G')) return '400g';
+  if (d.includes('500G') || d.includes('500 G')) return '500g';
+  if (d.includes('800G') || d.includes('800 G')) return '800g';
+  if (d.includes('1KG')  || d.includes('1 KG'))  return '1kg';
+  if (d.includes('25KG') || d.includes('25 KG')) return '25kg';
+  return '';
+}
+function temCacau(desc) {
+  if (!desc) return false;
+  const d = desc.toUpperCase();
+  return d.includes('CACAU') || d.includes('CHOCOLAT') || d.includes('ACHOCOLAT');
+}
+function empresaDaLinha(linha) {
+  if (linha === 'CAFE') return 'MF Paris Indústria';
+  return 'DMS Alimentos';
+}
+function turnoMinutosDia(date) {
+  const dow = date.getDay();
+  if (dow === 5) return TURNOS.sexta;
+  if (dow === 0 || dow === 6) return 0;
+  return TURNOS.seg_qui;
+}
+function proxDiaUtil(d) {
+  const r = new Date(d); r.setHours(12,0,0,0);
+  while (r.getDay()===0 || r.getDay()===6) r.setDate(r.getDate()+1);
+  return r;
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function fmtDtBR(d) {
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+
+let rows = [];
+let rowId = 0;
+let listaTecnica = {};
+let estoqueAtual = {};
+let programacaoCalc = [];
+let planosLinha = { LACTEO:[], SACARIA:[], CAFE:[] };
+let mpDados = [];
+let mpFiltro = 'todos';
+let opItems = [];
+function addRow(sku='', qtd='') {
+  rows.push({ id:++rowId, sku, qtd, produto:'', linha:'', maquina:'IND', maquina2:'', maquina2Dias:'', embalagem:'', dias:0, pct:0 });
+  renderRows();
+}
+function removeRow(id){ rows = rows.filter(r=>r.id!==id); renderRows(); }
+
+function renderRows() {
+  const cont = document.getElementById('prog-rows');
+  if (!rows.length) {
+    cont.innerHTML = '<div class="vazio" style="padding:16px;"><div class="vazio-icon">📋</div>Nenhum produto adicionado.</div>';
+    return;
+  }
+  cont.innerHTML = rows.map(r => `
+<div class="prog-grid" id="row-${r.id}" style="margin-bottom:6px;">
+  <input class="prog-input" type="text" placeholder="Ex: 1230019" value="${r.sku}"
+    oninput="updateRowSku(${r.id},this.value)" onblur="buscarProdutoSku(${r.id})"
+    onkeydown="if(event.key==='Enter')buscarProdutoSku(${r.id})"/>
+  <input class="prog-input readonly" type="text" placeholder="Busque pelo código..."
+    value="${r.produto}" readonly id="prod-${r.id}"/>
+  <input class="prog-input" type="number" placeholder="kg" value="${r.qtd||''}" min="1"
+    oninput="updateRowQtd(${r.id},this.value)"/>
+  <div style="display:flex;align-items:center;">
+    ${r.linha?`<span class="linha-badge linha-${r.linha.toLowerCase()}">${r.linha}</span>`:'<span style="font-size:11px;color:var(--muted);">—</span>'}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:3px;">
+    ${r.linha==='LACTEO'?`
+    <select class="maquina-select" style="width:100%;" onchange="updateRowMaquina(${r.id},this.value)">
+      <option value="IND" ${r.maquina==='IND'?'selected':''}>Indumak (1ª)</option>
+      <option value="MAZ" ${r.maquina==='MAZ'?'selected':''}>Mazipak (1ª)</option>
+    </select>
+    <select class="maquina-select" style="width:100%;" onchange="updateRowMaquina2(${r.id},this.value)">
+      <option value="" ${!r.maquina2?'selected':''}>+ 2ª máquina (nenhuma)</option>
+      <option value="IND" ${r.maquina2==='IND'?'selected':''}>+ Indumak</option>
+      <option value="MAZ" ${r.maquina2==='MAZ'?'selected':''}>+ Mazipak</option>
+    </select>
+    ${r.maquina2?`<input class="prog-input" type="number" min="1" placeholder="dias 2ª (vazio=fim)" value="${r.maquina2Dias||''}" oninput="updateRowMaquina2Dias(${r.id},this.value)" style="font-size:10px;padding:5px 8px;"/>`:''}`:'<span style="font-size:11px;color:var(--muted);">—</span>'}
+  </div>
+  <input class="prog-input readonly" type="text" value="${r.dias||'—'}" readonly/>
+  <input class="prog-input readonly ${r.pct>90?'ok':r.pct>50?'':'err-field'}" type="text"
+    value="${r.pct?r.pct.toFixed(0)+'%':'—'}" readonly/>
+  <button class="btn-del" onclick="removeRow(${r.id})" title="Remover">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+  `).join('');
+}
+function updateRowSku(id,val){ const r=rows.find(r=>r.id===id); if(r) r.sku=val.trim(); }
+function updateRowQtd(id,val){ const r=rows.find(r=>r.id===id); if(r){ r.qtd=parseFloat(val)||0; } }
+function updateRowMaquina(id,val){ const r=rows.find(r=>r.id===id); if(r) r.maquina=val; }
+function updateRowMaquina2(id,val){ const r=rows.find(r=>r.id===id); if(r){ r.maquina2=val; if(!val) r.maquina2Dias=''; renderRows(); } }
+function updateRowMaquina2Dias(id,val){ const r=rows.find(r=>r.id===id); if(r) r.maquina2Dias=parseInt(val)||''; }
+
+async function buscarProdutoSku(id) {
+  const r = rows.find(r=>r.id===id);
+  if (!r || !r.sku) return;
+  const cfg = getConfig();
+  if (!cfg.mfp_key) { toast('Configure as chaves OMIE primeiro','err'); return; }
+  const el = document.getElementById('prod-'+id);
+  if (el) el.value = 'Buscando...';
+  try {
+    const data = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',cfg.mfp_key,cfg.mfp_secret,[{codigo:String(r.sku).trim()}]);
+    const desc = data.descricao || data.nome || '';
+    if (!desc) throw new Error('Produto não encontrado');
+    r.produto = desc;
+    r.linha = detectarLinha(desc);
+    r.embalagem = detectarEmbalagem(desc);
+    r.maquina = r.linha==='LACTEO' ? 'IND' : '';
+    const isCAFE = r.linha === 'CAFE';
+    const k = isCAFE ? cfg.mfp_key : cfg.dms_key;
+    const s = isCAFE ? cfg.mfp_secret : cfg.dms_secret;
+    if (isCAFE) {
+      r.omie_id = data.codigo_produto;
+    } else {
+      try {
+        const dataDms = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',k,s,[{codigo:String(r.sku).trim()}]);
+        r.omie_id = dataDms.codigo_produto;
+      } catch(e) {
+        r.omie_id = data.codigo_produto;
+        toast('Aviso: produto não encontrado na DMS, usando ID da MF Paris','info');
+      }
+    }
+    renderRows();
+    toast('✓ '+desc.slice(0,40)+' (ID: '+r.omie_id+')','ok');
+  } catch(e) {
+    if (el) el.value='Não encontrado';
+    toast('SKU '+r.sku+': '+(e.message||'').slice(0,60),'err');
+  }
+}
+
+async function buscarListaTecnica() {
+  const cfg = getConfig();
+  if (!cfg.mfp_key) { toast('Configure as chaves OMIE primeiro','err'); return; }
+  const skus = rows.filter(r=>r.sku).map(r=>r.sku);
+  if (!skus.length) { toast('Adicione produtos primeiro','err'); return; }
+  const btn = document.getElementById('btn-lt');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Buscando...';
+  let ok=0, err=0;
+  for (const sku of skus) {
+    try {
+      const row = rows.find(r=>r.sku===sku) || {};
+      const isCAFE = row.linha === 'CAFE';
+      const k = isCAFE ? cfg.mfp_key : cfg.dms_key;
+      const s = isCAFE ? cfg.mfp_secret : cfg.dms_secret;
+      const data = await omieCall('https://app.omie.com.br/api/v1/geral/malha/','ConsultarEstrutura',k,s,[{idProduto:0,intProduto:'',codProduto:String(sku)}]);
+      const itens = data.itens || data.itensEstrutura || [];
+      if (itens.length) {
+        listaTecnica[sku] = itens.map(it=>({
+          codMp: it.codProdMalha || it.codigo_componente || '',
+          descMp: it.descrProdMalha || it.descricao_componente || '',
+          qtdPor1000: (parseFloat(it.quantProdMalha||it.qtdProdMalha||it.nQtde||it.quantidade||0)||0) * 1000,
+          unidade: it.unidProdMalha || it.cUnid || it.unidade || 'KG',
+          tipo: it.descrFamMalha || it.cTipoComp || it.tipo || 'Matéria Prima'
+        }));
+        ok++;
+      } else { listaTecnica[sku]=[]; err++; }
+    } catch(e) { listaTecnica[sku]=[]; err++; }
+  }
+  btn.disabled=false; btn.innerHTML='Buscar Lista Técnica';
+  toast('Lista técnica: '+ok+' OK'+(err>0?', '+err+' sem estrutura':''), ok>0?'ok':'err');
+  if (programacaoCalc.length) calcularNecessidadeMP();
+}
+
+async function buscarEstoque() {
+  const cfg = getConfig();
+  if (!cfg.mfp_key) { toast('Configure as chaves OMIE primeiro','err'); return; }
+  const btn = document.getElementById('btn-est');
+  btn.disabled=true; btn.innerHTML='<div class="spinner spinner-dark"></div> Buscando...';
+  try {
+    let pag=1, total=0;
+    do {
+      const data = await omieCall('https://app.omie.com.br/api/v1/estoque/consultar/','ListarPosicaoEstoque',cfg.mfp_key,cfg.mfp_secret,[{pagina:pag,registros_por_pagina:500}]);
+      const itens = data.posicaoEstoque||data.lista_posicao||[];
+      itens.forEach(it=>{
+        const cod = String(it.codigo_produto||it.codigo||'');
+        estoqueAtual[cod] = parseFloat(it.saldo_fisico)||parseFloat(it.quantidade)||0;
+      });
+      total = data.total_de_registros||itens.length;
+      pag++; if (pag > Math.ceil(total/500)) break;
+    } while(Object.keys(estoqueAtual).length<total);
+    toast('Estoque: '+Object.keys(estoqueAtual).length+' itens','ok');
+  } catch(e) { toast('Erro estoque: '+e.message,'err'); }
+  btn.disabled=false; btn.innerHTML='Buscar Estoque';
+  if (programacaoCalc.length) calcularNecessidadeMP();
+}
+function ordenarSKUs(skus, modo) {
+  if (modo === 'sequencia') return skus.slice();
+  return skus.slice().sort((a,b) => {
+    const ea = a.embalagem||'zzz', eb = b.embalagem||'zzz';
+    if (ea !== eb) return ea.localeCompare(eb);
+    return (b.qtd||0) - (a.qtd||0);
+  });
+}
+
+function gerarPlanoLinha(linhaNome, skusDaLinha, modo, dataInicio, maquina) {
+  const velMap = maquina==='MAZ' ? VELOCIDADES_MAZ : maquina==='IND' ? VELOCIDADES_IND : (VELOCIDADES[linhaNome]||{});
+  const ordenados = ordenarSKUs(skusDaLinha, modo);
+  const usaSetup = linhaNome !== 'SACARIA';
+  const dias = [];
+  const dMap = {};
+  let dataAtual = proxDiaUtil(new Date(dataInicio));
+  let minutosRest = turnoMinutosDia(dataAtual);
+  let embAtual = null;
+  function registrar(ev) {
+    const iso = dataAtual.toISOString().slice(0,10);
+    if (!dMap[iso]) { dMap[iso] = { data:new Date(dataAtual), dataISO:iso, eventos:[], totalKg:0, minUsado:0 }; dias.push(dMap[iso]); }
+    dMap[iso].eventos.push(ev);
+    if (ev.kg) dMap[iso].totalKg += ev.kg;
+    if (ev.min) dMap[iso].minUsado += ev.min;
+  }
+  function consumirMin(minNec, evBase) {
+    let rest = minNec;
+    while (rest > 0) {
+      if (minutosRest <= 0) { dataAtual = proxDiaUtil(addDays(dataAtual,1)); minutosRest = turnoMinutosDia(dataAtual); continue; }
+      const usa = Math.min(rest, minutosRest);
+      minutosRest -= usa; rest -= usa;
+      registrar(Object.assign({}, evBase, {min:usa}));
+    }
+  }
+  for (const sku of ordenados) {
+    if (usaSetup && embAtual && embAtual !== sku.embalagem) {
+      consumirMin(SETUP_TROCA_MIN, {tipo:'setup', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem});
+    }
+    embAtual = sku.embalagem;
+    const vel = velMap[sku.embalagem] || (maquina==='MAZ'?3.6:maquina==='IND'?8:9.6);
+    const capPorMin = vel * OEE;
+    let restKg = sku.qtd;
+    while (restKg > 0) {
+      if (minutosRest <= 0) { dataAtual = proxDiaUtil(addDays(dataAtual,1)); minutosRest = turnoMinutosDia(dataAtual); continue; }
+      const podeKg = capPorMin * minutosRest;
+      const usaKg = Math.min(restKg, podeKg);
+      const minUsa = usaKg / capPorMin;
+      minutosRest -= minUsa; restKg -= usaKg;
+      registrar({tipo:'producao', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem, kg:usaKg, min:minUsa});
+    }
+    if (temCacau(sku.produto)) {
+      consumirMin(CACAU_POS_MIN, {tipo:'descontaminacao', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem});
+    }
+  }
+  return dias.sort((a,b)=>a.dataISO.localeCompare(b.dataISO));
+}
+
+function velLacteo(maq, emb) {
+  const m = maq==='MAZ' ? VELOCIDADES_MAZ : VELOCIDADES_IND;
+  return m[emb] || (maq==='MAZ'?3.6:8);
+}
+function nomeMaq(m) { return m==='MAZ'?'MAZIPAK':m==='IND'?'INDUMAK':''; }
+
+function gerarPlanoLacteo(skus, modo, dataInicio) {
+  const ordenados = ordenarSKUs(skus, modo);
+  const dias = [];
+  const dMap = {};
+  let dataAtual = proxDiaUtil(new Date(dataInicio));
+  let minutosRest = turnoMinutosDia(dataAtual);
+  let embAtual = null;
+  function registrar(ev) {
+    const iso = dataAtual.toISOString().slice(0,10);
+    if (!dMap[iso]) { dMap[iso] = { data:new Date(dataAtual), dataISO:iso, eventos:[], totalKg:0, minUsado:0 }; dias.push(dMap[iso]); }
+    dMap[iso].eventos.push(ev);
+    if (ev.kg) dMap[iso].totalKg += ev.kg;
+    if (ev.min && !ev.paralelo) dMap[iso].minUsado += ev.min;
+  }
+  function consumirMin(minNec, evBase) {
+    let rest = minNec;
+    while (rest > 0) {
+      if (minutosRest <= 0) { dataAtual = proxDiaUtil(addDays(dataAtual,1)); minutosRest = turnoMinutosDia(dataAtual); continue; }
+      const usa = Math.min(rest, minutosRest);
+      minutosRest -= usa; rest -= usa;
+      registrar(Object.assign({}, evBase, {min:usa}));
+    }
+  }
+  for (const sku of ordenados) {
+    if (embAtual && embAtual !== sku.embalagem) {
+      consumirMin(SETUP_TROCA_MIN, {tipo:'setup', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem, maquina:nomeMaq(sku.maquina)});
+    }
+    embAtual = sku.embalagem;
+    const velPrim = velLacteo(sku.maquina, sku.embalagem);
+    const usaSec = !!sku.maquina2 && sku.maquina2 !== sku.maquina;
+    const velSec = usaSec ? velLacteo(sku.maquina2, sku.embalagem) : 0;
+    const limiteDiasSec = usaSec ? (sku.maquina2Dias>0 ? sku.maquina2Dias : Infinity) : 0;
+    let restKg = sku.qtd;
+    let skuDay = 0;
+    while (restKg > 0) {
+      if (minutosRest <= 0) { dataAtual = proxDiaUtil(addDays(dataAtual,1)); minutosRest = turnoMinutosDia(dataAtual); continue; }
+      const secAtiva = usaSec && skuDay < limiteDiasSec;
+      const ratePrim = velPrim * OEE;
+      const rateSec  = secAtiva ? velSec * OEE : 0;
+      const rateTot  = ratePrim + rateSec;
+      const podeKg = rateTot * minutosRest;
+      const usaKg = Math.min(restKg, podeKg);
+      const minUsa = usaKg / rateTot;
+      const kgPrim = usaKg * (ratePrim/rateTot);
+      registrar({tipo:'producao', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem, kg:kgPrim, min:minUsa, maquina:nomeMaq(sku.maquina)});
+      if (rateSec > 0) {
+        registrar({tipo:'producao', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem, kg:(usaKg-kgPrim), min:minUsa, maquina:nomeMaq(sku.maquina2), paralelo:true});
+      }
+      minutosRest -= minUsa; restKg -= usaKg;
+      skuDay++;
+    }
+    if (temCacau(sku.produto)) {
+      consumirMin(CACAU_POS_MIN, {tipo:'descontaminacao', sku:sku.sku, produto:sku.produto, embalagem:sku.embalagem, maquina:nomeMaq(sku.maquina)});
+    }
+  }
+  return dias.sort((a,b)=>a.dataISO.localeCompare(b.dataISO));
+}
+
+function calcularProgramacao() {
+  const dataInicioInput = document.getElementById('data-inicio').value;
+  const dataInicio = dataInicioInput ? new Date(dataInicioInput+'T12:00:00') : proxDiaUtil(new Date());
+  const validos = rows.filter(r => r.sku && r.qtd>0 && r.linha && r.embalagem);
+  if (!validos.length) { toast('Adicione produtos com SKU + qtd válidos','err'); return; }
+  const modo = document.getElementById('modo-calc').value;
+  programacaoCalc = validos.map(r => {
+    const velMap = r.linha==='LACTEO' ? (r.maquina==='MAZ'?VELOCIDADES_MAZ:VELOCIDADES_IND) : (VELOCIDADES[r.linha]||{});
+    const vel = velMap[r.embalagem] || (r.linha==='LACTEO'?(r.maquina==='MAZ'?3.6:8):9.6);
+    const capDia = vel * OEE * TURNOS.seg_qui;
+    const dias = Math.ceil(r.qtd/capDia);
+    const pct = Math.min((r.qtd/capDia)*100, 100);
+    return Object.assign({}, r, {capDia, dias, pct});
+  });
+  planosLinha = {
+    LACTEO:  gerarPlanoLacteo(programacaoCalc.filter(r=>r.linha==='LACTEO'), modo, dataInicio),
+    SACARIA: gerarPlanoLinha('SACARIA', programacaoCalc.filter(r=>r.linha==='SACARIA'), modo, dataInicio),
+    CAFE:    gerarPlanoLinha('CAFE',    programacaoCalc.filter(r=>r.linha==='CAFE'),    modo, dataInicio),
+  };
+  const diasPorSku = {};
+  (planosLinha.LACTEO||[]).forEach(d => {
+    const skusNoDia = new Set();
+    d.eventos.forEach(ev => { if (ev.tipo==='producao') skusNoDia.add(ev.sku); });
+    skusNoDia.forEach(s => { diasPorSku[s] = (diasPorSku[s]||0)+1; });
+  });
+  programacaoCalc.forEach(c => { if (c.linha==='LACTEO' && diasPorSku[c.sku]) c.dias = diasPorSku[c.sku]; });
+  rows.forEach(r => {
+    const calc = programacaoCalc.find(c=>c.id===r.id);
+    if (calc) { r.dias=calc.dias; r.pct=calc.pct; }
+  });
+  renderRows();
+  renderCalendarios();
+  renderPerdas();
+  renderMaoObra();
+  calcularNecessidadeMP();
+  salvarHistorico();
+  document.getElementById('sec-calendario').style.display='';
+  document.getElementById('sec-perdas').style.display='';
+  document.getElementById('sec-mao').style.display='';
+  document.getElementById('sec-mp').style.display='';
+  toast('Simulado em modo '+modo.toUpperCase()+' · '+programacaoCalc.length+' SKUs','ok');
+}
+
+function renderCalendarios() {
+  renderCalLinha('LACTEO',  'cal-lacteo',  'cal-lacteo-resumo');
+  renderCalLinha('SACARIA', 'cal-sacaria', 'cal-sacaria-resumo');
+  renderCalLinha('CAFE',    'cal-cafe',    'cal-cafe-resumo');
+}
+
+// ====== Eficiência / Perdas / Mão de obra (Simulador) ======
+function getEfic() {
+  function v(id){ var e=document.getElementById(id); var n=e?parseFloat(e.value):100; if(isNaN(n)||n<=0)n=100; return Math.min(n,100)/100; }
+  return { IND:v('efic-ind'), MAZ:v('efic-maz'), SACARIA:v('efic-sac'), CAFE:v('efic-cafe') };
+}
+function eficienciaDe(linha, maquinaNome) {
+  const e = getEfic();
+  if (linha==='LACTEO') return maquinaNome==='MAZIPAK' ? e.MAZ : e.IND;
+  if (linha==='SACARIA') return e.SACARIA;
+  if (linha==='CAFE') return e.CAFE;
+  return 1;
+}
+function tipoCafe(produto) {
+  const d = (produto||'').toUpperCase();
+  if (d.includes('ALMOFAD')) return 'almofada';
+  return 'vacuo';
+}
+function calcularPerdas() {
+  const grupos = [
+    {nome:'Lácteo · Indumak', linha:'LACTEO', maq:'INDUMAK'},
+    {nome:'Lácteo · Mazipak', linha:'LACTEO', maq:'MAZIPAK'},
+    {nome:'Sacaria',          linha:'SACARIA', maq:null},
+    {nome:'Café',             linha:'CAFE',    maq:null},
+  ];
+  const out = [];
+  grupos.forEach(g => {
+    let estip = 0;
+    (planosLinha[g.linha]||[]).forEach(d => d.eventos.forEach(ev => {
+      if (ev.tipo!=='producao') return;
+      if (g.linha==='LACTEO' && (ev.maquina||'')!==g.maq) return;
+      estip += ev.kg;
+    }));
+    if (estip <= 0) return;
+    const efic = eficienciaDe(g.linha, g.maq);
+    const real = estip*efic;
+    out.push({nome:g.nome, estip, efic, real, perda:estip-real});
+  });
+  return out;
+}
+function calcularMaoObraDias() {
+  const map = {};
+  function dia(iso, data){ if(!map[iso]) map[iso]={dataISO:iso, data:data, ind:false, maz:false, sac:false, cafe:false, almof:false}; return map[iso]; }
+  (planosLinha.LACTEO||[]).forEach(d => { const m=dia(d.dataISO,d.data); d.eventos.forEach(ev=>{ if(ev.tipo!=='producao')return; if((ev.maquina||'')==='INDUMAK')m.ind=true; if((ev.maquina||'')==='MAZIPAK')m.maz=true; }); });
+  (planosLinha.SACARIA||[]).forEach(d => { const m=dia(d.dataISO,d.data); if(d.eventos.some(e=>e.tipo==='producao'))m.sac=true; });
+  (planosLinha.CAFE||[]).forEach(d => { const m=dia(d.dataISO,d.data); d.eventos.forEach(ev=>{ if(ev.tipo!=='producao')return; m.cafe=true; if(tipoCafe(ev.produto)==='almofada')m.almof=true; }); });
+  return Object.keys(map).sort().map(k => {
+    const m = map[k];
+    const misturador=(m.sac?1:0)+(m.ind?1:0)+(m.maz?1:0);
+    const opMaquina=(m.ind?1:0);
+    const operador=(m.maz?1:0)+(m.cafe?1:0);
+    const auxiliar=(m.sac?2:0)+(m.ind?1:0)+(m.cafe?(m.almof?2:1):0);
+    const descascador=(m.sac||m.ind||m.maz)?1:0;
+    const torrador=(m.cafe?1:0);
+    const total=misturador+opMaquina+operador+auxiliar+descascador+torrador;
+    const linhas=[]; if(m.ind)linhas.push('Indumak'); if(m.maz)linhas.push('Mazipak'); if(m.sac)linhas.push('Sacaria'); if(m.cafe)linhas.push('Café'+(m.almof?' (almofada)':' (vácuo)'));
+    return Object.assign(m, {misturador,opMaquina,operador,auxiliar,descascador,torrador,total,linhas});
+  });
+}
+function renderPerdas() {
+  const dados = calcularPerdas();
+  const tbody = document.getElementById('perdas-tbody');
+  if (!dados.length) { tbody.innerHTML='<tr><td colspan="6" class="vazio">Sem produção.</td></tr>'; document.getElementById('perdas-resumo').textContent=''; return; }
+  let tEstip=0, tReal=0;
+  let html = dados.map(d => {
+    tEstip+=d.estip; tReal+=d.real;
+    const perdaPct=(1-d.efic)*100;
+    return '<tr>'+
+      '<td class="produto">'+d.nome+'</td>'+
+      '<td class="num">'+d.estip.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'+
+      '<td class="num">'+(d.efic*100).toFixed(0)+'%</td>'+
+      '<td class="num" style="color:var(--green);">'+d.real.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'+
+      '<td class="num" style="color:'+(d.perda>0?'var(--red)':'var(--muted)')+';">'+d.perda.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'+
+      '<td class="num" style="color:'+(perdaPct>0?'var(--red)':'var(--muted)')+';">'+perdaPct.toFixed(0)+'%</td>'+
+    '</tr>';
+  }).join('');
+  html += '<tr style="font-weight:800;border-top:2px solid var(--gold-b);"><td>TOTAL</td>'+
+    '<td class="num">'+tEstip.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td><td class="num">—</td>'+
+    '<td class="num" style="color:var(--green);">'+tReal.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'+
+    '<td class="num" style="color:var(--red);">'+(tEstip-tReal).toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'+
+    '<td class="num" style="color:var(--red);">'+(tEstip>0?((1-tReal/tEstip)*100).toFixed(0):0)+'%</td></tr>';
+  tbody.innerHTML = html;
+  const perdaTot=tEstip-tReal;
+  document.getElementById('perdas-resumo').textContent = perdaTot>0.5 ? ('⚠ Perda total: '+perdaTot.toLocaleString('pt-BR',{maximumFractionDigits:0})+' kg ('+((1-tReal/tEstip)*100).toFixed(0)+'%)') : 'Sem perdas (100%)';
+}
+function renderMaoObra() {
+  const dias = calcularMaoObraDias();
+  const tbody = document.getElementById('mao-tbody');
+  if (!dias.length) { tbody.innerHTML='<tr><td colspan="10" class="vazio">Sem produção.</td></tr>'; document.getElementById('mao-resumo').textContent=''; return; }
+  const dow=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let pico=0, somaTotal=0;
+  tbody.innerHTML = dias.map(d => {
+    pico=Math.max(pico,d.total); somaTotal+=d.total;
+    return '<tr>'+
+      '<td class="cod">'+fmtDtBR(d.data)+'</td>'+
+      '<td>'+dow[d.data.getDay()]+'</td>'+
+      '<td style="font-size:10px;">'+d.linhas.join(', ')+'</td>'+
+      '<td class="num">'+d.misturador+'</td><td class="num">'+d.opMaquina+'</td><td class="num">'+d.operador+'</td>'+
+      '<td class="num">'+d.auxiliar+'</td><td class="num">'+d.descascador+'</td><td class="num">'+d.torrador+'</td>'+
+      '<td class="num" style="font-weight:800;">'+d.total+'</td>'+
+    '</tr>';
+  }).join('');
+  document.getElementById('mao-resumo').textContent = dias.length+' dia(s) · pico '+pico+' pessoas/dia · '+somaTotal+' homens-dia';
+}
+
+function renderCalLinha(chavePlano, gridId, resumoId) {
+  const dias = planosLinha[chavePlano] || [];
+  const grid = document.getElementById(gridId);
+  const resumo = document.getElementById(resumoId);
+  if (!dias.length) {
+    grid.innerHTML = '<div class="vazio" style="padding:12px;font-size:11px;">Sem SKUs nesta linha.</div>';
+    resumo.textContent = '';
+    return;
+  }
+  const totalKg = dias.reduce((a,d)=>a+d.totalKg,0);
+  const ultDia = dias[dias.length-1];
+  resumo.textContent = dias.length+' dia(s) · '+totalKg.toLocaleString('pt-BR',{maximumFractionDigits:0})+' kg · término '+fmtDtBR(ultDia.data);
+  grid.innerHTML = dias.map(d => {
+    const dow = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'][d.data.getDay()];
+    const skuGroups = {};
+    let setupMin = 0, descMin = 0, realDia = 0;
+    d.eventos.forEach(ev => {
+      if (ev.tipo === 'setup') setupMin += ev.min;
+      else if (ev.tipo === 'descontaminacao') descMin += ev.min;
+      else {
+        if (!skuGroups[ev.sku]) skuGroups[ev.sku] = {produto:ev.produto, embalagem:ev.embalagem, kg:0, maq:{}};
+        skuGroups[ev.sku].kg += ev.kg;
+        const mq = ev.maquina||'';
+        if (mq) skuGroups[ev.sku].maq[mq] = (skuGroups[ev.sku].maq[mq]||0) + ev.kg;
+        realDia += ev.kg * eficienciaDe(chavePlano, mq);
+      }
+    });
+    const skuLinhas = Object.entries(skuGroups).map(([sku,g])=>{
+      const maqKeys = Object.keys(g.maq);
+      const maqTxt = maqKeys.length ? '<div style="font-size:9px;color:var(--blue);margin-top:1px;">'+maqKeys.map(m=>m+' '+g.maq[m].toLocaleString('pt-BR',{maximumFractionDigits:0})+'kg').join(' + ')+'</div>' : '';
+      return '<div style="font-size:10px;color:var(--navy);padding:3px 0;border-top:0.5px solid var(--gold-l);">'+
+        '<strong>'+sku+'</strong> · '+g.kg.toLocaleString('pt-BR',{maximumFractionDigits:0})+' kg <span style="color:var(--muted);">('+g.embalagem+')</span>'+
+        maqTxt+
+      '</div>';
+    }).join('');
+    const extras = (setupMin||descMin) ?
+      '<div style="margin-top:5px;font-size:9px;color:var(--amber);">'+
+        (setupMin?'⚙ Setup '+setupMin.toFixed(0)+'min':'')+(setupMin&&descMin?' · ':'')+(descMin?'🧪 Limpeza '+descMin.toFixed(0)+'min':'')+
+      '</div>' : '';
+    const estipDia = d.totalKg;
+    const perdaDia = estipDia - realDia;
+    const perdaLine = (estipDia>0 && perdaDia>0.5) ?
+      '<div style="margin-top:5px;font-size:9px;color:var(--red);">📉 Real '+realDia.toLocaleString('pt-BR',{maximumFractionDigits:0})+'kg · perda '+perdaDia.toLocaleString('pt-BR',{maximumFractionDigits:0})+'kg ('+((perdaDia/estipDia)*100).toFixed(0)+'%)</div>' : '';
+    return '<div class="cal-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+        '<span style="font-size:11px;font-weight:700;color:var(--navy);">'+dow+' '+fmtDtBR(d.data)+'</span>'+
+        '<span style="font-size:9px;color:var(--muted);">'+d.minUsado.toFixed(0)+'min</span>'+
+      '</div>'+
+      (skuLinhas || '<div style="font-size:10px;color:var(--muted);">—</div>')+
+      perdaLine+
+      extras+
+    '</div>';
+  }).join('');
+}
+
+function calcularNecessidadeMP() {
+  const consolidado = {};
+  programacaoCalc.forEach(prod => {
+    const lt = listaTecnica[prod.sku] || [];
+    lt.forEach(item => {
+      const necBruta = (item.qtdPor1000/1000)*prod.qtd;
+      if (!consolidado[item.codMp]) { consolidado[item.codMp] = {codMp:item.codMp, descMp:item.descMp, tipo:item.tipo, unidade:item.unidade, necBruta:0, skus:[]}; }
+      consolidado[item.codMp].necBruta += necBruta;
+      consolidado[item.codMp].skus.push(prod.sku);
+    });
+  });
+  mpDados = Object.values(consolidado).map(mp => {
+    const estq = estoqueAtual[String(mp.codMp)] || 0;
+    const saldo = estq - mp.necBruta;
+    const status = saldo>=0 ? 'ok' : Math.abs(saldo)<mp.necBruta*0.3 ? 'parcial' : 'falta';
+    return Object.assign({}, mp, {estoque:estq, saldo, status});
+  }).sort((a,b)=> a.status==='falta'?-1:b.status==='falta'?1:a.descMp.localeCompare(b.descMp));
+  const nf = mpDados.filter(m=>m.status!=='ok').length;
+  document.getElementById('mp-resumo-falta').textContent = nf>0?'⚠ '+nf+' itens precisam de compra':'';
+  renderMPTabela();
+}
+function filtrarMP(f, btn) {
+  mpFiltro = f;
+  document.querySelectorAll('.mp-ftab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderMPTabela();
+}
+function renderMPTabela() {
+  let dados = mpDados;
+  if (mpFiltro==='falta') dados = dados.filter(m=>m.status!=='ok');
+  if (mpFiltro==='ok') dados = dados.filter(m=>m.status==='ok');
+  if (mpFiltro==='mp') dados = dados.filter(m=>m.tipo&&m.tipo.toLowerCase().includes('mat'));
+  if (mpFiltro==='embalagem') dados = dados.filter(m=>m.tipo&&m.tipo.toLowerCase().includes('emb'));
+  const fmt = (v,un) => { if(!v&&v!==0)return '—'; const n = typeof v==='number'?v.toLocaleString('pt-BR',{maximumFractionDigits:2}):v; return n+(un?' '+un:''); };
+  const tbody = document.getElementById('mp-tbody');
+  if (!dados.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="vazio">'+(mpDados.length===0?'<div class="vazio-icon">📊</div>Busque a Lista Técnica':'Nenhum item')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML = dados.map(mp => {
+    const tipoCls = (mp.tipo||'').toLowerCase().includes('emb')?'tag-emb':(mp.tipo||'').toLowerCase().includes('ins')?'tag-ins':'tag-mp';
+    const stTxt = mp.status==='ok'?'<span class="status-ok">✓ OK</span>':mp.status==='parcial'?'<span class="status-parcial">⚡ Parcial</span>':'<span class="status-falta">✗ Comprar</span>';
+    return '<tr>'+
+      '<td class="cod">'+mp.codMp+'</td><td class="produto">'+mp.descMp+'</td>'+
+      '<td><span class="tag-tipo '+tipoCls+'">'+(mp.tipo||'—')+'</span></td>'+
+      '<td style="font-size:10px;color:var(--muted);">'+[...new Set(mp.skus)].join(', ')+'</td>'+
+      '<td class="num">'+fmt(mp.necBruta,mp.unidade)+'</td>'+
+      '<td class="num" style="color:'+(mp.estoque>0?'var(--green)':'var(--muted)')+';">'+fmt(mp.estoque,mp.unidade)+'</td>'+
+      '<td class="num" style="color:'+(mp.saldo>=0?'var(--green)':'var(--red)')+';">'+fmt(mp.saldo,mp.unidade)+'</td>'+
+      '<td>'+stTxt+'</td>'+
+    '</tr>';
+  }).join('');
+}
+const PLANOS_LINHA_MAP = { LACTEO:'LACTEO', SACARIA:'SACARIA', CAFE:'CAFE' };
+
+function abrirOPModal() {
+  opItems = [];
+  Object.keys(PLANOS_LINHA_MAP).forEach(chave => {
+    const linha = PLANOS_LINHA_MAP[chave];
+    const dias = planosLinha[chave] || [];
+    dias.forEach(dia => {
+      const skuKg = {};
+      dia.eventos.forEach(ev => {
+        if (ev.tipo === 'producao') {
+          if (!skuKg[ev.sku]) skuKg[ev.sku] = {produto: ev.produto, kg: 0};
+          skuKg[ev.sku].kg += ev.kg;
+        }
+      });
+      Object.entries(skuKg).forEach(([sku, g]) => {
+        const row = rows.find(r => r.sku === sku) || {};
+        opItems.push({
+          sku, omie_id: row.omie_id || 0,
+          produto: g.produto || sku,
+          qtd: Math.round(g.kg * 100) / 100,
+          data: dia.dataISO, dataStr: fmtDtBR(dia.data),
+          linha, empresa: empresaDaLinha(linha),
+          status: 'pendente', error: ''
+        });
+      });
+    });
+  });
+  document.getElementById('op-sub').textContent =
+    opItems.length + ' O.P. diárias serão criadas no OMIE (' +
+    programacaoCalc.reduce((a,r) => a + r.qtd, 0).toLocaleString('pt-BR') + ' kg total).';
+  renderOPLista();
+  document.getElementById('op-modal').classList.add('open');
+}
+function fecharOPModal(){ document.getElementById('op-modal').classList.remove('open'); }
+function renderOPLista() {
+  document.getElementById('op-lista').innerHTML = opItems.map((op,i)=>{
+    const empCls = op.empresa==='DMS Alimentos'?'emp-dms':'emp-mfparis';
+    const stTxt = {pendente:'Pendente',enviando:'Enviando...',ok:'✓ Criada',erro:'✗ Erro'};
+    return '<div class="op-item" id="op-item-'+i+'">'+
+      '<div class="op-item-info">'+
+        '<div class="op-item-sku">'+op.sku+' <span style="color:var(--gold);font-weight:600;">'+op.dataStr+'</span></div>'+
+        '<div class="op-item-prod">'+op.produto+'</div>'+
+        '<div class="op-item-det">'+(op.qtd||0).toLocaleString('pt-BR',{maximumFractionDigits:1})+' kg · '+op.linha+'</div>'+
+        (op.error?'<div style="font-size:10px;color:var(--red);margin-top:2px;">'+op.error+'</div>':'')+
+      '</div>'+
+      '<span class="op-item-empresa '+empCls+'">'+op.empresa+'</span>'+
+      '<span class="op-status '+op.status+'">'+(stTxt[op.status]||op.status)+'</span>'+
+    '</div>';
+  }).join('');
+}
+async function enviarOPs() {
+  const cfg = getConfig();
+  if (!cfg.mfp_key||!cfg.dms_key) { toast('Configure as chaves OMIE','err'); return; }
+  const btn = document.getElementById('btn-enviar-ops');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Enviando...';
+  for (let i=0;i<opItems.length;i++) {
+    const op = opItems[i]; op.status='enviando'; renderOPLista();
+    if (!op.omie_id) {
+      op.status='erro'; op.error='ID OMIE não encontrado — busque o SKU antes de criar OPs';
+      renderOPLista(); continue;
+    }
+    const isCAFE = op.linha==='CAFE';
+    const key = isCAFE?cfg.mfp_key:cfg.dms_key;
+    const secret = isCAFE?cfg.mfp_secret:cfg.dms_secret;
+    try {
+      await omieCall('https://app.omie.com.br/api/v1/produtos/op/','IncluirOrdemProducao',key,secret,[{
+        identificacao:{cCodIntOP:('OP'+op.sku+Date.now()).slice(0,20),dDtPrevisao:op.dataStr,nCodProduto:parseInt(op.omie_id)||0,nQtde:op.qtd}
+      }]);
+      op.status='ok';
+    } catch(e) { op.status='erro'; op.error=e.message; }
+    renderOPLista();
+    await new Promise(r=>setTimeout(r,400));
+  }
+  btn.disabled=false; btn.innerHTML='Enviar para OMIE';
+  const ok = opItems.filter(o=>o.status==='ok').length;
+  const er = opItems.filter(o=>o.status==='erro').length;
+  toast(ok+' O.P. criada(s)'+(er>0?' · '+er+' erro(s)':''), ok>0?'ok':'err');
+}
+
+function exportarExcel() {
+  if (!programacaoCalc.length) { toast('Calcule a programação primeiro','err'); return; }
+  if (!window.XLSX) { toast('Aguarde o carregamento do SheetJS...','info'); return; }
+  const wb = XLSX.utils.book_new();
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const PLANOS_DA_LINHA = { LACTEO:['LACTEO'], SACARIA:['SACARIA'], CAFE:['CAFE'] };
+
+  function montarAba(nomeAba, linhas) {
+    const skus = programacaoCalc.filter(p => linhas.includes(p.linha));
+    if (!skus.length) return;
+    const aoa = [];
+    aoa.push(['PROGRAMAÇÃO — '+nomeAba.toUpperCase(), '', '', '', hoje]);
+    aoa.push([]);
+    aoa.push(['PLANO DIÁRIO']);
+    aoa.push(['Linha','Máquina','Data','Dia','SKU','Produto','Embalagem','Qtd (kg)','Min Usados','Tipo']);
+    linhas.forEach(L => {
+      (PLANOS_DA_LINHA[L]||[]).forEach(chave => {
+        (planosLinha[chave]||[]).forEach(d => {
+          d.eventos.forEach(ev => {
+            aoa.push([
+              L, ev.maquina||'', fmtDtBR(d.data),
+              ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.data.getDay()],
+              ev.sku||'', ev.produto||'', ev.embalagem||'',
+              ev.kg?Number(ev.kg.toFixed(2)):'',
+              ev.min?Number(ev.min.toFixed(1)):'',
+              ev.tipo
+            ]);
+          });
+        });
+      });
+    });
+    aoa.push([]); aoa.push(['NECESSIDADE DE MP POR SKU']);
+    aoa.push(['SKU','Produto','Linha','Qtd Prod (kg)','Cód MP','Descrição MP','Tipo','Qtd/1000','Nec. Bruta','Unidade']);
+    skus.forEach(p => {
+      const lt = listaTecnica[p.sku]||[];
+      if (!lt.length) {
+        aoa.push([p.sku,p.produto,p.linha,p.qtd,'','(sem estrutura)','','','','']);
+      } else {
+        lt.forEach(it => {
+          const nec = (it.qtdPor1000/1000)*p.qtd;
+          aoa.push([p.sku,p.produto,p.linha,p.qtd,it.codMp,it.descMp,it.tipo,it.qtdPor1000,Number(nec.toFixed(3)),it.unidade]);
+        });
+      }
+    });
+    aoa.push([]); aoa.push(['CONSOLIDADO DE MP — '+nomeAba.toUpperCase()]);
+    aoa.push(['Cód MP','Descrição','Tipo','Nec. Bruta','Estoque Atual','Saldo','Status','SKUs Origem']);
+    const cons = {};
+    skus.forEach(p => {
+      (listaTecnica[p.sku]||[]).forEach(it => {
+        if (!cons[it.codMp]) cons[it.codMp] = {codMp:it.codMp,descMp:it.descMp,tipo:it.tipo,unidade:it.unidade,nec:0,skus:[]};
+        cons[it.codMp].nec += (it.qtdPor1000/1000)*p.qtd;
+        cons[it.codMp].skus.push(p.sku);
+      });
+    });
+    Object.values(cons).forEach(c => {
+      const est = estoqueAtual[String(c.codMp)]||0;
+      const saldo = est - c.nec;
+      const status = saldo>=0?'OK':Math.abs(saldo)<c.nec*0.3?'PARCIAL':'COMPRAR';
+      aoa.push([c.codMp,c.descMp,c.tipo,Number(c.nec.toFixed(3)),est,Number(saldo.toFixed(3)),status,[...new Set(c.skus)].join(', ')]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:10},{wch:10},{wch:12},{wch:6},{wch:12},{wch:38},{wch:12},{wch:12},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws, nomeAba);
+  }
+
+  montarAba('Café',              ['CAFE']);
+  montarAba('Lácteo & Sacaria',  ['LACTEO','SACARIA']);
+
+  const aoaM = [];
+  aoaM.push(['MÃO DE OBRA POR DIA', '', '', '', hoje]);
+  aoaM.push([]);
+  aoaM.push(['Data','Dia','Linhas ativas','Misturador','Op. Máquina','Operador','Auxiliar','Descascador','Torrador','Total']);
+  const dowM=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  calcularMaoObraDias().forEach(d => {
+    aoaM.push([fmtDtBR(d.data), dowM[d.data.getDay()], d.linhas.join(', '), d.misturador, d.opMaquina, d.operador, d.auxiliar, d.descascador, d.torrador, d.total]);
+  });
+  aoaM.push([]); aoaM.push(['PERDAS POR EFICIÊNCIA']);
+  aoaM.push(['Linha / Máquina','Estipulado (kg)','Eficiência %','Real (kg)','Perda (kg)','Perda %']);
+  let tE=0,tR=0;
+  calcularPerdas().forEach(p => { tE+=p.estip; tR+=p.real; aoaM.push([p.nome, Number(p.estip.toFixed(0)), Number((p.efic*100).toFixed(0)), Number(p.real.toFixed(0)), Number(p.perda.toFixed(0)), Number(((1-p.efic)*100).toFixed(0))]); });
+  aoaM.push(['TOTAL', Number(tE.toFixed(0)), '', Number(tR.toFixed(0)), Number((tE-tR).toFixed(0)), tE>0?Number(((1-tR/tE)*100).toFixed(0)):0]);
+  const wsM = XLSX.utils.aoa_to_sheet(aoaM);
+  wsM['!cols']=[{wch:12},{wch:6},{wch:28},{wch:11},{wch:11},{wch:10},{wch:10},{wch:12},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, wsM, 'Mão de Obra & Perdas');
+
+  const nome = 'Simulacao_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb, nome);
+  toast('Excel exportado: '+nome,'ok');
+}
+
+async function testarSKU() {
+  const cfg = getConfig();
+  if (!cfg.mfp_key) { toast('Configure as chaves OMIE','err'); return; }
+  const sku = prompt('Digite o código SKU para testar:'); if (!sku) return;
+  const box = document.getElementById('diag-box');
+  box.style.display='block'; box.textContent='Buscando SKU '+sku+'...\n';
+  try {
+    const d = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',cfg.mfp_key,cfg.mfp_secret,[{codigo:String(sku)}]);
+    box.textContent += '\nResultado:\n'+JSON.stringify(d,null,2).slice(0,1200);
+  } catch(e) { box.textContent += '\nErro: '+e.message; }
+}
+
+function abrirIAModal(){ document.getElementById('ia-modal').classList.add('open'); document.getElementById('ia-sugestao').style.display='none'; }
+function fecharIAModal(){ document.getElementById('ia-modal').classList.remove('open'); }
+
+async function buscarSugestaoIA() {
+  const loading = document.getElementById('ia-loading');
+  const sugestao = document.getElementById('ia-sugestao');
+  loading.style.display='flex'; sugestao.style.display='none';
+  const ENDPOINT_IA = 'https://SEU-ENDPOINT-IA.cloudfunctions.net/sugestao-programacao';
+  try {
+    const historico = localStorage.getItem('opus_historico_programacao') || '[]';
+    const resp = await fetch(ENDPOINT_IA, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ historico: JSON.parse(historico), linhas: rows })
+    });
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    sugestao.textContent = data.sugestao || 'Nenhuma sugestão retornada.';
+  } catch(e) {
+    sugestao.textContent = '⚠️ Erro ao consultar IA. Verifique se o endpoint está configurado.\n\nErro: '+e.message+'\n\nPara usar a sugestão IA, você precisa de um backend na nuvem (Cloud Function, AWS Lambda, etc.) que receba o histórico e chame uma API de IA (OpenAI, Claude, etc.).';
+  }
+  loading.style.display='none'; sugestao.style.display='block';
+}
+
+function salvarHistorico() {
+  if (!programacaoCalc.length) return;
+  const entry = { data: new Date().toISOString(), programacao: programacaoCalc, planos: planosLinha };
+  let hist = [];
+  try { hist = JSON.parse(localStorage.getItem('opus_historico_simulador')||'[]'); } catch(e){}
+  hist.unshift(entry);
+  if (hist.length > 12) hist = hist.slice(0,12);
+  localStorage.setItem('opus_historico_simulador', JSON.stringify(hist));
+}
+
+function toast(msg, type) {
+  type = type || 'info';
+  const cont = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-'+type;
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+
+document.getElementById('data-prog').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const cfgSalva = getConfig();
+if (cfgSalva.mfp_key) testarConexao(cfgSalva); else setTimeout(()=>abrirConfig(),600);
+for (let i=0;i<10;i++) addRow();
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

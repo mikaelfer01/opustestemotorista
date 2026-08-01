@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OPUS — Gestao de Usuarios</title>
+<script type="module" src="/js/admin-usuarios.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#f5f7ff;min-height:100vh;color:#0b1437}
+.topbar{background:linear-gradient(135deg,#0a1f6b,#1e40af);color:#fff;padding:14px 28px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(10,31,107,.18)}
+.topbar h1{font-size:18px;font-weight:700}
+.topbar a{margin-left:auto;color:#fff;text-decoration:none;font-size:13px;background:rgba(255,255,255,.12);padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2)}
+.topbar a:hover{background:rgba(255,255,255,.2)}
+.wrap{max-width:1100px;margin:24px auto;padding:0 20px;display:grid;grid-template-columns:380px 1fr;gap:24px}
+@media(max-width:880px){.wrap{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:14px;padding:22px 24px;box-shadow:0 6px 24px rgba(15,23,42,.06)}
+.card h2{font-size:14px;color:#0a1f6b;margin-bottom:14px;text-transform:uppercase;letter-spacing:.1em}
+label{display:block;font-size:12px;font-weight:600;color:#555;margin:10px 0 4px}
+input,select{width:100%;padding:9px 12px;border:1px solid #d6dbe6;border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:#1e40af;box-shadow:0 0 0 3px rgba(30,64,175,.12)}
+button.primary{margin-top:16px;width:100%;padding:11px;background:linear-gradient(135deg,#1e40af,#1d3a99);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer}
+button.primary:hover{filter:brightness(1.1)}
+button.primary:disabled{opacity:.6;cursor:not-allowed}
+.msg{margin-top:12px;padding:9px 12px;border-radius:8px;font-size:12.5px;display:none}
+.msg.ok{display:block;background:#d1fae5;color:#065f46}
+.msg.erro{display:block;background:#fee2e2;color:#991b1b}
+.contadores{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.contador{display:inline-block;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600;background:#fff;border:1.5px solid}
+.card-usr{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #e5e9f2;border-radius:10px;margin-bottom:8px;transition:all .15s}
+.card-usr:hover{border-color:#c5d0e6;background:#fafbff}
+.card-usr.inativo{opacity:.55}
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0}
+.info{flex:1;min-width:0}
+.nome{font-size:13px;font-weight:600;color:#0b1437}
+.email{font-size:11px;color:#666;margin-top:1px}
+.tag-inativo{font-size:9px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:700}
+.tag-prov{font-size:9px;background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:700}
+.nota{margin-top:12px;font-size:11.5px;color:#666;background:#f5f7ff;padding:9px 11px;border-radius:8px;border-left:3px solid #1e40af}
+.badge{color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em}
+.acoes{display:flex;gap:4px}
+.acoes button{background:#f5f7ff;border:1px solid #e5e9f2;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:13px}
+.acoes button:hover{background:#e8efff;border-color:#1e40af}
+.vazio{padding:40px;text-align:center;color:#888;font-style:italic;font-size:13px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>&#128100; Gestao de Usuarios</h1>
+  <a href="/index.html">&#8617; Voltar</a>
+  <a href="javascript:window.AuthOpus.sair()">Sair</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Novo usuario</h2>
+    <form id="form-novo">
+      <label>Nome completo</label>
+      <input name="nome" type="text" placeholder="Joao da Silva" required/>
+
+      <label>E-mail</label>
+      <input name="email" type="email" placeholder="joao@mfparis.com" required/>
+
+      <label>Perfil</label>
+      <select name="perfil" required>
+        <option value="">Selecione...</option>
+        <option value="admin">Admin</option>
+        <option value="logistica">Logistica</option>
+        <option value="comercial">Comercial</option>
+        <option value="operacao">Operacao</option>
+      </select>
+
+      <button name="btn" class="primary" type="submit">Criar usuario</button>
+      <div class="nota">&#128161; Senha inicial: <b>123456</b>. Sera obrigatoriamente trocada no primeiro login.</div>
+      <div id="form-msg" class="msg"></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Usuarios cadastrados</h2>
+    <div id="contadores" class="contadores"></div>
+    <div id="lista-usuarios"></div>
+  </div>
+</div>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

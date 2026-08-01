@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notas Fiscais — Impressão em Massa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1500px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.grid2{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:20px;align-items:start;}
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+textarea{width:100%;min-height:220px;border:1.5px solid var(--gold-b);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.6;background:#fff;color:var(--navy);outline:none;resize:vertical;}
+textarea:focus{border-color:var(--gold);}
+.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;}
+.hint code{background:var(--icon);padding:1px 5px;border-radius:4px;font-size:11px;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.controls select,.controls input{height:34px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 10px;font-size:12px;background:#fff;font-family:inherit;outline:none;color:var(--navy);}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.btn-primary{padding:8px 18px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 14px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-mini{padding:0 8px;height:24px;border:1px solid var(--gold-b);border-radius:6px;background:#fff;font-family:inherit;font-size:10px;font-weight:700;color:var(--navy);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:3px;}
+.btn-mini:hover{border-color:var(--gold);background:var(--icon);}
+.btn-mini[disabled],.btn-mini.off{opacity:.35;pointer-events:none;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr);}}
+.kcard{background:var(--card);border:0.5px solid var(--gold-b);border-radius:12px;padding:14px 16px;}
+.kcard .label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kcard .val{font-size:20px;font-weight:600;color:var(--navy);}
+.kcard .sub{font-size:10px;color:var(--div);margin-top:2px;}
+.progress-bar{height:3px;background:var(--icon);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s;width:0;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:110px;overflow-y:auto;margin-bottom:12px;display:none;line-height:1.7;}
+.erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px;display:none;}
+.table-wrap{overflow-x:auto;border:0.5px solid var(--gold-b);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{padding:9px 10px;text-align:left;background:var(--navy);font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+td{padding:7px 10px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--cream);}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);}
+td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
+.emp{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.e-MFP{background:var(--blue-l);color:var(--blue);}
+.e-DMS{background:var(--green-l);color:var(--green);}
+.e-PROFI{background:var(--amber-l);color:var(--amber);}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.st-ok{background:var(--green-l);color:var(--green);}
+.st-erro{background:var(--red-l);color:var(--red);}
+.st-sem{background:var(--icon);color:var(--muted);}
+.st-fila{background:var(--blue-l);color:var(--blue);}
+.chave{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--muted);letter-spacing:-.02em;}
+.toast{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:fadeUp .25s ease;}
+.toast-ok{background:var(--green);color:#fff;}
+.toast-err{background:var(--red);color:#fff;}
+.toast-info{background:var(--navy);color:#fff;}
+details.diag{margin-top:12px;border:0.5px dashed var(--gold-b);border-radius:10px;padding:10px 12px;}
+details.diag summary{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;}
+details.diag pre{margin-top:10px;background:var(--navy-d);color:#a0c0e0;padding:12px;border-radius:8px;font-size:10px;line-height:1.6;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-all;}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.rodape{font-size:10px;color:var(--muted);margin-top:8px;text-align:right;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="cards">
+    <div class="kcard"><div class="label">Pedidos na lista</div><div class="val" id="k-ped">—</div><div class="sub">linhas válidas</div></div>
+    <div class="kcard"><div class="label">Notas encontradas</div><div class="val" id="k-nf" style="color:var(--green)">—</div><div class="sub">DANFE disponível</div></div>
+    <div class="kcard"><div class="label">Sem nota</div><div class="val" id="k-sem" style="color:var(--div)">—</div><div class="sub">não faturado ainda</div></div>
+    <div class="kcard"><div class="label">Com erro</div><div class="val" id="k-err" style="color:var(--red)">—</div><div class="sub">pedido não localizado</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title"><span>Lista de pedidos</span></div>
+    <div class="grid2">
+      <div>
+        <textarea id="entrada" spellcheck="false" placeholder="12345 MFP&#10;12346 DMS&#10;12347 PROFI&#10;12348"></textarea>
+        <div class="hint">
+          Um pedido por linha. A empresa vai depois do número, separada por espaço, ponto-e-vírgula ou tabulação —
+          então dá pra colar direto de duas colunas do Excel.<br>
+          Aceita <code>MFP</code>, <code>DMS</code>, <code>PROFI</code> (ou <code>MF Paris</code>, <code>Profi</code>…).
+          Linha sem empresa usa a opção ao lado.
+        </div>
+      </div>
+      <div>
+        <div class="controls">
+          <label class="fld">Empresa quando a linha não informa
+            <select id="emp-padrao">
+              <option value="AUTO">Procurar nas 3 empresas</option>
+              <option value="MFP">MF Paris</option>
+              <option value="DMS">DMS Alimentos</option>
+              <option value="PROFI">Profi Comércio</option>
+            </select>
+          </label>
+          <label class="fld">Intervalo entre chamadas
+            <select id="delay">
+              <option value="700">Normal (700 ms)</option>
+              <option value="1200">Lento (1,2 s)</option>
+              <option value="350">Rápido (350 ms)</option>
+            </select>
+          </label>
+        </div>
+        <div class="controls">
+          <button class="btn-primary" id="btn-buscar">Buscar notas fiscais</button>
+          <button class="btn-secondary" id="btn-limpar">Limpar</button>
+        </div>
+        <div class="hint">
+          A API do Omie limita chamadas por segundo. Cada pedido consome 2 requisições, e a busca automática
+          nas 3 empresas consome até 4. Para listas grandes, use o intervalo lento.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">
+      <span>Notas encontradas</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn-secondary" id="btn-pdf-unico" disabled style="font-size:10px;padding:0 12px;height:28px;">Gerar PDF único e imprimir</button>
+        <button class="btn-secondary" id="btn-zip-pdf" disabled style="font-size:10px;padding:0 12px;height:28px;">Baixar PDFs (ZIP)</button>
+        <button class="btn-secondary" id="btn-zip-xml" disabled style="font-size:10px;padding:0 12px;height:28px;">Baixar XMLs (ZIP)</button>
+        <button class="btn-secondary" id="btn-csv" disabled style="font-size:10px;padding:0 12px;height:28px;">Exportar planilha</button>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="log" id="log"></div>
+    <div class="erro" id="erro"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34px"><input type="checkbox" id="chk-all" title="Selecionar todos"></th>
+            <th style="width:90px">Pedido</th>
+            <th style="width:90px">Empresa</th>
+            <th>Cliente</th>
+            <th style="width:80px">NF</th>
+            <th style="width:52px">Série</th>
+            <th style="width:88px">Emissão</th>
+            <th style="width:230px">Chave de acesso</th>
+            <th style="width:110px">Status</th>
+            <th style="width:150px">Arquivos</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="10" class="empty">Cole a lista de pedidos e clique em “Buscar notas fiscais”.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <details class="diag">
+      <summary>Retorno bruto do Omie (para conferência e ajuste)</summary>
+      <pre id="raw">Nada carregado ainda.</pre>
+    </details>
+
+    <div class="rodape" id="rodape"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+<!-- Controle de acesso: usa o mesmo auth.js do resto do sistema, se existir. -->
+<script type="module">
+  try {
+    const m = await import('/js/auth.js');
+    m.exigirPerfis(['admin', 'logistica', 'comercial']);
+  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
+</script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIGURAÇÃO
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Mesmas credenciais já usadas em carteira.js / torre.html / estoque-omie.html.
+// >>> Se você migrar para o proxy /api/omie-seguro (chaves no servidor), troque
+//     apenas a função omieCall() abaixo — nada mais nesta página muda.
+const EMPRESAS = {
+  MFP:   { nome:'MF Paris', key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7' },
+  DMS:   { nome:'DMS',      key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2' },
+  PROFI: { nome:'Profi',    key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df' },
+};
+const ORDEM_BUSCA = ['MFP', 'DMS', 'PROFI'];
+
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+
+// Alguns retornos do Omie já trazem o link do DANFE dentro de StatusPedido.
+// Quando não trazem, tentamos estes métodos, em ordem, até um responder.
+// O que funcionar fica gravado no navegador e passa a ser o primeiro da fila.
+const CANDIDATOS_DOC = [
+  { id:'util-ObterNFe',    endpoint:'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call:'ObterNFe' },
+  { id:'util-ObterDanfe',  endpoint:'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call:'ObterDanfe' },
+  { id:'dfe-ObterDocs',    endpoint:'https://app.omie.com.br/api/v1/produtos/dfedocs/',        call:'ObterDocumentos' },
+  { id:'dfe-ObterDocumento', endpoint:'https://app.omie.com.br/api/v1/produtos/dfedocs/',      call:'ObterDocumento' },
+];
+const LS_METODO = 'opus_nf_metodo_doc';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. ESTADO
+   ══════════════════════════════════════════════════════════════════════════ */
+
+let resultados = [];   // uma linha por NF (ou por pedido sem NF)
+let ultimoRaw  = null;
+let rodando    = false;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. UTILITÁRIOS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-' + (tipo || 'info');
+  el.textContent = msg;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function limparLog() { $('log').innerHTML = ''; $('log').style.display = 'none'; }
+function erro(msg) {
+  const el = $('erro');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg; el.style.display = 'block';
+}
+function progresso(pct) { $('progress').style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+
+function normEmpresa(txt) {
+  if (!txt) return null;
+  const t = String(txt).toUpperCase().replace(/[^A-Z]/g, '');
+  if (!t) return null;
+  if (t.startsWith('MF') || t.startsWith('PARIS')) return 'MFP';
+  if (t.startsWith('DMS')) return 'DMS';
+  if (t.startsWith('PRO') || t.startsWith('PRF')) return 'PROFI';
+  return null;
+}
+
+function parseEntrada(txt) {
+  const vistos = new Set();
+  return String(txt).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(linha => {
+    const partes = linha.split(/[\s;,|\t]+/).filter(Boolean);
+    const pedido = (partes[0] || '').replace(/\D/g, '');
+    const empresa = normEmpresa(partes.slice(1).join(''));
+    return { pedido, empresa, linha };
+  }).filter(it => {
+    if (!it.pedido || vistos.has(it.pedido + '|' + (it.empresa || ''))) return false;
+    vistos.add(it.pedido + '|' + (it.empresa || ''));
+    return true;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. CHAMADA À API DO OMIE (via proxy /api/omie que já existe no projeto)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function omieCall(endpoint, call, empCod, param, tentativa) {
+  const cred = EMPRESAS[empCod];
+  const resp = await fetch('/api/omie', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint,
+      payload: { call, app_key: String(cred.key), app_secret: String(cred.secret), param }
+    })
+  });
+
+  const data = await resp.json().catch(() => ({}));
+
+  if (data && data.faultstring) {
+    // Limite de chamadas do Omie: espera o tempo pedido e repete uma vez.
+    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      log('Limite da API atingido — aguardando ' + seg + 's…');
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, true);
+    }
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    throw err;
+  }
+  return data;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. LOCALIZAR PEDIDO E NOTAS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function acharPedido(numeroPedido, empCod) {
+  const n = parseInt(numeroPedido, 10) || 0;
+  const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+    pagina: 1, registros_por_pagina: 20,
+    numero_pedido_de: n, numero_pedido_ate: n,
+    apenas_importado_api: 'N'
+  }]);
+  const lista = (data && data.pedido_venda_produto) || [];
+  const achado = lista.find(p =>
+    String((p.cabecalho || {}).numero_pedido || '').trim() === String(numeroPedido).trim()
+  );
+  if (!achado) return null;
+  return {
+    codigo_pedido: achado.cabecalho.codigo_pedido,
+    cliente: (achado.informacoes_adicionais || {}).consumidor_final ||
+             (achado.det && achado.det[0] ? '' : '') ||
+             (achado.cabecalho || {}).codigo_cliente || '',
+    codigo_cliente: (achado.cabecalho || {}).codigo_cliente || 0,
+    bruto: achado
+  };
+}
+
+async function statusPedido(codigoPedido, empCod) {
+  return omieCall(EP_PEDIDO, 'StatusPedido', empCod, [{ codigo_pedido: parseInt(codigoPedido, 10) || codigoPedido }]);
+}
+
+async function nomeCliente(codigoCliente, empCod) {
+  if (!codigoCliente) return '';
+  try {
+    const d = await omieCall('https://app.omie.com.br/api/v1/geral/clientes/', 'ConsultarCliente', empCod,
+      [{ codigo_cliente_omie: parseInt(codigoCliente, 10) }]);
+    return d.nome_fantasia || d.razao_social || '';
+  } catch (e) { return ''; }
+}
+
+/* Varre qualquer objeto em busca de campos que sejam URL de PDF/XML. */
+function extrairLinks(obj) {
+  const out = { pdf: null, xml: null, outros: [] };
+  const visitar = o => {
+    if (!o || typeof o !== 'object') return;
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+        const alvo = (k + ' ' + v).toLowerCase();
+        if (!out.pdf && /(danfe|\.pdf|impress|pdf)/.test(alvo)) out.pdf = v;
+        else if (!out.xml && /xml/.test(alvo)) out.xml = v;
+        else out.outros.push({ campo: k, url: v });
+      } else if (v && typeof v === 'object') visitar(v);
+    }
+  };
+  visitar(obj);
+  return out;
+}
+
+/* Fallback: pede os documentos da NF pelos métodos candidatos. */
+async function buscarDocsPorNF(nf, empCod) {
+  const fixado = localStorage.getItem(LS_METODO);
+  const fila = fixado
+    ? [].concat(CANDIDATOS_DOC.filter(c => c.id === fixado), CANDIDATOS_DOC.filter(c => c.id !== fixado))
+    : CANDIDATOS_DOC.slice();
+
+  const param = [{
+    nIdNF: nf.nIdNF || 0,
+    cChaveNFe: nf.chave || '',
+    cModelo: '55',
+    nCodNF: nf.nIdNF || 0
+  }];
+
+  for (const cand of fila) {
+    try {
+      const d = await omieCall(cand.endpoint, cand.call, empCod, param);
+      const links = extrairLinks(d);
+      if (links.pdf || links.xml) {
+        localStorage.setItem(LS_METODO, cand.id);
+        return links;
+      }
+    } catch (e) { /* método não existe nesta conta: tenta o próximo */ }
+  }
+  return { pdf: null, xml: null, outros: [] };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. FLUXO PRINCIPAL
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function processar() {
+  if (rodando) return;
+  const itens = parseEntrada($('entrada').value);
+  if (!itens.length) { toast('Nenhum número de pedido reconhecido na lista.', 'err'); return; }
+
+  rodando = true;
+  resultados = [];
+  erro('');
+  limparLog();
+  $('btn-buscar').disabled = true;
+  $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
+
+  const padrao = $('emp-padrao').value;
+  const espera = parseInt($('delay').value, 10);
+  $('k-ped').textContent = itens.length;
+
+  for (let i = 0; i < itens.length; i++) {
+    const it = itens[i];
+    const tentar = it.empresa ? [it.empresa] : (padrao === 'AUTO' ? ORDEM_BUSCA : [padrao]);
+    let linha = {
+      pedido: it.pedido, empresaCod: it.empresa || '', empresaNome: '',
+      cliente: '', nf: '', serie: '', emissao: '', chave: '',
+      urlPdf: null, urlXml: null, status: 'erro', obs: 'Pedido não localizado'
+    };
+
+    log('Pedido ' + it.pedido + ' — consultando ' + tentar.join(' / ') + '…');
+
+    for (const empCod of tentar) {
+      try {
+        const ped = await acharPedido(it.pedido, empCod);
+        await sleep(espera);
+        if (!ped) continue;
+
+        linha.empresaCod = empCod;
+        linha.empresaNome = EMPRESAS[empCod].nome;
+
+        const st = await statusPedido(ped.codigo_pedido, empCod);
+        await sleep(espera);
+        if (!ultimoRaw) { ultimoRaw = st; $('raw').textContent = JSON.stringify(st, null, 2); }
+
+        const notas = (st && st.ListaNfe) || [];
+        if (!notas.length) {
+          linha.status = 'sem';
+          linha.obs = 'Pedido sem NF emitida';
+          linha.cliente = await nomeCliente(ped.codigo_cliente, empCod);
+          await sleep(espera);
+          resultados.push(linha);
+          break;
+        }
+
+        const cli = await nomeCliente(ped.codigo_cliente, empCod);
+        await sleep(espera);
+
+        for (const nfRaw of notas) {
+          const nf = {
+            nIdNF:  nfRaw.nIdNF || nfRaw.nIdNf || nfRaw.codigo_nf || 0,
+            numero: nfRaw.numero_nfe || nfRaw.nNF || '',
+            serie:  nfRaw.serie_nfe || nfRaw.serie || '',
+            data:   nfRaw.data_nfe || nfRaw.dEmi || '',
+            chave:  nfRaw.chave_nfe || nfRaw.cChaveNFe || nfRaw.nfe_chave || ''
+          };
+          let links = extrairLinks(nfRaw);
+          if (!links.pdf) {
+            const extra = await buscarDocsPorNF(nf, empCod);
+            await sleep(espera);
+            links.pdf = links.pdf || extra.pdf;
+            links.xml = links.xml || extra.xml;
+          }
+          resultados.push({
+            pedido: it.pedido, empresaCod: empCod, empresaNome: EMPRESAS[empCod].nome,
+            cliente: cli, nf: nf.numero, serie: nf.serie, emissao: nf.data, chave: nf.chave,
+            urlPdf: links.pdf, urlXml: links.xml,
+            status: links.pdf ? 'ok' : 'sem',
+            obs: links.pdf ? '' : 'NF emitida, DANFE não retornado'
+          });
+        }
+        linha = null;
+        break;
+      } catch (e) {
+        linha.obs = e.message || String(e);
+        log('  → ' + empCod + ': ' + linha.obs);
+      }
+    }
+
+    if (linha) resultados.push(linha);
+    progresso(((i + 1) / itens.length) * 100);
+    render();
+  }
+
+  rodando = false;
+  $('btn-buscar').disabled = false;
+  $('btn-buscar').textContent = 'Buscar notas fiscais';
+  render();
+  toast('Busca concluída: ' + resultados.filter(r => r.status === 'ok').length + ' nota(s) com DANFE.', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. RENDER
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function render() {
+  const tb = $('tbody');
+  if (!resultados.length) {
+    tb.innerHTML = '<tr><td colspan="10" class="empty">Cole a lista de pedidos e clique em “Buscar notas fiscais”.</td></tr>';
+  } else {
+    tb.innerHTML = resultados.map((r, i) => {
+      const stCls = r.status === 'ok' ? 'st-ok' : (r.status === 'sem' ? 'st-sem' : 'st-erro');
+      const stTxt = r.status === 'ok' ? 'DANFE ok' : (r.status === 'sem' ? 'Sem nota' : 'Erro');
+      return '<tr>' +
+        '<td><input type="checkbox" class="chk" data-i="' + i + '"' + (r.status === 'ok' ? ' checked' : ' disabled') + '></td>' +
+        '<td class="mono">' + esc(r.pedido) + '</td>' +
+        '<td>' + (r.empresaCod ? '<span class="emp e-' + r.empresaCod + '">' + esc(r.empresaNome) + '</span>' : '—') + '</td>' +
+        '<td>' + esc(r.cliente || '—') + '</td>' +
+        '<td class="mono">' + esc(r.nf || '—') + '</td>' +
+        '<td class="mono">' + esc(r.serie || '—') + '</td>' +
+        '<td class="mono">' + esc(r.emissao || '—') + '</td>' +
+        '<td class="chave">' + esc(r.chave || '—') + '</td>' +
+        '<td><span class="st ' + stCls + '" title="' + esc(r.obs) + '">' + stTxt + '</span></td>' +
+        '<td>' +
+          (r.urlPdf ? '<a class="btn-mini" href="' + esc(r.urlPdf) + '" target="_blank" rel="noopener">PDF</a> ' : '<span class="btn-mini off">PDF</span> ') +
+          (r.urlXml ? '<a class="btn-mini" href="' + esc(r.urlXml) + '" target="_blank" rel="noopener">XML</a>' : '<span class="btn-mini off">XML</span>') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  const ok = resultados.filter(r => r.status === 'ok').length;
+  $('k-nf').textContent  = ok;
+  $('k-sem').textContent = resultados.filter(r => r.status === 'sem').length;
+  $('k-err').textContent = resultados.filter(r => r.status === 'erro').length;
+
+  ['btn-pdf-unico', 'btn-zip-pdf', 'btn-csv'].forEach(id => { $(id).disabled = ok === 0; });
+  $('btn-zip-xml').disabled = !resultados.some(r => r.urlXml);
+  $('rodape').textContent = resultados.length ? resultados.length + ' linha(s) — ' + ok + ' com DANFE' : '';
+}
+
+function selecionadas(campo) {
+  const marcadas = Array.from(document.querySelectorAll('.chk:checked')).map(c => parseInt(c.dataset.i, 10));
+  return resultados.filter((r, i) => marcadas.includes(i) && r[campo]);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. DOWNLOAD DOS ARQUIVOS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie).
+async function baixarArquivo(url) {
+  const resp = await fetch('/api/omie-arquivo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const d = await resp.json();
+  if (d.error) throw new Error(d.error);
+  const bin = atob(d.base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function nomeArquivo(r, ext) {
+  return ('NF' + (r.nf || 's-num') + '_Ped' + r.pedido + '_' + (r.empresaCod || 'NA')).replace(/[^\w.-]/g, '') + '.' + ext;
+}
+
+function salvar(blob, nome) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+async function gerarZip(campo, ext) {
+  const alvos = selecionadas(campo);
+  if (!alvos.length) { toast('Selecione ao menos uma linha.', 'err'); return; }
+  const zip = new JSZip();
+  let falhas = 0;
+  limparLog();
+  for (let i = 0; i < alvos.length; i++) {
+    const r = alvos[i];
+    try {
+      zip.file(nomeArquivo(r, ext), await baixarArquivo(r[campo]));
+    } catch (e) { falhas++; log('Falhou: ' + nomeArquivo(r, ext) + ' — ' + e.message); }
+    progresso(((i + 1) / alvos.length) * 100);
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  salvar(blob, 'NotasFiscais_' + new Date().toISOString().slice(0, 10) + '.zip');
+  toast(falhas ? (alvos.length - falhas) + ' arquivo(s) no ZIP, ' + falhas + ' falharam.' : 'ZIP com ' + alvos.length + ' arquivo(s).', falhas ? 'err' : 'ok');
+}
+
+// Junta todos os DANFEs num único PDF e abre a janela de impressão.
+async function pdfUnico() {
+  const alvos = selecionadas('urlPdf');
+  if (!alvos.length) { toast('Selecione ao menos uma nota.', 'err'); return; }
+  limparLog();
+  const { PDFDocument } = PDFLib;
+  const doc = await PDFDocument.create();
+  let falhas = 0;
+
+  for (let i = 0; i < alvos.length; i++) {
+    const r = alvos[i];
+    try {
+      const src = await PDFDocument.load(await baixarArquivo(r.urlPdf), { ignoreEncryption: true });
+      const pgs = await doc.copyPages(src, src.getPageIndices());
+      pgs.forEach(p => doc.addPage(p));
+      log('NF ' + r.nf + ' (pedido ' + r.pedido + ') adicionada');
+    } catch (e) { falhas++; log('Falhou NF ' + r.nf + ': ' + e.message); }
+    progresso(((i + 1) / alvos.length) * 100);
+  }
+
+  if (!doc.getPageCount()) { toast('Nenhum PDF pôde ser lido.', 'err'); return; }
+  const blob = new Blob([await doc.save()], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (win) { win.addEventListener('load', () => win.print()); }
+  else { salvar(blob, 'NotasFiscais.pdf'); toast('Pop-up bloqueado — o PDF foi baixado.', 'info'); }
+  toast(doc.getPageCount() + ' página(s) prontas para impressão.' + (falhas ? ' ' + falhas + ' falharam.' : ''), falhas ? 'info' : 'ok');
+}
+
+function exportarCsv() {
+  const cab = ['Pedido', 'Empresa', 'Cliente', 'NF', 'Serie', 'Emissao', 'Chave', 'Status', 'Observacao', 'URL PDF', 'URL XML'];
+  const linhas = resultados.map(r => [r.pedido, r.empresaNome, r.cliente, r.nf, r.serie, r.emissao, r.chave, r.status, r.obs, r.urlPdf || '', r.urlXml || '']);
+  const csv = [cab].concat(linhas)
+    .map(l => l.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(';'))
+    .join('\n');
+  salvar(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), 'notas_fiscais.csv');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. EVENTOS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+$('btn-buscar').addEventListener('click', processar);
+$('btn-limpar').addEventListener('click', () => {
+  $('entrada').value = ''; resultados = []; ultimoRaw = null;
+  $('raw').textContent = 'Nada carregado ainda.';
+  $('k-ped').textContent = '—'; limparLog(); erro(''); progresso(0); render();
+});
+$('btn-pdf-unico').addEventListener('click', pdfUnico);
+$('btn-zip-pdf').addEventListener('click', () => gerarZip('urlPdf', 'pdf'));
+$('btn-zip-xml').addEventListener('click', () => gerarZip('urlXml', 'xml'));
+$('btn-csv').addEventListener('click', exportarCsv);
+$('chk-all').addEventListener('change', e => {
+  document.querySelectorAll('.chk:not([disabled])').forEach(c => { c.checked = e.target.checked; });
+});
+$('entrada').addEventListener('input', () => { $('k-ped').textContent = parseEntrada($('entrada').value).length || '—'; });
+
+render();
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

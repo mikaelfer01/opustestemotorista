@@ -1,0 +1,587 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1728">
+<title>OPUS — Carregamento</title>
+<script type="module" src="/checar-login.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a1728; --navy2:#0d1f3c; --gold:#e8c96a; --gold2:#b8902a;
+  --bg:#f5f7fb; --card:#ffffff; --border:#e5e9f2;
+  --ink:#0b1437; --ink2:#3f4a6b; --ink3:#6b7691; --ink4:#9aa3b8;
+  --ok:#16a34a; --ok-bg:rgba(22,163,74,.1);
+  --warn:#ea580c; --warn-bg:rgba(234,88,12,.1);
+  --err:#dc2626; --err-bg:rgba(220,38,38,.1);
+  --info:#1d4ed8; --info-bg:rgba(29,78,216,.1);
+  --purple:#7c3aed; --purple-bg:rgba(124,58,237,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hdr{flex-shrink:0;height:56px;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:2px solid var(--gold2);box-shadow:0 4px 16px rgba(10,15,40,.3);z-index:10;}
+.hdr-back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;}
+.hdr-back:active{background:rgba(255,255,255,.15)}
+.hdr-title{flex:1;min-width:0}
+.hdr-t1{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;font-weight:700;color:var(--gold);line-height:1}
+.hdr-t2{font-size:11px;font-weight:500;color:rgba(255,255,255,.7);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-user{font-size:10px;color:rgba(255,255,255,.6);text-align:right;flex-shrink:0;line-height:1.3}
+.hdr-user b{display:block;color:#fff;font-size:11px;font-weight:700}
+
+/* SCROLL */
+.scr{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scr::-webkit-scrollbar{width:0}
+.pad{padding:14px}
+
+/* SEÇÃO */
+.sec-t{font-size:10px;font-weight:800;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:14px 4px 8px;display:flex;align-items:center;gap:6px;}
+.sec-t::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* DT CARD */
+.dt-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s;position:relative;overflow:hidden;}
+.dt-card:active{transform:scale(.98)}
+.dt-card.s-separado{border-left:4px solid var(--purple)}
+.dt-card.s-carregando{border-left:4px solid var(--info)}
+.dt-card.s-carregado{border-left:4px solid var(--ok)}
+.dt-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dt-nome{font-size:14px;font-weight:800;color:var(--ink);flex:1;line-height:1.2}
+.dt-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.badge-separado{background:var(--purple-bg);color:#5b21b6}
+.badge-carregando{background:var(--info-bg);color:#1e40af}
+.badge-carregado{background:var(--ok-bg);color:#15803d}
+.dt-mot{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:2px}
+.dt-placa{font-size:11px;color:var(--ink3);font-family:monospace;letter-spacing:.5px}
+.dt-stats{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.dt-stat{flex:1;text-align:center}
+.dt-stat-l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.dt-stat-v{font-size:14px;font-weight:800;color:var(--ink);margin-top:2px}
+
+/* VAZIO */
+.vazio{text-align:center;padding:40px 20px;color:var(--ink3);font-size:13px;line-height:1.6;}
+.vazio .ico{font-size:48px;margin-bottom:12px;opacity:.4}
+
+/* RESUMO */
+.resumo{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;padding:14px;margin:-14px -14px 14px;}
+.resumo-rota{font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.resumo-mot{font-size:12px;color:rgba(255,255,255,.85);margin-bottom:8px}
+.resumo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.resumo-item{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 8px;text-align:center}
+.resumo-l{font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.resumo-v{font-size:13px;font-weight:800;color:#fff;margin-top:2px}
+
+/* PEDIDOS RESUMO */
+.ped-list{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.ped-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+.ped-item:last-child{border-bottom:none}
+.ped-num{background:var(--ink);color:#fff;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:800;font-family:monospace;flex-shrink:0}
+.ped-cli{flex:1;min-width:0}
+.ped-cli-n{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ped-cli-c{font-size:10px;color:var(--ink3);margin-top:1px}
+.ped-peso{font-size:11px;font-weight:700;color:var(--ink2);flex-shrink:0}
+
+/* SEÇÃO FOTOS */
+.fotos-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+.fotos-titulo{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.fotos-sub{font-size:11px;color:var(--ink3);margin-bottom:12px;line-height:1.5}
+.fotos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.foto-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg);border:2px solid var(--border);}
+.foto-item img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.foto-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(220,38,38,.9);color:#fff;border:none;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+.foto-add-btn{aspect-ratio:1;border-radius:10px;border:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:var(--ink3);font-size:11px;gap:4px;transition:all .15s}
+.foto-add-btn:active{background:#e8edf7}
+.foto-add-btn .ico{font-size:28px}
+.fotos-count{font-size:11px;color:var(--ink3);text-align:center;margin-top:4px}
+
+/* ASSINATURA */
+.assina-wrap{flex:1;display:flex;flex-direction:column;padding:14px;overflow:hidden}
+.assina-info{background:var(--purple-bg);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:12px 14px;margin-bottom:12px;flex-shrink:0}
+.assina-info-t{font-size:13px;font-weight:800;color:var(--purple);margin-bottom:4px}
+.assina-info-s{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.canvas-wrap{flex:1;background:#fff;border:2px dashed var(--border);border-radius:14px;position:relative;overflow:hidden;min-height:200px}
+#sig-canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+.canvas-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink4);font-size:13px;pointer-events:none;font-style:italic}
+.assina-acoes{display:flex;gap:8px;margin-top:12px;flex-shrink:0}
+.btn-assina{flex:1;padding:13px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.btn-limpar{background:var(--bg);color:var(--ink2)}
+.btn-confirmar{background:linear-gradient(135deg,var(--purple),#6d28d9);color:#fff;flex:2}
+
+/* FOOTER */
+.footer{flex-shrink:0;background:#fff;border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;box-shadow:0 -4px 12px rgba(0,0,0,.06);}
+.btn-rod{flex:1;padding:13px;border-radius:11px;border:none;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px}
+.btn-rod:active{transform:scale(.98)}
+.btn-finalizar{background:linear-gradient(135deg,var(--purple) 0%,#6d28d9 100%);color:#fff;flex:2}
+.btn-finalizar:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed;transform:none}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:2000;box-shadow:0 10px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+.toast.on{opacity:1}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--err)}
+
+/* LOADING */
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:3000}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-tx{margin-top:14px;font-size:13px;color:var(--ink3);font-weight:600}
+
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-tx" id="loading-tx">Carregando...</div>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-back hide" id="btn-voltar" onclick="voltarLista()">←</div>
+  <div class="hdr-title">
+    <div class="hdr-t1" id="hdr-t1">OPUS · Carregamento</div>
+    <div class="hdr-t2" id="hdr-t2">Documentos de Transporte</div>
+  </div>
+  <div class="hdr-user">
+    <span>Operador</span>
+    <b id="hdr-nome">—</b>
+  </div>
+</header>
+
+<!-- TELA LISTA -->
+<div class="scr hide" id="tela-lista">
+  <div class="pad">
+    <div class="sec-t">Aguardando carregamento</div>
+    <div id="lista-pendentes"></div>
+    <div class="sec-t" id="sec-concluidos-t" style="margin-top:20px">Carregados hoje</div>
+    <div id="lista-concluidos"></div>
+  </div>
+</div>
+
+<!-- TELA DETALHE -->
+<div class="scr hide" id="tela-detalhe">
+  <div class="pad">
+    <div class="resumo">
+      <div class="resumo-rota" id="dtl-rota">—</div>
+      <div class="resumo-mot" id="dtl-mot">—</div>
+      <div class="resumo-grid">
+        <div class="resumo-item"><div class="resumo-l">Pedidos</div><div class="resumo-v" id="dtl-paradas">0</div></div>
+        <div class="resumo-item"><div class="resumo-l">Peso total</div><div class="resumo-v" id="dtl-peso">0 kg</div></div>
+        <div class="resumo-item"><div class="resumo-l">Fotos</div><div class="resumo-v" id="dtl-fotos">0</div></div>
+      </div>
+    </div>
+
+    <!-- Lista de pedidos (resumo) -->
+    <div class="sec-t">Pedidos no DT</div>
+    <div class="ped-list" id="lista-pedidos"></div>
+
+    <!-- Seção de fotos -->
+    <div class="fotos-section">
+      <div class="fotos-titulo">📸 Fotos do carregamento</div>
+      <div class="fotos-sub">Fotografe os paletes e volumes carregados no veículo. Adicione quantas fotos precisar.</div>
+      <div class="fotos-grid" id="fotos-grid">
+        <div class="foto-add-btn" onclick="tirarFoto()">
+          <div class="ico">📷</div>
+          <span>Adicionar foto</span>
+        </div>
+      </div>
+      <div class="fotos-count" id="fotos-count">0 foto(s) adicionada(s)</div>
+    </div>
+  </div>
+</div>
+<div class="footer hide" id="footer-detalhe">
+  <button class="btn-rod btn-finalizar" id="btn-finalizar" onclick="irAssinatura()" disabled>📝 Finalizar e assinar</button>
+</div>
+
+<!-- TELA ASSINATURA -->
+<div class="assina-wrap hide" id="tela-assinatura">
+  <div class="assina-info">
+    <div class="assina-info-t">✍️ Assinatura do responsável</div>
+    <div class="assina-info-s">Confirme que o carregamento foi realizado corretamente. Assine abaixo.</div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="sig-canvas"></canvas>
+    <div class="canvas-hint" id="canvas-hint">Assine aqui com o dedo</div>
+  </div>
+  <div class="assina-acoes">
+    <button class="btn-assina btn-limpar" onclick="limparSig()">🔄 Limpar</button>
+    <button class="btn-assina btn-confirmar" onclick="confirmarAssinatura()">✓ Confirmar carregamento</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { onUsuarioPronto } from '/js/auth.js';
+import { db as _modDb } from '/js/firebase-init.js';
+import {
+  ref as fbRef, onValue, update as fbUpdate, set as fbSet
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── FIREBASE WRAPPER ──────────────────────────────────────────────────────────
+const db = {
+  ref: (path) => {
+    const r = fbRef(_modDb, path);
+    return {
+      on:     (_, cb, err) => onValue(r, s => cb({ val: () => s.val() }), err),
+      set:    (v) => fbSet(r, v),
+      update: (v) => fbUpdate(r, v),
+    };
+  }
+};
+
+// ── ESTADO ────────────────────────────────────────────────────────────────────
+let usuario = null;
+let DTS = {};
+let dtAtual = null;
+let fotosLocais = []; // base64 das fotos tiradas
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+onUsuarioPronto(u => {
+  usuario = u;
+  document.getElementById('hdr-nome').textContent = u ? (u.nome || u.email) : '—';
+});
+
+// Verifica se veio de redirecionamento da separação
+const urlParams = new URLSearchParams(window.location.search);
+const dtParam = urlParams.get('dt');
+
+const safetyTimer = setTimeout(() => {
+  document.getElementById('loading').classList.add('hide');
+  mostrarLista();
+}, 8000);
+
+db.ref('despachos').on('value', snap => {
+  clearTimeout(safetyTimer);
+  DTS = snap.val() || {};
+  document.getElementById('loading').classList.add('hide');
+
+  // Se veio com ?dt=TOKEN, abre direto
+  if (dtParam && DTS[dtParam] && !dtAtual) {
+    abrirDT(dtParam);
+  } else if (dtAtual && DTS[dtAtual]) {
+    renderDetalhe();
+  } else {
+    mostrarLista();
+  }
+}, err => {
+  clearTimeout(safetyTimer);
+  document.getElementById('loading').classList.add('hide');
+  mostrarLista();
+  toast('❌ Erro Firebase: ' + err.message, 'err');
+});
+
+// ── TELA 1: LISTA ─────────────────────────────────────────────────────────────
+function mostrarLista() {
+  dtAtual = null;
+  fotosLocais = [];
+  document.getElementById('btn-voltar').classList.add('hide');
+  document.getElementById('footer-detalhe').classList.add('hide');
+  setTela('tela-lista');
+  document.getElementById('hdr-t1').textContent = 'OPUS · Carregamento';
+  document.getElementById('hdr-t2').textContent = 'Documentos de Transporte';
+  renderLista();
+}
+window.voltarLista = mostrarLista;
+
+function renderLista() {
+  const pendentes = [], concluidos = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  Object.keys(DTS).forEach(token => {
+    const dt = DTS[token];
+    const st = dt.statusFluxo || '';
+    if (!st) return;
+    if (st === 'devolvido_total' || st === 'aguardando_separacao' || st === 'separando') return;
+
+    if (st === 'carregado' || st === 'despachado' || st === 'em_transito') {
+      if (dt.carregamento && dt.carregamento.finalizada_em) {
+        const dia = new Date(dt.carregamento.finalizada_em).toISOString().slice(0, 10);
+        if (dia === hoje) concluidos.push({ token, dt });
+      }
+    } else if (st === 'separado' || st === 'em_carregamento') {
+      pendentes.push({ token, dt });
+    }
+  });
+
+  const elP = document.getElementById('lista-pendentes');
+  const elC = document.getElementById('lista-concluidos');
+
+  elP.innerHTML = pendentes.length
+    ? pendentes.map(({ token, dt }) => cardDT(token, dt)).join('')
+    : '<div class="vazio"><div class="ico">🚛</div>Nenhum DT aguardando carregamento.<br><small>Finalize a separação para que os DTs apareçam aqui.</small></div>';
+
+  document.getElementById('sec-concluidos-t').style.display = concluidos.length ? '' : 'none';
+  elC.innerHTML = concluidos.map(({ token, dt }) => cardDT(token, dt)).join('');
+}
+
+function cardDT(token, dt) {
+  const st = dt.statusFluxo || 'separado';
+  const labels = { separado: 'Aguardando', em_carregamento: 'Carregando', carregado: 'Carregado', despachado: 'Despachado' };
+  const stLabel = labels[st] || st;
+  const stShort = st === 'separado' ? 'separado' : (st === 'em_carregamento' ? 'carregando' : 'carregado');
+  const paradas = dt.paradas || [];
+  const fotos = (dt.carregamento || {}).fotos || [];
+
+  return `<div class="dt-card s-${stShort}" onclick="abrirDT('${token}')">
+    <div class="dt-h">
+      <div class="dt-nome">${dt.nomeRota || '—'}</div>
+      <div class="dt-badge badge-${stShort}">${stLabel}</div>
+    </div>
+    <div class="dt-mot">🚗 ${dt.motoristaNome || '—'}</div>
+    <div class="dt-placa">${dt.motoristaPlaca || '—'}${dt.motoristaVeiculo ? ' · ' + dt.motoristaVeiculo : ''}</div>
+    <div class="dt-stats">
+      <div class="dt-stat"><div class="dt-stat-l">Pedidos</div><div class="dt-stat-v">${paradas.length}</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Peso</div><div class="dt-stat-v">${Math.round(dt.totalPeso || 0)} kg</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Fotos</div><div class="dt-stat-v">${fotos.length}</div></div>
+    </div>
+  </div>`;
+}
+
+// ── TELA 2: DETALHE ───────────────────────────────────────────────────────────
+window.abrirDT = function(token) {
+  dtAtual = token;
+  const dt = DTS[token];
+  if (!dt) return;
+
+  // Marca como "em_carregamento" se ainda separado
+  if (dt.statusFluxo === 'separado') {
+    db.ref('despachos/' + token).update({
+      statusFluxo: 'em_carregamento',
+      'carregamento/iniciada_em': Date.now(),
+      'carregamento/iniciada_por': usuario ? { uid: usuario.uid, nome: usuario.nome } : { nome: 'operador' }
+    });
+  }
+
+  // Carrega fotos já salvas no Firebase
+  fotosLocais = ((dt.carregamento || {}).fotos || []).slice();
+
+  document.getElementById('btn-voltar').classList.remove('hide');
+  document.getElementById('footer-detalhe').classList.remove('hide');
+  setTela('tela-detalhe');
+  renderDetalhe();
+};
+
+function renderDetalhe() {
+  const dt = DTS[dtAtual];
+  if (!dt) { mostrarLista(); return; }
+
+  document.getElementById('hdr-t1').textContent = dt.nomeRota || '—';
+  document.getElementById('hdr-t2').textContent = (dt.motoristaNome || '—') + ' · ' + (dt.motoristaPlaca || '');
+  document.getElementById('dtl-rota').textContent = dt.nomeRota || '—';
+  document.getElementById('dtl-mot').textContent = '🚗 ' + (dt.motoristaNome || '—') + ' · ' + (dt.motoristaPlaca || '');
+
+  const paradas = dt.paradas || [];
+  document.getElementById('dtl-paradas').textContent = paradas.length;
+  document.getElementById('dtl-peso').textContent = Math.round(dt.totalPeso || 0) + ' kg';
+
+  // Lista de pedidos
+  document.getElementById('lista-pedidos').innerHTML = paradas.length
+    ? paradas.map(p => `
+        <div class="ped-item">
+          <div class="ped-num">${p.pedido || '—'}</div>
+          <div class="ped-cli">
+            <div class="ped-cli-n">${p.cliente || '—'}</div>
+            <div class="ped-cli-c">${(p.cidade || '') + (p.estado ? ' / ' + p.estado : '')}</div>
+          </div>
+          <div class="ped-peso">${p.peso || 0} kg</div>
+        </div>`).join('')
+    : '<div class="ped-item" style="color:var(--ink3);font-size:12px;">Nenhum pedido</div>';
+
+  renderFotos();
+
+  // Habilitar finalizar se tem pelo menos 1 foto
+  document.getElementById('btn-finalizar').disabled = fotosLocais.length === 0;
+  document.getElementById('dtl-fotos').textContent = fotosLocais.length;
+}
+
+function renderFotos() {
+  const grid = document.getElementById('fotos-grid');
+  let html = fotosLocais.map((f, i) => `
+    <div class="foto-item">
+      <img src="${f}" onclick="verFoto('${encodeURIComponent(f)}')">
+      <button class="foto-del" onclick="removerFoto(${i})">×</button>
+    </div>`).join('');
+
+  // Botão adicionar sempre visível
+  html += `<div class="foto-add-btn" onclick="tirarFoto()">
+    <div class="ico">📷</div>
+    <span>Adicionar</span>
+  </div>`;
+
+  grid.innerHTML = html;
+  document.getElementById('fotos-count').textContent = fotosLocais.length + ' foto(s) adicionada(s)';
+  document.getElementById('dtl-fotos').textContent = fotosLocais.length;
+  document.getElementById('btn-finalizar').disabled = fotosLocais.length === 0;
+}
+
+// ── FOTOS ─────────────────────────────────────────────────────────────────────
+window.tirarFoto = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.multiple = true;
+  input.onchange = e => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    let processados = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        comprimirImg(ev.target.result, b64 => {
+          fotosLocais.push(b64);
+          processados++;
+          if (processados === files.length) {
+            // Salva no Firebase
+            db.ref('despachos/' + dtAtual + '/carregamento/fotos').set(fotosLocais);
+            renderFotos();
+            toast('📸 ' + files.length + ' foto(s) adicionada(s)!', 'ok');
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  input.click();
+};
+
+window.removerFoto = function(idx) {
+  fotosLocais.splice(idx, 1);
+  db.ref('despachos/' + dtAtual + '/carregamento/fotos').set(fotosLocais);
+  renderFotos();
+};
+
+function comprimirImg(dataUrl, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 1200; let w = img.width, h = img.height;
+    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+    if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(c.toDataURL('image/jpeg', 0.78));
+  };
+  img.src = dataUrl;
+}
+
+window.verFoto = function(encoded) {
+  const src = decodeURIComponent(encoded);
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.onclick = () => el.remove();
+  el.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain">`;
+  document.body.appendChild(el);
+};
+
+// ── TELA 3: ASSINATURA ────────────────────────────────────────────────────────
+window.irAssinatura = function() {
+  if (fotosLocais.length === 0) { toast('📸 Adicione pelo menos 1 foto', 'err'); return; }
+  document.getElementById('footer-detalhe').classList.add('hide');
+  setTela('tela-assinatura');
+  document.getElementById('hdr-t1').textContent = 'Assinar carregamento';
+  document.getElementById('hdr-t2').textContent = (DTS[dtAtual] || {}).nomeRota || '—';
+  setTimeout(iniciarCanvas, 100);
+};
+
+let sigCtx = null, sigDirty = false, sigDrawing = false, sigLast = null;
+
+function iniciarCanvas() {
+  const canvas = document.getElementById('sig-canvas');
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth  || 300;
+  canvas.height = wrap.clientHeight || 250;
+  sigCtx = canvas.getContext('2d');
+  sigCtx.lineWidth = 2.5; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round';
+  sigCtx.strokeStyle = '#0b1437';
+  sigDirty = false;
+  document.getElementById('canvas-hint').style.display = '';
+
+  const pos = ev => {
+    const r = canvas.getBoundingClientRect();
+    const t = ev.touches ? ev.touches[0] : ev;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  const start = ev => { ev.preventDefault(); sigDrawing = true; sigDirty = true; sigLast = pos(ev); document.getElementById('canvas-hint').style.display = 'none'; };
+  const move  = ev => { if (!sigDrawing) return; ev.preventDefault(); const p = pos(ev); sigCtx.beginPath(); sigCtx.moveTo(sigLast.x, sigLast.y); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); sigLast = p; };
+  const end   = () => { sigDrawing = false; };
+
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+window.limparSig = function() {
+  if (!sigCtx) return;
+  const c = document.getElementById('sig-canvas');
+  sigCtx.clearRect(0, 0, c.width, c.height);
+  sigDirty = false;
+  document.getElementById('canvas-hint').style.display = '';
+};
+
+window.confirmarAssinatura = function() {
+  if (!sigDirty) { toast('✏ Assine antes de confirmar', 'err'); return; }
+  const c = document.getElementById('sig-canvas');
+  const tmp = document.createElement('canvas');
+  const MAX = 600; let w = c.width, h = c.height;
+  if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+  tmp.width = w; tmp.height = h;
+  const ctx = tmp.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(c, 0, 0, w, h);
+  const sigData = tmp.toDataURL('image/jpeg', 0.75);
+
+  setLoading('Finalizando carregamento...');
+
+  db.ref('despachos/' + dtAtual).update({
+    statusFluxo: 'carregado',
+    'carregamento/finalizada_em': Date.now(),
+    'carregamento/finalizada_por': usuario ? { uid: usuario.uid, nome: usuario.nome } : { nome: 'operador' },
+    'carregamento/assinatura': sigData,
+    'carregamento/fotos': fotosLocais
+  }).then(() => {
+    esconderLoading();
+    toast('🎉 Carregamento finalizado! Indo para despacho...', 'ok');
+    setTimeout(() => {
+      window.location.href = '/despacho.html?dt=' + dtAtual;
+    }, 1800);
+  }).catch(e => {
+    esconderLoading();
+    toast('❌ Erro: ' + e.message, 'err');
+  });
+};
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function setTela(id) {
+  ['tela-lista', 'tela-detalhe', 'tela-assinatura'].forEach(t => {
+    document.getElementById(t).classList.toggle('hide', t !== id);
+  });
+}
+function setLoading(msg) {
+  document.getElementById('loading-tx').textContent = msg || 'Aguarde...';
+  document.getElementById('loading').classList.remove('hide');
+}
+function esconderLoading() {
+  document.getElementById('loading').classList.add('hide');
+}
+
+let toastTimer = null;
+function toast(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo === 'ok' ? ' ok' : tipo === 'err' ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+window.addEventListener('resize', () => {
+  if (!document.getElementById('tela-assinatura').classList.contains('hide')) iniciarCanvas();
+});
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

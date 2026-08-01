@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1728">
+<title>OPUS — Separação & Carregamento</title>
+<script type="module" src="/checar-login.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a1728;--navy2:#0d1f3c;--gold:#e8c96a;--gold2:#b8902a;
+  --bg:#f5f7fb;--card:#fff;--border:#e5e9f2;
+  --ink:#0b1437;--ink2:#3f4a6b;--ink3:#6b7691;--ink4:#9aa3b8;
+  --ok:#16a34a;--ok-bg:rgba(22,163,74,.1);
+  --err:#dc2626;--err-bg:rgba(220,38,38,.1);
+  --warn:#ea580c;--warn-bg:rgba(234,88,12,.1);
+  --info:#1d4ed8;--info-bg:rgba(29,78,216,.1);
+  --purple:#7c3aed;--purple-bg:rgba(124,58,237,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+/* HEADER */
+.hdr{flex-shrink:0;height:56px;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:2px solid var(--gold2);box-shadow:0 4px 16px rgba(10,15,40,.3);z-index:10}
+.hdr-back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.hdr-back:active{background:rgba(255,255,255,.2)}
+.hdr-title{flex:1;min-width:0}
+.hdr-t1{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;font-weight:700;color:var(--gold);line-height:1}
+.hdr-t2{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-user{font-size:10px;color:rgba(255,255,255,.6);text-align:right;flex-shrink:0;line-height:1.4}
+.hdr-user b{display:block;color:#fff;font-size:11px;font-weight:700}
+/* TAB BAR INFERIOR */
+.tab-bar{flex-shrink:0;height:62px;background:#fff;border-top:1px solid var(--border);display:flex;box-shadow:0 -4px 12px rgba(0,0,0,.06);z-index:10}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:transparent;font-family:inherit;color:var(--ink4);font-size:10px;font-weight:700;letter-spacing:.3px;position:relative;transition:color .15s}
+.tab-btn.ativa-sep{color:var(--info)}
+.tab-btn.ativa-car{color:var(--purple)}
+.tab-btn.ativa-hist{color:var(--gold2)}
+.tab-btn .ico{font-size:22px;line-height:1}
+.tab-bar-line{position:absolute;bottom:0;left:15%;right:15%;height:3px;border-radius:3px 3px 0 0;opacity:0;transition:opacity .15s}
+.tab-btn.ativa-sep .tab-bar-line{background:var(--info);opacity:1}
+.tab-btn.ativa-car .tab-bar-line{background:var(--purple);opacity:1}
+.tab-btn.ativa-hist .tab-bar-line{background:var(--gold2);opacity:1}
+.tab-badge{position:absolute;top:7px;right:calc(50% - 18px);background:var(--err);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:999px;min-width:16px;text-align:center}
+/* SCROLL */
+.scr{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scr::-webkit-scrollbar{width:0}
+.pad{padding:14px}
+/* SEÇÃO */
+.sec-t{font-size:10px;font-weight:800;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:14px 4px 8px;display:flex;align-items:center;gap:6px}
+.sec-t::after{content:'';flex:1;height:1px;background:var(--border)}
+/* DT CARD LISTA */
+.dt-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s}
+.dt-card:active{transform:scale(.98)}
+.dt-card.s-aguardando{border-left:4px solid var(--warn)}
+.dt-card.s-separando{border-left:4px solid var(--info)}
+.dt-card.s-separado{border-left:4px solid var(--purple)}
+.dt-card.s-carregando{border-left:4px solid var(--ok)}
+.dt-card.s-carregado{border-left:4px solid var(--ok);opacity:.75}
+.dt-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dt-nome{font-size:14px;font-weight:800;color:var(--ink);flex:1;line-height:1.2}
+.dt-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;flex-shrink:0}
+.b-aguardando{background:var(--warn-bg);color:#9a3412}
+.b-separando{background:var(--info-bg);color:#1e40af}
+.b-separado{background:var(--purple-bg);color:#5b21b6}
+.b-carregando,.b-carregado{background:var(--ok-bg);color:#15803d}
+.dt-mot{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:2px}
+.dt-placa{font-size:11px;color:var(--ink3);font-family:monospace}
+.dt-stats{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.dt-stat{flex:1;text-align:center}
+.dt-stat-l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.dt-stat-v{font-size:14px;font-weight:800;color:var(--ink);margin-top:2px}
+/* VAZIO */
+.vazio{text-align:center;padding:40px 20px;color:var(--ink3);font-size:13px;line-height:1.6}
+.vazio .ico{font-size:48px;margin-bottom:12px;opacity:.4}
+/* RESUMO TOPO DETALHE */
+.resumo{padding:14px;margin:-14px -14px 14px;color:#fff}
+.resumo.sep{background:linear-gradient(135deg,var(--navy),var(--navy2))}
+.resumo.car{background:linear-gradient(135deg,#14532d,#15803d)}
+.resumo-rota{font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.resumo-mot{font-size:12px;color:rgba(255,255,255,.85);margin-bottom:8px}
+.resumo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.resumo-item{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px;text-align:center}
+.resumo-l{font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.resumo-v{font-size:13px;font-weight:800;color:#fff;margin-top:2px}
+/* PEDIDO CARD SEPARAÇÃO */
+.ped-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.03)}
+.ped-card.p-sep{border-color:rgba(22,163,74,.5)}
+.ped-card.p-dev{border-color:rgba(220,38,38,.4);opacity:.75}
+.ped-h{padding:11px 12px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.ped-num{background:var(--ink);color:#fff;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:800;font-family:monospace;flex-shrink:0}
+.ped-cli{flex:1;min-width:0}
+.ped-cli-n{font-size:12.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ped-cli-c{font-size:10.5px;color:var(--ink3);margin-top:2px}
+.ped-ico{font-size:18px;flex-shrink:0}
+.ped-arrow{font-size:12px;color:var(--ink4);transition:transform .2s;flex-shrink:0}
+.ped-card.open .ped-arrow{transform:rotate(180deg)}
+.ped-body{padding:0 12px 12px;border-top:1px solid var(--border);display:none}
+.ped-card.open .ped-body{display:block}
+/* ITENS */
+.itens-list{margin:10px 0;background:var(--bg);border-radius:8px;overflow:hidden}
+.item-hdr{display:grid;grid-template-columns:70px 1fr 56px;gap:6px;padding:6px 10px;background:var(--ink);color:#fff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.item-row{display:grid;grid-template-columns:70px 1fr 56px;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);align-items:center}
+.item-row:last-child{border-bottom:none}
+.item-sku{font-family:monospace;font-size:10px;font-weight:700;color:var(--info);word-break:break-all}
+.item-desc{font-size:11px;color:var(--ink2);line-height:1.3}
+.item-qtd{font-size:12px;font-weight:800;color:var(--ink);text-align:right}
+/* FOTOS SEPARAÇÃO */
+.fotos-sec{margin-top:10px}
+.fotos-lbl{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.fotos-row{display:flex;gap:6px;flex-wrap:wrap}
+.foto-thumb{width:64px;height:64px;border-radius:9px;object-fit:cover;border:2px solid var(--border);cursor:pointer}
+.foto-thumb:active{opacity:.8}
+.foto-add-sm{width:64px;height:64px;border-radius:9px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--bg);color:var(--ink3);flex-shrink:0}
+.foto-add-sm:active{background:#e8edf7}
+/* AÇÕES SEPARAÇÃO */
+.ped-acoes{display:flex;gap:6px;margin-top:12px}
+.btn-acao{flex:1;padding:10px 6px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.btn-acao:active{transform:scale(.96)}
+.btn-dev{background:var(--err-bg);color:#991b1b;border:1px solid rgba(220,38,38,.25)}
+.btn-sep{background:var(--ok-bg);color:#15803d;border:1px solid rgba(22,163,74,.3)}
+.acao-feita{margin-top:10px;padding:9px 11px;border-radius:9px;background:var(--bg);border:1px solid var(--border);font-size:11.5px;color:var(--ink2);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.btn-desfazer{padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+/* FOTOS CARREGAMENTO */
+.fotos-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+.fotos-titulo{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.fotos-sub{font-size:11px;color:var(--ink3);margin-bottom:12px;line-height:1.5}
+.fotos-grid-car{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.foto-item-car{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg);border:2px solid var(--border)}
+.foto-item-car img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.foto-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(220,38,38,.9);color:#fff;border:none;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+.foto-add-car{aspect-ratio:1;border-radius:10px;border:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:var(--ink3);font-size:11px;gap:4px}
+.foto-add-car:active{background:#e8edf7}
+.foto-add-car .ico{font-size:28px}
+.fotos-count{font-size:11px;color:var(--ink3);text-align:center}
+/* PEDIDOS LISTA CARREGAMENTO */
+.ped-list-car{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.ped-item-car{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.ped-item-car:last-child{border-bottom:none}
+.pnum{background:var(--ink);color:#fff;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:800;font-family:monospace;flex-shrink:0}
+.pcli{flex:1;min-width:0}
+.pcli-n{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcli-c{font-size:10px;color:var(--ink3);margin-top:1px}
+.ppeso{font-size:11px;font-weight:700;color:var(--ink2);flex-shrink:0}
+/* FOOTER */
+.footer{flex-shrink:0;background:#fff;border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.btn-rod{flex:1;padding:13px;border-radius:11px;border:none;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.btn-rod:active{transform:scale(.98)}
+.btn-rod:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed;transform:none}
+.btn-devtudo{background:var(--err-bg);color:#991b1b;border:1px solid rgba(220,38,38,.25)}
+.btn-fim-sep{background:linear-gradient(135deg,var(--ok),#15803d);color:#fff;flex:2}
+.btn-fim-car{background:linear-gradient(135deg,var(--purple),#6d28d9);color:#fff}
+/* ASSINATURA */
+.assina-inner{display:flex;flex-direction:column;padding:14px;flex:1;min-height:0}
+.assina-info{border-radius:12px;padding:12px 14px;margin-bottom:12px;flex-shrink:0}
+.assina-info.sep{background:var(--info-bg);border:1px solid rgba(29,78,216,.2)}
+.assina-info.car{background:var(--purple-bg);border:1px solid rgba(124,58,237,.2)}
+.assina-t{font-size:13px;font-weight:800;margin-bottom:3px}
+.assina-t.sep{color:var(--info)}
+.assina-t.car{color:var(--purple)}
+.assina-s{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.canvas-wrap{flex:1;background:#fff;border:2px dashed var(--border);border-radius:14px;position:relative;overflow:hidden;min-height:180px}
+canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+.canvas-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink4);font-size:13px;pointer-events:none;font-style:italic}
+.assina-acoes{display:flex;gap:8px;margin-top:12px;flex-shrink:0}
+.btn-sig{flex:1;padding:13px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.btn-limpar{background:var(--bg);color:var(--ink2)}
+.btn-ok-sep{background:linear-gradient(135deg,var(--ok),#15803d);color:#fff;flex:2}
+.btn-ok-car{background:linear-gradient(135deg,var(--purple),#6d28d9);color:#fff;flex:2}
+/* MODAL */
+.modal{position:fixed;inset:0;z-index:1000;background:rgba(10,15,40,.65);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.modal-card{background:#fff;width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:20px 18px 28px;max-height:80vh;overflow-y:auto}
+.modal-t{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--ink3);margin-bottom:14px;line-height:1.5}
+.modal-select,.modal-textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);outline:none;margin-bottom:10px}
+.modal-select:focus,.modal-textarea:focus{border-color:var(--info)}
+.modal-textarea{resize:none;min-height:70px}
+.modal-acoes{display:flex;gap:8px;margin-top:4px}
+.mbtn{flex:1;padding:12px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.mbtn-c{background:var(--bg);color:var(--ink2)}
+.mbtn-d{background:var(--err);color:#fff}
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:2000;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+.toast.on{opacity:1}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--err)}
+/* LOADING */
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:3000}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--info);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-tx{margin-top:14px;font-size:13px;color:var(--ink3);font-weight:600}
+/* ROMANEIO */
+.romaneio-tela{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.romaneio-hdr{flex-shrink:0;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--gold2)}
+.romaneio-hdr-t{flex:1;min-width:0}
+.romaneio-hdr-t1{font-family:"Playfair Display",serif;font-style:italic;font-size:14px;font-weight:700;color:var(--gold)}
+.romaneio-hdr-t2{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px}
+.romaneio-scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.romaneio-pad{padding:14px}
+.rom-info{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.rom-info-item .l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.rom-info-item .v{font-size:15px;font-weight:800;color:var(--ink);margin-top:2px}
+.rom-table{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.rom-thead{display:grid;grid-template-columns:90px 1fr 70px 60px;gap:6px;padding:9px 12px;background:var(--navy);color:#fff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.rom-row{display:grid;grid-template-columns:90px 1fr 70px 60px;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);align-items:start}
+.rom-row:last-child{border-bottom:none}
+.rom-row.alt{background:rgba(29,78,216,.03)}
+.rom-sku{font-family:monospace;font-size:10px;font-weight:700;color:var(--info);word-break:break-all}
+.rom-desc{font-size:11px;color:var(--ink2);line-height:1.4}
+.rom-desc small{display:block;font-size:9px;color:var(--ink4);margin-top:3px;line-height:1.4}
+.rom-qtd{font-size:13px;font-weight:800;color:var(--ink);text-align:right}
+.rom-peds{font-size:9px;color:var(--ink3);text-align:right;line-height:1.5}
+.rom-footer{flex-shrink:0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);display:flex;gap:8px}
+.rom-btn{flex:1;padding:13px;border-radius:11px;border:none;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.rom-btn-fechar{background:var(--bg);color:var(--ink2)}
+.rom-btn-pdf{background:linear-gradient(135deg,var(--err),#b91c1c);color:#fff;flex:1.5}
+/* RASTREABILIDADE POR ITEM */
+.rastro-box{background:#f0f4ff;border:1px solid rgba(29,78,216,.2);border-radius:8px;padding:10px;margin-top:6px}
+.rastro-titulo{font-size:10px;font-weight:800;color:var(--info);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.rastro-grid{display:grid;grid-template-columns:1fr;gap:6px}
+.rastro-campo{display:flex;flex-direction:column;gap:3px}
+.rastro-lbl{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.3px}
+.rastro-inp{padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:12px;background:#fff;color:var(--ink);outline:none;width:100%}
+.rastro-inp:focus{border-color:var(--info)}
+.rastro-inp[readonly]{background:var(--bg);color:var(--ink2)}
+.rastro-tag{display:inline-flex;align-items:center;gap:4px;background:var(--info-bg);border:1px solid rgba(29,78,216,.2);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--info);font-weight:700;margin-top:3px}
+/* ROMANEIO DE CARREGAMENTO */
+.romcar-tela{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.romcar-hdr{flex-shrink:0;background:linear-gradient(135deg,#14532d,#15803d);color:#fff;padding:14px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #16a34a}
+.romcar-hdr-t1{font-family:"Playfair Display",serif;font-style:italic;font-size:14px;font-weight:700;color:#bbf7d0}
+.romcar-hdr-t2{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px}
+.romcar-scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.romcar-pad{padding:14px}
+.romcar-info{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.romcar-info .l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.romcar-info .v{font-size:15px;font-weight:800;color:var(--ink);margin-top:2px}
+.romcar-ped{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.romcar-ped-hdr{background:var(--navy);color:#fff;padding:9px 12px;display:flex;align-items:center;gap:8px}
+.romcar-ped-num{background:var(--gold2);color:var(--navy);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:800;font-family:monospace;flex-shrink:0}
+.romcar-ped-cli{flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.romcar-ped-cid{font-size:10px;color:rgba(255,255,255,.6);flex-shrink:0}
+.romcar-item{padding:10px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start}
+.romcar-item:last-child{border-bottom:none}
+.romcar-item-sku{font-family:monospace;font-size:10px;font-weight:700;color:var(--info);word-break:break-all}
+.romcar-item-desc{font-size:11px;color:var(--ink);font-weight:600;line-height:1.3}
+.romcar-item-qtd{font-size:10px;color:var(--ink3);margin-top:2px}
+.romcar-rastro{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.romcar-tag{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700}
+.romcar-tag.lote{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.romcar-tag.fab{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.romcar-tag.val{background:#ffe4e6;color:#9f1239;border:1px solid #fecdd3}
+.romcar-tag.sem{background:var(--warn-bg);color:#9a3412;border:1px solid rgba(234,88,12,.2)}
+.romcar-footer{flex-shrink:0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);display:flex;gap:8px}
+.romcar-btn{flex:1;padding:13px;border-radius:11px;border:none;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.romcar-btn-fechar{background:var(--bg);color:var(--ink2)}
+.romcar-btn-pdf{background:linear-gradient(135deg,#15803d,#14532d);color:#fff;flex:1.5}
+/* HISTÓRICO DE FOTOS */
+.hist-filtros{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px}
+.hist-datas{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.hist-atalhos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.hist-atalho{padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;color:var(--ink2)}
+.hist-atalho.on{background:var(--info);color:#fff;border-color:var(--info)}
+.hist-selects{display:flex;gap:6px;flex-wrap:wrap}
+.hist-input{padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;background:#fff;color:var(--ink);outline:none;flex:1;min-width:110px}
+.hist-input:focus{border-color:var(--info)}
+.hist-resumo{display:flex;gap:8px;margin-bottom:12px}
+.hist-res-item{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px;text-align:center}
+.hist-res-l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.hist-res-v{font-size:16px;font-weight:800;color:var(--ink);margin-top:2px}
+/* PRINT */
+@media print{
+  body>*:not(#romaneio-print-area){display:none!important}
+  #romaneio-print-area{display:block!important;position:static!important;padding:20px;font-family:Arial,sans-serif;font-size:11px;color:#000}
+  #romaneio-print-area .no-print{display:none!important}
+  #romaneio-print-area table{width:100%;border-collapse:collapse;margin-top:12px}
+  #romaneio-print-area th,#romaneio-print-area td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+  #romaneio-print-area th{background:#0a1728;color:#fff;font-size:10px}
+  #romaneio-print-area .print-title{font-size:16px;font-weight:700;margin-bottom:4px}
+  #romaneio-print-area .print-sub{font-size:11px;color:#555;margin-bottom:12px}
+}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-tx" id="loading-tx">Carregando...</div>
+</div>
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-back hide" id="btn-voltar" onclick="voltarLista()">←</div>
+  <div class="hdr-title">
+    <div class="hdr-t1" id="hdr-t1">OPUS · Operação</div>
+    <div class="hdr-t2" id="hdr-t2">Separação & Carregamento</div>
+  </div>
+  <div class="hdr-user"><span>Operador</span><b id="hdr-nome">—</b></div>
+</header>
+<!-- CONTEÚDO -->
+<div style="flex:1;display:flex;flex-direction:column;overflow:hidden" id="wrap">
+  <!-- LISTA SEPARAÇÃO -->
+  <div class="scr hide" id="tela-lista-sep">
+    <div class="pad">
+      <div class="sec-t">Pendentes de separação</div>
+      <div id="lista-sep-pend"></div>
+      <div class="sec-t" id="sec-sep-ok-t" style="margin-top:20px">Separados hoje</div>
+      <div id="lista-sep-ok"></div>
+    </div>
+  </div>
+  <!-- DETALHE SEPARAÇÃO -->
+  <div class="scr hide" id="tela-det-sep">
+    <div class="pad">
+      <div class="resumo sep">
+        <div class="resumo-rota" id="sep-rota">—</div>
+        <div class="resumo-mot" id="sep-mot">—</div>
+        <div class="resumo-grid">
+          <div class="resumo-item"><div class="resumo-l">Pedidos</div><div class="resumo-v" id="sep-n">0</div></div>
+          <div class="resumo-item"><div class="resumo-l">Peso</div><div class="resumo-v" id="sep-kg">0 kg</div></div>
+          <div class="resumo-item"><div class="resumo-l">Separados</div><div class="resumo-v" id="sep-prog">0/0</div></div>
+        </div>
+        <button onclick="abrirRomaneio()" style="margin-top:10px;width:100%;padding:9px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">📋 Ver romaneio consolidado</button>
+      </div>
+      <div id="lista-peds-sep"></div>
+    </div>
+  </div>
+  <div class="footer hide" id="footer-sep">
+    <button class="btn-rod btn-devtudo" onclick="abrirDevTudo()">↩ Devolver tudo</button>
+    <button class="btn-rod btn-fim-sep" id="btn-fim-sep" onclick="irAssina('sep')" disabled>✓ Finalizar</button>
+  </div>
+  <!-- ASSINATURA SEPARAÇÃO -->
+  <div class="hide" id="tela-assina-sep" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="assina-inner">
+      <div class="assina-info sep">
+        <div class="assina-t sep">📝 Assinatura — Separação</div>
+        <div class="assina-s">Confirme que a separação foi realizada corretamente.</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="cvs-sep"></canvas>
+        <div class="canvas-hint" id="hint-sep">Assine aqui com o dedo</div>
+      </div>
+      <div class="assina-acoes">
+        <button class="btn-sig btn-limpar" onclick="limparCvs('sep')">🔄 Limpar</button>
+        <button class="btn-sig btn-ok-sep" onclick="confirmarAssina('sep')">✓ Confirmar separação</button>
+      </div>
+    </div>
+  </div>
+  <!-- LISTA CARREGAMENTO -->
+  <div class="scr hide" id="tela-lista-car">
+    <div class="pad">
+      <div class="sec-t">Aguardando carregamento</div>
+      <div id="lista-car-pend"></div>
+      <div class="sec-t" id="sec-car-ok-t" style="margin-top:20px">Carregados hoje</div>
+      <div id="lista-car-ok"></div>
+    </div>
+  </div>
+  <!-- DETALHE CARREGAMENTO -->
+  <div class="scr hide" id="tela-det-car">
+    <div class="pad">
+      <div class="resumo car">
+        <div class="resumo-rota" id="car-rota">—</div>
+        <div class="resumo-mot" id="car-mot">—</div>
+        <div class="resumo-grid">
+          <div class="resumo-item"><div class="resumo-l">Pedidos</div><div class="resumo-v" id="car-n">0</div></div>
+          <div class="resumo-item"><div class="resumo-l">Peso</div><div class="resumo-v" id="car-kg">0 kg</div></div>
+          <div class="resumo-item"><div class="resumo-l">Fotos</div><div class="resumo-v" id="car-fotos">0</div></div>
+        </div>
+      </div>
+      <div class="sec-t">Pedidos do DT</div>
+      <div class="ped-list-car" id="lista-peds-car"></div>
+      <div class="fotos-section">
+        <div class="fotos-titulo">📸 Fotos do carregamento</div>
+        <div class="fotos-sub">Fotografe os paletes e volumes. Sem limite de fotos.</div>
+        <div class="fotos-grid-car" id="fotos-grid-car"></div>
+        <div class="fotos-count" id="fotos-count-car">0 foto(s)</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer hide" id="footer-car">
+    <button class="btn-rod btn-fim-car" id="btn-fim-car" onclick="irAssina('car')" disabled>📝 Finalizar e assinar</button>
+  </div>
+  <!-- ASSINATURA CARREGAMENTO -->
+  <div class="hide" id="tela-assina-car" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="assina-inner">
+      <div class="assina-info car">
+        <div class="assina-t car">✍️ Assinatura — Carregamento</div>
+        <div class="assina-s">Confirme que o carregamento foi realizada corretamente.</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="cvs-car"></canvas>
+        <div class="canvas-hint" id="hint-car">Assine aqui com o dedo</div>
+      </div>
+      <div class="assina-acoes">
+        <button class="btn-sig btn-limpar" onclick="limparCvs('car')">🔄 Limpar</button>
+        <button class="btn-sig btn-ok-car" onclick="confirmarAssina('car')">✓ Confirmar carregamento</button>
+      </div>
+    </div>
+  </div>
+  <!-- HISTÓRICO DE FOTOS -->
+  <div class="scr hide" id="tela-hist">
+    <div class="pad">
+      <div class="sec-t">Filtros</div>
+      <div class="hist-filtros">
+        <div class="hist-datas">
+          <input class="hist-input" type="date" id="hist-de" onchange="renderHist()">
+          <span style="font-size:11px;color:var(--ink3)">até</span>
+          <input class="hist-input" type="date" id="hist-ate" onchange="renderHist()">
+        </div>
+        <div class="hist-atalhos">
+          <button class="hist-atalho" onclick="setAtalhoHist('hoje',this)">Hoje</button>
+          <button class="hist-atalho" onclick="setAtalhoHist('ontem',this)">Ontem</button>
+          <button class="hist-atalho on" onclick="setAtalhoHist('7d',this)">7 dias</button>
+          <button class="hist-atalho" onclick="setAtalhoHist('30d',this)">30 dias</button>
+          <button class="hist-atalho" onclick="setAtalhoHist('mes',this)">Este mês</button>
+        </div>
+        <div class="hist-selects">
+          <select class="hist-input" id="hist-tipo" onchange="renderHist()">
+            <option value="">Separação + Carregamento</option>
+            <option value="separacao">Só separação</option>
+            <option value="carregamento">Só carregamento</option>
+          </select>
+          <select class="hist-input" id="hist-mot" onchange="renderHist()"><option value="">Todos os motoristas</option></select>
+          <select class="hist-input" id="hist-rota" onchange="renderHist()"><option value="">Todas as rotas</option></select>
+        </div>
+      </div>
+      <div class="hist-resumo" id="hist-resumo">
+        <div class="hist-res-item"><div class="hist-res-l">Registros</div><div class="hist-res-v" id="hr-dts">0</div></div>
+        <div class="hist-res-item"><div class="hist-res-l">Fotos</div><div class="hist-res-v" id="hr-fotos">0</div></div>
+      </div>
+      <div id="hist-lista"></div>
+    </div>
+  </div>
+</div>
+<!-- TAB BAR -->
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn ativa-sep" id="tab-sep" onclick="mudarAba('sep')">
+    <span class="ico">📦</span><span>Separação</span>
+    <span class="tab-badge hide" id="badge-sep">0</span>
+    <div class="tab-bar-line"></div>
+  </button>
+  <button class="tab-btn" id="tab-car" onclick="mudarAba('car')">
+    <span class="ico">🚛</span><span>Carregamento</span>
+    <span class="tab-badge hide" id="badge-car">0</span>
+    <div class="tab-bar-line"></div>
+  </button>
+  <button class="tab-btn" id="tab-hist" onclick="mudarAba('hist')">
+    <span class="ico">🕘</span><span>Histórico</span>
+    <div class="tab-bar-line"></div>
+  </button>
+</div>
+<!-- MODAL DEVOLVER PEDIDO -->
+<div class="modal" id="modal-dev">
+  <div class="modal-card">
+    <div class="modal-t">↩ Devolver pedido</div>
+    <div class="modal-sub" id="modal-dev-sub">O pedido voltará para o roteirizador.</div>
+    <select class="modal-select" id="dev-motivo">
+      <option value="">— Selecione o motivo —</option>
+      <option value="sem_estoque">Sem estoque</option>
+      <option value="produto_avariado">Produto avariado</option>
+      <option value="erro_pedido">Erro no pedido</option>
+      <option value="solicitacao_cliente">Solicitação do cliente</option>
+      <option value="outro">Outro</option>
+    </select>
+    <textarea class="modal-textarea" id="dev-obs" placeholder="Observação (opcional)"></textarea>
+    <div class="modal-acoes">
+      <button class="mbtn mbtn-c" onclick="fecharModal('modal-dev')">Cancelar</button>
+      <button class="mbtn mbtn-d" onclick="confirmarDev()">↩ Devolver</button>
+    </div>
+  </div>
+</div>
+<!-- MODAL DEVOLVER TUDO -->
+<div class="modal" id="modal-devtudo">
+  <div class="modal-card">
+    <div class="modal-t" style="color:var(--err)">⚠ Devolver todos os pedidos</div>
+    <div class="modal-sub">Todos os pedidos voltarão ao roteirizador. O DT será cancelado.</div>
+    <select class="modal-select" id="devtudo-motivo">
+      <option value="">— Selecione o motivo —</option>
+      <option value="sem_estoque_total">Estoque insuficiente</option>
+      <option value="problema_veiculo">Problema com veículo</option>
+      <option value="motorista_indisponivel">Motorista indisponível</option>
+      <option value="reagendamento">Reagendamento</option>
+      <option value="outro">Outro</option>
+    </select>
+    <textarea class="modal-textarea" id="devtudo-obs" placeholder="Observação (opcional)"></textarea>
+    <div class="modal-acoes">
+      <button class="mbtn mbtn-c" onclick="fecharModal('modal-devtudo')">Cancelar</button>
+      <button class="mbtn mbtn-d" onclick="confirmarDevTudo()">↩ Devolver tudo</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module">
+import { onUsuarioPronto } from '/js/auth.js';
+import { db as _db } from '/js/firebase-init.js';
+import { ref, onValue, update, set, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+// ── FIREBASE HELPERS ──────────────────────────────────────────────────────────
+const fbRef  = path => ref(_db, path);
+const fbGet  = path => new Promise(r => onValue(fbRef(path), s => r(s.val()), { onlyOnce: true }));
+const fbSet  = (path, v) => set(fbRef(path), v);
+const fbUpd  = (path, v) => update(fbRef(path), v);
+const fbDel  = path => remove(fbRef(path));
+// ── ESTADO ────────────────────────────────────────────────────────────────────
+let usuario = null;
+let DTS = {};
+let aba = 'sep';       // aba atual: 'sep' | 'car' | 'hist'
+let dtSep = null;      // token do DT aberto na aba sep
+let dtCar = null;      // token do DT aberto na aba car
+let pedIdx = null;     // índice do pedido para modal
+let fotosCar = [];     // fotos locais do carregamento
+const sig = { sep: { ctx:null, dirty:false, drawing:false, last:null }, car: { ctx:null, dirty:false, drawing:false, last:null } };
+// ── INIT ──────────────────────────────────────────────────────────────────────
+onUsuarioPronto(u => {
+  usuario = u;
+  document.getElementById('hdr-nome').textContent = u ? (u.nome || u.email) : '—';
+});
+const safetyTimer = setTimeout(() => {
+  hide('loading');
+  mostrarLista('sep');
+}, 8000);
+onValue(ref(_db, 'despachos'), snap => {
+  clearTimeout(safetyTimer);
+  DTS = snap.val() || {};
+  hide('loading');
+  badges();
+  // Atualiza tela ativa sem resetar navegação
+  if (dtSep) renderDetSep();
+  else if (dtCar) renderDetCar();
+  else mostrarLista(aba);
+}, err => {
+  clearTimeout(safetyTimer);
+  hide('loading');
+  toast('❌ Firebase: ' + err.message, 'err');
+});
+// ── ABAS ──────────────────────────────────────────────────────────────────────
+window.mudarAba = function(novaAba) {
+  if (dtSep || dtCar) return; // está em detalhe, não troca
+  aba = novaAba;
+  document.getElementById('tab-sep').className = 'tab-btn' + (aba === 'sep' ? ' ativa-sep' : '');
+  document.getElementById('tab-car').className = 'tab-btn' + (aba === 'car' ? ' ativa-car' : '');
+  document.getElementById('tab-hist').className = 'tab-btn' + (aba === 'hist' ? ' ativa-hist' : '');
+  mostrarLista(aba);
+};
+function badges() {
+  let cS = 0, cC = 0;
+  Object.values(DTS).forEach(dt => {
+    const s = dt.statusFluxo || '';
+    if (s === 'aguardando_separacao' || s === 'separando') cS++;
+    if (s === 'separado' || s === 'em_carregamento') cC++;
+  });
+  const bS = document.getElementById('badge-sep');
+  const bC = document.getElementById('badge-car');
+  bS.textContent = cS; bS.classList.toggle('hide', cS === 0);
+  bC.textContent = cC; bC.classList.toggle('hide', cC === 0);
+}
+window.voltarLista = function() {
+  if (dtSep) {
+    // Se estava em assinatura, volta para detalhe
+    if (!document.getElementById('tela-assina-sep').classList.contains('hide')) {
+      dtSep && abrirDetSep(dtSep, true);
+      return;
+    }
+    dtSep = null;
+    mostrarLista('sep');
+  } else if (dtCar) {
+    if (!document.getElementById('tela-assina-car').classList.contains('hide')) {
+      dtCar && abrirDetCar(dtCar, true);
+      return;
+    }
+    dtCar = null;
+    fotosCar = [];
+    mostrarLista('car');
+  }
+};
+// ── UTILITÁRIOS DOM ───────────────────────────────────────────────────────────
+const TELAS = ['tela-lista-sep','tela-det-sep','tela-assina-sep','footer-sep',
+               'tela-lista-car','tela-det-car','tela-assina-car','footer-car',
+               'tela-hist'];
+function mostrarSo(...ids) {
+  TELAS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const mostrar = ids.includes(id);
+    el.classList.toggle('hide', !mostrar);
+    if (el.style.display === 'flex' || el.tagName === 'DIV' && el.id.startsWith('tela-assina')) {
+      el.style.display = mostrar ? 'flex' : 'none';
+    }
+  });
+  // btn-voltar
+  document.getElementById('btn-voltar').classList.toggle('hide', !ids.some(id => id.startsWith('tela-det') || id.startsWith('tela-assina')));
+}
+function mostrarLista(q) {
+  aba = q;
+  document.getElementById('tab-sep').className = 'tab-btn' + (q === 'sep' ? ' ativa-sep' : '');
+  document.getElementById('tab-car').className = 'tab-btn' + (q === 'car' ? ' ativa-car' : '');
+  document.getElementById('tab-hist').className = 'tab-btn' + (q === 'hist' ? ' ativa-hist' : '');
+  if (q === 'sep') {
+    mostrarSo('tela-lista-sep');
+    setHdr('OPUS · Separação', 'Documentos de Transporte');
+    renderListaSep();
+  } else if (q === 'car') {
+    mostrarSo('tela-lista-car');
+    setHdr('OPUS · Carregamento', 'Documentos de Transporte');
+    renderListaCar();
+  } else {
+    mostrarSo('tela-hist');
+    setHdr('OPUS · Histórico', 'Fotos de separação e carregamento');
+    popularSelectsHist();
+    renderHist();
+  }
+}
+function hide(id) { document.getElementById(id)?.classList.add('hide'); }
+function show(id) { document.getElementById(id)?.classList.remove('hide'); }
+function setHdr(t1, t2) {
+  document.getElementById('hdr-t1').textContent = t1;
+  document.getElementById('hdr-t2').textContent = t2;
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// ABA SEPARAÇÃO
+// ══════════════════════════════════════════════════════════════════════════════
+function renderListaSep() {
+  const pend = [], ok = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  Object.keys(DTS).forEach(tk => {
+    const dt = DTS[tk], st = dt.statusFluxo || '';
+    if (!st || st === 'devolvido_total') return;
+    if (['separado','em_carregamento','carregado','despachado'].includes(st)) {
+      const sep = dt.separacao || {};
+      if (sep.finalizada_em) {
+        const dia = new Date(sep.finalizada_em).toISOString().slice(0, 10);
+        if (dia === hoje) ok.push({ tk, dt });
+      }
+    } else if (['aguardando_separacao','separando'].includes(st)) {
+      pend.push({ tk, dt });
+    }
+  });
+  document.getElementById('lista-sep-pend').innerHTML = pend.length
+    ? pend.map(({ tk, dt }) => cardSep(tk, dt)).join('')
+    : `<div class="vazio"><div class="ico">📦</div>Nenhum DT pendente de separação.</div>`;
+  document.getElementById('sec-sep-ok-t').style.display = ok.length ? '' : 'none';
+  document.getElementById('lista-sep-ok').innerHTML = ok.map(({ tk, dt }) => cardSep(tk, dt)).join('');
+}
+function cardSep(tk, dt) {
+  const st = dt.statusFluxo || 'aguardando_separacao';
+  const labels = { aguardando_separacao:'Aguardando', separando:'Separando', separado:'Separado' };
+  const cls = st === 'aguardando_separacao' ? 'aguardando' : (st === 'separando' ? 'separando' : 'separado');
+  const paradas = dt.paradas || [];
+  const acoes = (dt.separacao || {}).acoes || {};
+  const nSep = Object.values(acoes).filter(a => a?.tipo === 'separado').length;
+  return `<div class="dt-card s-${cls}" onclick="abrirDetSep('${tk}')">
+    <div class="dt-h"><div class="dt-nome">${dt.nomeRota||'—'}</div><div class="dt-badge b-${cls}">${labels[st]||st}</div></div>
+    <div class="dt-mot">🚗 ${dt.motoristaNome||'—'}</div>
+    <div class="dt-placa">${dt.motoristaPlaca||'—'}${dt.motoristaVeiculo?' · '+dt.motoristaVeiculo:''}</div>
+    <div class="dt-stats">
+      <div class="dt-stat"><div class="dt-stat-l">Pedidos</div><div class="dt-stat-v">${paradas.length}</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Peso</div><div class="dt-stat-v">${Math.round(dt.totalPeso||0)} kg</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Separados</div><div class="dt-stat-v">${nSep}/${paradas.length}</div></div>
+    </div>
+  </div>`;
+}
+window.abrirDetSep = function(tk, semUpdate) {
+  dtSep = tk;
+  const dt = DTS[tk];
+  if (!dt) return;
+  const finalizado = ['separado','em_carregamento','carregado','despachado','em_transito'].includes(dt.statusFluxo);
+  if (!semUpdate && !finalizado) {
+    fbUpd('despachos/' + tk, { statusFluxo:'separando', 'separacao/iniciada_em':Date.now(), 'separacao/iniciada_por': usuario ? { uid:usuario.uid, nome:usuario.nome } : { nome:'operador' } });
+  }
+  // Se já finalizado: abre em modo leitura (sem footer)
+  if (finalizado) {
+    mostrarSo('tela-det-sep');
+  } else {
+    mostrarSo('tela-det-sep','footer-sep');
+  }
+  renderDetSep();
+};
+function renderDetSep() {
+  const dt = DTS[dtSep]; if (!dt) { mostrarLista('sep'); return; }
+  // Não re-renderiza enquanto o usuário está digitando num campo de rastreabilidade
+  // (evita perder o foco do input a cada caractere digitado)
+  const ativo = document.activeElement;
+  if (ativo && ativo.classList && ativo.classList.contains('rastro-inp')) return;
+  const finalizado = ['separado','em_carregamento','carregado','despachado','em_transito'].includes(dt.statusFluxo);
+  setHdr(dt.nomeRota||'—', (dt.motoristaNome||'—') + ' · ' + (dt.motoristaPlaca||''));
+  document.getElementById('sep-rota').textContent = dt.nomeRota||'—';
+  document.getElementById('sep-mot').textContent = '🚗 ' + (dt.motoristaNome||'—') + ' · ' + (dt.motoristaPlaca||'');
+  const pars = dt.paradas || [];
+  const sep = dt.separacao || {};
+  const acoes = sep.acoes || {};
+  const fotos = sep.fotos || {};
+  const nRes = pars.filter((_, i) => acoes[i]).length;
+  const nSep = Object.values(acoes).filter(a => a?.tipo === 'separado').length;
+  document.getElementById('sep-n').textContent = pars.length;
+  document.getElementById('sep-kg').textContent = Math.round(dt.totalPeso||0) + ' kg';
+  document.getElementById('sep-prog').textContent = nSep + '/' + pars.length;
+  // Banner de somente leitura
+  const banner = finalizado
+    ? `<div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;display:flex;align-items:center;gap:8px;">✅ Separação finalizada — somente consulta</div>`
+    : '';
+  document.getElementById('lista-peds-sep').innerHTML = banner + (pars.map((p, i) => pedCardSep(p, i, acoes[i], fotos[i]||[], finalizado)).join('') || '<div class="vazio"><div class="ico">📦</div>Sem pedidos.</div>');
+  if (!finalizado) {
+    const btn = document.getElementById('btn-fim-sep');
+    btn.disabled = !(nRes === pars.length && pars.length > 0 && nSep > 0);
+  }
+}
+function pedCardSep(p, i, acao, fotosArr, finalizado) {
+  const tipo = acao?.tipo;
+  const ico = tipo === 'separado' ? '✅' : tipo === 'devolvido' ? '↩' : '⏳';
+  const cls = tipo === 'separado' ? 'p-sep' : tipo === 'devolvido' ? 'p-dev' : '';
+  const aberto = !tipo && !finalizado;
+  const itens = p.itens && p.itens.length ? p.itens
+    : [{ sku: p.sku||'—', descricao: p.produto||'—', quantidade: p.peso||0 }];
+  const rastros = (DTS[dtSep]?.separacao?.rastros || {})[i] || {};
+  const itensHtml = '<div class="itens-list"><div class="item-hdr"><div>SKU</div><div>Produto</div><div style="text-align:right">Qtd</div></div>' +
+    itens.map((it, j) => {
+      const sku = it.sku||'—';
+      const r = rastros[j] || {};
+      if (finalizado || tipo) {
+        const tags = [
+          r.op ? `<span class="rastro-tag">🏭 OP: ${r.op}</span>` : ''
+        ].filter(Boolean).join('');
+        return `<div style="padding:8px 10px;border-bottom:1px solid var(--border)"><div style="display:grid;grid-template-columns:70px 1fr 56px;gap:6px;align-items:center"><div class="item-sku">${sku}</div><div class="item-desc">${it.descricao||it.produto||'—'}</div><div class="item-qtd">${it.quantidade||it.qtd||0}</div></div>${tags ? '<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">'+tags+'</div>' : ''}</div>`;
+      }
+      return `<div style="padding:8px 10px;border-bottom:1px solid var(--border)"><div style="display:grid;grid-template-columns:70px 1fr 56px;gap:6px;align-items:center;margin-bottom:6px"><div class="item-sku">${sku}</div><div class="item-desc">${it.descricao||it.produto||'—'}</div><div class="item-qtd">${it.quantidade||it.qtd||0}</div></div><div class="rastro-box"><div class="rastro-titulo">🔍 Rastreabilidade</div><div class="rastro-grid"><div class="rastro-campo"><label class="rastro-lbl">🏭 Ordem de Produção</label><input class="rastro-inp" type="text" inputmode="text" placeholder="Ex: OP-12345" value="${r.op||''}" oninput="salvarRastro(${i},${j},'op',this.value)" onblur="salvarRastroImediato(${i},${j},'op',this.value)"></div></div></div></div>`;
+    }).join('') + '</div>';
+  const fotosHtml = `<div class="fotos-sec"><div class="fotos-lbl">📸 Fotos</div><div class="fotos-row" id="fotos-sep-${i}">${fotosArr.map(f=>`<img class="foto-thumb" src="${f}" onclick="verFoto('${encodeURIComponent(f)}')">`).join('')}${(!tipo && !finalizado)?`<div class="foto-add-sm" onclick="tirarFotoSep(${i})">📷</div>`:''}</div></div>`;
+  let acoesHtml = '';
+  if (finalizado) {
+    if (tipo) {
+      const mot = { sem_estoque:'Sem estoque', produto_avariado:'Prod. avariado', erro_pedido:'Erro pedido', solicitacao_cliente:'Sol. cliente', outro:'Outro' };
+      acoesHtml = `<div class="acao-feita"><div>${tipo==='separado'?'✅ Separado':'↩ Devolvido'}${acao.motivo?' · '+(mot[acao.motivo]||acao.motivo):''}${acao.obs?'<br><i style="font-size:10px;color:var(--ink3)">'+acao.obs+'</i>':''}</div></div>`;
+    }
+  } else if (tipo) {
+    const mot = { sem_estoque:'Sem estoque', produto_avariado:'Prod. avariado', erro_pedido:'Erro pedido', solicitacao_cliente:'Sol. cliente', outro:'Outro' };
+    acoesHtml = `<div class="acao-feita"><div style="flex:1">${tipo==='separado'?'✅ Separado':'↩ Devolvido'}${acao.motivo?' · '+(mot[acao.motivo]||acao.motivo):''}${acao.obs?'<br><i style="font-size:10px;color:var(--ink3)">'+acao.obs+'</i>':''}</div><button class="btn-desfazer" onclick="event.stopPropagation();desfazerSep(${i})">↶ Desfazer</button></div>`;
+  } else {
+    acoesHtml = `<div class="ped-acoes"><button class="btn-acao btn-dev" onclick="event.stopPropagation();abrirModalDev(${i},'${(p.cliente||'').replace(/'/g,"\\'")}')">↩ Devolver</button><button class="btn-acao btn-sep" onclick="event.stopPropagation();marcarSep(${i})">✓ Separado</button></div>`;
+  }
+  return `<div class="ped-card ${cls} ${aberto?'open':''}" id="ped-${i}"><div class="ped-h" onclick="togglePed(${i})"><div class="ped-num">${p.pedido||('Ped '+(i+1))}</div><div class="ped-cli"><div class="ped-cli-n">${p.cliente||'—'}</div><div class="ped-cli-c">${p.cidade||''}${p.estado?' / '+p.estado:''} · ${p.peso||0} kg</div></div><div class="ped-ico">${ico}</div><div class="ped-arrow">▼</div></div><div class="ped-body">${itensHtml}${fotosHtml}${acoesHtml}</div></div>`;
+}
+window.togglePed = i => document.getElementById('ped-' + i)?.classList.toggle('open');
+// Salva rastreabilidade (ordem de produção) por item do pedido — com debounce
+const _rastroTimers = {};
+window.salvarRastro = function(pedIdx, itemIdx, campo, valor) {
+  const key = pedIdx + '-' + itemIdx + '-' + campo;
+  clearTimeout(_rastroTimers[key]);
+  _rastroTimers[key] = setTimeout(() => {
+    fbSet(`despachos/${dtSep}/separacao/rastros/${pedIdx}/${itemIdx}/${campo}`, valor || null);
+  }, 500);
+};
+// Salva imediatamente ao sair do campo (blur), cancelando o debounce pendente
+window.salvarRastroImediato = function(pedIdx, itemIdx, campo, valor) {
+  const key = pedIdx + '-' + itemIdx + '-' + campo;
+  clearTimeout(_rastroTimers[key]);
+  fbSet(`despachos/${dtSep}/separacao/rastros/${pedIdx}/${itemIdx}/${campo}`, valor || null);
+};
+// Abre romaneio de carregamento com rastreabilidade completa
+window.abrirRomaneioCarregamento = function(tk) {
+  const dt = DTS[tk]; if (!dt) return;
+  const paradas = dt.paradas || [];
+  const rastrosTodos = dt.separacao?.rastros || {};
+  let totalPedidos = paradas.length;
+  let totalItens = 0;
+  const pedsHtml = paradas.map((p, i) => {
+    const itens = p.itens && p.itens.length ? p.itens
+      : [{ sku: p.sku||'—', descricao: p.produto||'—', quantidade: p.peso||0 }];
+    const rastros = rastrosTodos[i] || {};
+    const itensHtml = itens.map((it, j) => {
+      totalItens++;
+      const r = rastros[j] || {};
+      const temRastro = !!r.op;
+      const tags = [
+        r.op ? `<span class="romcar-tag lote">🏭 OP: ${r.op}</span>` : '',
+        !temRastro ? `<span class="romcar-tag sem">⚠ Sem ordem de produção</span>` : ''
+      ].filter(Boolean).join('');
+      return `<div class="romcar-item">
+        <div class="romcar-item-sku">${it.sku||'—'}</div>
+        <div>
+          <div class="romcar-item-desc">${it.descricao||it.produto||'—'}</div>
+          <div class="romcar-item-qtd">Qtd: ${it.quantidade||it.qtd||0}</div>
+          <div class="romcar-rastro">${tags}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="romcar-ped">
+      <div class="romcar-ped-hdr">
+        <div class="romcar-ped-num">${p.pedido||('Ped '+(i+1))}</div>
+        <div class="romcar-ped-cli">${p.cliente||'—'}</div>
+        <div class="romcar-ped-cid">${p.cidade||''}${p.estado?' / '+p.estado:''}</div>
+      </div>
+      ${itensHtml}
+    </div>`;
+  }).join('');
+  document.getElementById('romcar-subtitulo').textContent = (dt.nomeRota||'—') + ' · ' + (dt.motoristaNome||'—');
+  document.getElementById('romcar-info').innerHTML = `
+    <div><div class="l">Pedidos</div><div class="v">${totalPedidos}</div></div>
+    <div><div class="l">Itens</div><div class="v">${totalItens}</div></div>
+    <div><div class="l">Peso total</div><div class="v">${Math.round(dt.totalPeso||0)} kg</div></div>`;
+  document.getElementById('romcar-peds').innerHTML = pedsHtml;
+  window._romcarData = { dt, paradas, rastrosTodos, totalPedidos, totalItens, hoje: new Date().toLocaleString('pt-BR') };
+  document.getElementById('tela-romcar').classList.remove('hide');
+};
+window.fecharRomaneioCarregamento = function() {
+  document.getElementById('tela-romcar').classList.add('hide');
+};
+window.imprimirRomaneioCarregamento = function() {
+  const { dt, paradas, rastrosTodos, totalPedidos, totalItens, hoje } = window._romcarData || {};
+  if (!dt) return;
+  const linhas = paradas.map((p, i) => {
+    const itens = p.itens && p.itens.length ? p.itens
+      : [{ sku: p.sku||'—', descricao: p.produto||'—', quantidade: p.peso||0 }];
+    const rastros = rastrosTodos[i] || {};
+    return itens.map((it, j) => {
+      const r = rastros[j] || {};
+      return `<tr>
+        <td>${p.pedido||'—'}</td>
+        <td>${p.cliente||'—'}</td>
+        <td style="font-family:monospace;font-weight:700;color:#1d4ed8">${it.sku||'—'}</td>
+        <td>${it.descricao||it.produto||'—'}</td>
+        <td style="text-align:right">${it.quantidade||it.qtd||0}</td>
+        <td style="font-weight:700;color:#92400e">${r.op||'—'}</td>
+      </tr>`;
+    }).join('');
+  }).join('');
+  const html = `
+    <div class="print-title">ROMANEIO DE CARREGAMENTO — RASTREABILIDADE</div>
+    <div class="print-sub">
+      <strong>Rota:</strong> ${dt.nomeRota||'—'} &nbsp;|&nbsp;
+      <strong>Motorista:</strong> ${dt.motoristaNome||'—'} · ${dt.motoristaPlaca||'—'}<br>
+      <strong>Veículo:</strong> ${dt.motoristaVeiculo||'—'} &nbsp;|&nbsp;
+      <strong>Emissão:</strong> ${hoje} &nbsp;|&nbsp;
+      <strong>Pedidos:</strong> ${totalPedidos} &nbsp;|&nbsp;
+      <strong>Itens:</strong> ${totalItens} &nbsp;|&nbsp;
+      <strong>Peso:</strong> ${Math.round(dt.totalPeso||0)} kg
+    </div>
+    <table>
+      <thead><tr>
+        <th>Pedido</th><th>Cliente</th><th>SKU</th><th>Produto</th>
+        <th>Qtd</th><th>Ordem de Produção</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>
+    <div style="margin-top:40px;display:flex;gap:60px">
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Responsável pelo carregamento</div>
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Motorista</div>
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Conferência / Aprovação</div>
+    </div>`;
+  const area = document.getElementById('romaneio-print-area');
+  area.innerHTML = html;
+  area.style.display = 'block';
+  setTimeout(() => { window.print(); area.style.display = 'none'; }, 200);
+};
+window.tirarFotoSep = function(i) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => comprimirImg(ev.target.result, b64 => {
+      const existentes = ((DTS[dtSep]?.separacao?.fotos)||{})[i] || [];
+      fbSet('despachos/' + dtSep + '/separacao/fotos/' + i, [...existentes, b64]);
+      toast('📸 Foto adicionada!', 'ok');
+    });
+    reader.readAsDataURL(file);
+  };
+  input.click();
+};
+window.marcarSep = function(i) {
+  const fotos = ((DTS[dtSep]?.separacao?.fotos)||{})[i] || [];
+  if (!fotos.length) { toast('📸 Tire pelo menos 1 foto antes', 'err'); return; }
+  fbSet('despachos/' + dtSep + '/separacao/acoes/' + i, { tipo:'separado', ts:Date.now(), por:usuario?.nome||'operador' });
+  toast('✅ Pedido marcado como separado!', 'ok');
+};
+window.desfazerSep = i => {
+  if (!confirm('Desfazer ação deste pedido?')) return;
+  fbDel('despachos/' + dtSep + '/separacao/acoes/' + i);
+};
+window.abrirModalDev = function(i, nomeCliente) {
+  pedIdx = i;
+  document.getElementById('modal-dev-sub').textContent = 'Pedido de ' + nomeCliente + ' voltará para o roteirizador.';
+  document.getElementById('dev-motivo').value = '';
+  document.getElementById('dev-obs').value = '';
+  document.getElementById('modal-dev').classList.add('on');
+};
+window.abrirDevTudo = function() {
+  document.getElementById('devtudo-motivo').value = '';
+  document.getElementById('devtudo-obs').value = '';
+  document.getElementById('modal-devtudo').classList.add('on');
+};
+window.confirmarDev = async function() {
+  const motivo = document.getElementById('dev-motivo').value;
+  if (!motivo) { toast('Selecione o motivo', 'err'); return; }
+  fbSet('despachos/' + dtSep + '/separacao/acoes/' + pedIdx, {
+    tipo: 'devolvido', motivo,
+    obs: document.getElementById('dev-obs').value,
+    ts: Date.now(),
+    por: usuario?.nome || 'operador'
+  });
+  const dt = DTS[dtSep];
+  const p = (dt?.paradas || [])[pedIdx];
+  if (p) {
+    try {
+      const snap = await fbGet('carteira_envio/pedidos');
+      const existente = Array.isArray(snap) ? snap : [];
+      existente.push({
+        empresa:        p._empresa    || p.empresa    || '',
+        numero_pedido:  p.pedido      || '',
+        codigo_pedido:  p._codigo_pedido || '',
+        codigo_cliente: p.codigo_cliente || '',
+        cliente_nome:   p.cliente     || '',
+        cliente_cidade: p.cidade      || '',
+        cliente_uf:     p.estado      || '',
+        cliente_cep:    p.cep         || '',
+        cliente_end:    p.endereco    || '',
+        valor_total:    p.valor_total || 0,
+        peso_total:     p.peso        || 0,
+        frete:          p.frete       || 'CIF',
+        departamento:   p.segmento === 'LICITACAO' ? 'Licitação' : 'Comercial',
+        itens:          p.itens       || [],
+        observacoes:    p._obs_atual  || '',
+        _devolvido_separacao: true,
+        _motivo_devolucao: motivo
+      });
+      await fbSet('carteira_envio/pedidos', existente);
+    } catch(e) { console.warn('[Dev] Firebase:', e); }
+  }
+  fecharModal('modal-dev');
+  toast('↩ Pedido devolvido', 'ok');
+};
+window.confirmarDevTudo = function() {
+  const motivo = document.getElementById('devtudo-motivo').value;
+  if (!motivo) { toast('Selecione o motivo', 'err'); return; }
+  const dt = DTS[dtSep];
+  if (!dt) return;
+  // Salva no Firebase com status devolvido
+  fbUpd('despachos/' + dtSep, {
+    statusFluxo: 'devolvido_total',
+    'separacao/devolucao_total': {
+      motivo,
+      obs: document.getElementById('devtudo-obs').value,
+      ts: Date.now(),
+      por: usuario?.nome || 'operador'
+    }
+  });
+  // Monta payload igual ao que a carteira envia para o roteirizador
+  const payload = (dt.paradas || []).map(p => ({
+    empresa:        p._empresa    || p.empresa    || '',
+    numero_pedido:  p.pedido      || '',
+    codigo_pedido:  p._codigo_pedido || '',
+    codigo_cliente: p.codigo_cliente || '',
+    cliente_nome:   p.cliente     || '',
+    cliente_cidade: p.cidade      || '',
+    cliente_uf:     p.estado      || '',
+    cliente_cep:    p.cep         || '',
+    cliente_end:    p.endereco    || '',
+    valor_total:    p.valor_total || 0,
+    peso_total:     p.peso        || 0,
+    frete:          p.frete       || 'CIF',
+    departamento:   p.segmento === 'LICITACAO' ? 'Licitação' : 'Comercial',
+    itens:          p.itens       || [],
+    observacoes:    p._obs_atual  || '',
+    _devolvido_separacao: true,
+    _motivo_devolucao: motivo
+  }));
+  // Grava no localStorage para o roteirizador ler no próximo acesso
+  try {
+    const existente = JSON.parse(localStorage.getItem('opus_carteira_envio') || '[]');
+    localStorage.setItem('opus_carteira_envio', JSON.stringify([...existente, ...payload]));
+  } catch(e) {}
+  fecharModal('modal-devtudo');
+  toast('↩ DT devolvido ao roteirizador', 'ok');
+  setTimeout(() => { dtSep = null; mostrarLista('sep'); }, 1200);
+};
+window.fecharModal = id => document.getElementById(id).classList.remove('on');
+// ══════════════════════════════════════════════════════════════════════════════
+// ABA CARREGAMENTO
+// ══════════════════════════════════════════════════════════════════════════════
+function renderListaCar() {
+  const pend = [], ok = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  Object.keys(DTS).forEach(tk => {
+    const dt = DTS[tk], st = dt.statusFluxo || '';
+    if (!st) return;
+    if (['carregado','despachado','em_transito'].includes(st)) {
+      const car = dt.carregamento || {};
+      if (car.finalizada_em) {
+        const dia = new Date(car.finalizada_em).toISOString().slice(0, 10);
+        if (dia === hoje) ok.push({ tk, dt });
+      }
+    } else if (['separado','em_carregamento'].includes(st)) {
+      pend.push({ tk, dt });
+    }
+  });
+  document.getElementById('lista-car-pend').innerHTML = pend.length
+    ? pend.map(({ tk, dt }) => cardCar(tk, dt)).join('')
+    : `<div class="vazio"><div class="ico">🚛</div>Nenhum DT aguardando carregamento.<br><small>Finalize a separação para os DTs aparecerem aqui.</small></div>`;
+  document.getElementById('sec-car-ok-t').style.display = ok.length ? '' : 'none';
+  document.getElementById('lista-car-ok').innerHTML = ok.map(({ tk, dt }) => cardCar(tk, dt)).join('');
+}
+function cardCar(tk, dt) {
+  const st = dt.statusFluxo || 'separado';
+  const labels = { separado:'Aguardando', em_carregamento:'Carregando', carregado:'Carregado', despachado:'Despachado' };
+  const cls = ['carregado','despachado'].includes(st) ? 'carregado' : (st === 'em_carregamento' ? 'carregando' : 'separado');
+  const pars = dt.paradas || [];
+  const fotos = (dt.carregamento?.fotos)||[];
+  return `<div class="dt-card s-${cls}" onclick="abrirDetCar('${tk}')">
+    <div class="dt-h"><div class="dt-nome">${dt.nomeRota||'—'}</div><div class="dt-badge b-${cls}">${labels[st]||st}</div></div>
+    <div class="dt-mot">🚗 ${dt.motoristaNome||'—'}</div>
+    <div class="dt-placa">${dt.motoristaPlaca||'—'}${dt.motoristaVeiculo?' · '+dt.motoristaVeiculo:''}</div>
+    <div class="dt-stats">
+      <div class="dt-stat"><div class="dt-stat-l">Pedidos</div><div class="dt-stat-v">${pars.length}</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Peso</div><div class="dt-stat-v">${Math.round(dt.totalPeso||0)} kg</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Fotos</div><div class="dt-stat-v">${fotos.length}</div></div>
+    </div>
+    ${['separado','em_carregamento'].includes(st) ? `<button onclick="event.stopPropagation();abrirRomaneioCarregamento('${tk}')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(22,163,74,.3);background:var(--ok-bg);color:#15803d;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">📋 Romaneio de carregamento</button>` : ''}
+  </div>`;
+}
+window.abrirDetCar = function(tk, semUpdate) {
+  dtCar = tk;
+  const dt = DTS[tk]; if (!dt) return;
+  const finalizado = ['carregado','despachado','em_transito'].includes(dt.statusFluxo);
+  if (!semUpdate && dt.statusFluxo === 'separado') {
+    fbUpd('despachos/' + tk, { statusFluxo:'em_carregamento', 'carregamento/iniciada_em':Date.now(), 'carregamento/iniciada_por':usuario?{uid:usuario.uid,nome:usuario.nome}:{nome:'operador'} });
+  }
+  fotosCar = ((dt.carregamento?.fotos)||[]).slice();
+  // Se já finalizado: somente leitura (sem footer)
+  if (finalizado) {
+    mostrarSo('tela-det-car');
+  } else {
+    mostrarSo('tela-det-car','footer-car');
+  }
+  renderDetCar();
+};
+function renderDetCar() {
+  const dt = DTS[dtCar]; if (!dt) { mostrarLista('car'); return; }
+  const finalizado = ['carregado','despachado','em_transito'].includes(dt.statusFluxo);
+  setHdr(dt.nomeRota||'—', (dt.motoristaNome||'—') + ' · ' + (dt.motoristaPlaca||''));
+  document.getElementById('car-rota').textContent = dt.nomeRota||'—';
+  document.getElementById('car-mot').textContent = '🚗 ' + (dt.motoristaNome||'—') + ' · ' + (dt.motoristaPlaca||'');
+  const pars = dt.paradas || [];
+  document.getElementById('car-n').textContent = pars.length;
+  document.getElementById('car-kg').textContent = Math.round(dt.totalPeso||0) + ' kg';
+  document.getElementById('lista-peds-car').innerHTML = pars.map(p => `<div class="ped-item-car"><div class="pnum">${p.pedido||'—'}</div><div class="pcli"><div class="pcli-n">${p.cliente||'—'}</div><div class="pcli-c">${p.cidade||''}${p.estado?' / '+p.estado:''}</div></div><div class="ppeso">${p.peso||0} kg</div></div>`).join('') || '<div class="ped-item-car" style="color:var(--ink3)">Sem pedidos</div>';
+  // Banner somente leitura
+  const banner = finalizado
+    ? `<div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;display:flex;align-items:center;gap:8px;">✅ Carregamento finalizado — somente consulta</div>`
+    : '';
+  // Injeta banner antes da fotos-section
+  const secFotos = document.querySelector('.fotos-section');
+  if (secFotos && !document.getElementById('banner-car-readonly')) {
+    const div = document.createElement('div');
+    div.id = 'banner-car-readonly';
+    div.innerHTML = banner;
+    secFotos.parentElement.insertBefore(div, secFotos);
+  }
+  renderFotosCar(finalizado);
+}
+function renderFotosCar(finalizado) {
+  const grid = document.getElementById('fotos-grid-car');
+  let html = fotosCar.map((f, i) => `<div class="foto-item-car"><img src="${f}" onclick="verFoto('${encodeURIComponent(f)}')">` + (!finalizado ? `<button class="foto-del" onclick="removerFotoCar(${i})">×</button>` : '') + `</div>`).join('');
+  if (!finalizado) {
+    html += `<div class="foto-add-car" onclick="tirarFotoCar()"><div class="ico">📷</div><span>Adicionar</span></div>`;
+  }
+  grid.innerHTML = html;
+  document.getElementById('fotos-count-car').textContent = fotosCar.length + ' foto(s)';
+  document.getElementById('car-fotos').textContent = fotosCar.length;
+  if (!finalizado) {
+    document.getElementById('btn-fim-car').disabled = fotosCar.length === 0;
+  }
+}
+window.tirarFotoCar = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment'; input.multiple = true;
+  input.onchange = e => {
+    const files = Array.from(e.target.files); if (!files.length) return;
+    let done = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => comprimirImg(ev.target.result, b64 => {
+        fotosCar.push(b64);
+        if (++done === files.length) {
+          fbSet('despachos/' + dtCar + '/carregamento/fotos', fotosCar);
+          renderFotosCar();
+          toast('📸 ' + files.length + ' foto(s) adicionada(s)!', 'ok');
+        }
+      });
+      reader.readAsDataURL(file);
+    });
+  };
+  input.click();
+};
+window.removerFotoCar = function(i) {
+  fotosCar.splice(i, 1);
+  fbSet('despachos/' + dtCar + '/carregamento/fotos', fotosCar);
+  renderFotosCar();
+};
+// ══════════════════════════════════════════════════════════════════════════════
+// ASSINATURA
+// ══════════════════════════════════════════════════════════════════════════════
+window.irAssina = function(tipo) {
+  if (tipo === 'car' && fotosCar.length === 0) { toast('📸 Adicione pelo menos 1 foto', 'err'); return; }
+  const telId = 'tela-assina-' + tipo;
+  TELAS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('hide');
+    if (id.startsWith('tela-assina')) el.style.display = 'none';
+  });
+  const tela = document.getElementById(telId);
+  tela.classList.remove('hide');
+  tela.style.display = 'flex';
+  show('btn-voltar');
+  setHdr('Assinar ' + (tipo === 'sep' ? 'separação' : 'carregamento'), (tipo === 'sep' ? DTS[dtSep] : DTS[dtCar])?.nomeRota||'—');
+  setTimeout(() => iniciarCanvas(tipo), 100);
+};
+function iniciarCanvas(tipo) {
+  const cvs = document.getElementById('cvs-' + tipo);
+  const wrap = cvs.parentElement;
+  cvs.width = wrap.clientWidth || 300;
+  cvs.height = wrap.clientHeight || 250;
+  const ctx = cvs.getContext('2d');
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b1437';
+  const s = sig[tipo];
+  s.ctx = ctx; s.dirty = false; s.drawing = false;
+  document.getElementById('hint-' + tipo).style.display = '';
+  const pos = ev => { const r = cvs.getBoundingClientRect(); const t = ev.touches ? ev.touches[0] : ev; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+  cvs.onmousedown = cvs.ontouchstart = ev => { ev.preventDefault(); s.drawing = true; s.dirty = true; s.last = pos(ev); document.getElementById('hint-' + tipo).style.display = 'none'; };
+  cvs.onmousemove = cvs.ontouchmove = ev => { if (!s.drawing) return; ev.preventDefault(); const p = pos(ev); s.ctx.beginPath(); s.ctx.moveTo(s.last.x, s.last.y); s.ctx.lineTo(p.x, p.y); s.ctx.stroke(); s.last = p; };
+  cvs.onmouseup = cvs.onmouseleave = cvs.ontouchend = () => { s.drawing = false; };
+}
+window.limparCvs = function(tipo) {
+  const s = sig[tipo]; if (!s.ctx) return;
+  const cvs = document.getElementById('cvs-' + tipo);
+  s.ctx.clearRect(0, 0, cvs.width, cvs.height);
+  s.dirty = false;
+  document.getElementById('hint-' + tipo).style.display = '';
+};
+window.confirmarAssina = function(tipo) {
+  const s = sig[tipo];
+  if (!s.dirty) { toast('✏ Assine antes de confirmar', 'err'); return; }
+  const cvs = document.getElementById('cvs-' + tipo);
+  const tmp = document.createElement('canvas');
+  const MAX = 600; let w = cvs.width, h = cvs.height;
+  if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+  tmp.width = w; tmp.height = h;
+  const ctx = tmp.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(cvs, 0, 0, w, h);
+  const sigData = tmp.toDataURL('image/jpeg', 0.75);
+  if (tipo === 'sep') {
+    setLoading('Salvando separação...');
+    fbUpd('despachos/' + dtSep, { statusFluxo:'separado', 'separacao/finalizada_em':Date.now(), 'separacao/finalizada_por':usuario?{uid:usuario.uid,nome:usuario.nome}:{nome:'operador'}, 'separacao/assinatura':sigData })
+      .then(() => {
+        esconderLoading();
+        toast('🎉 Separação finalizada!', 'ok');
+        // Volta para lista e muda aba para carregamento
+        setTimeout(() => { dtSep = null; mudarAba('car'); }, 1600);
+      }).catch(e => { esconderLoading(); toast('❌ ' + e.message, 'err'); });
+  } else {
+    setLoading('Finalizando carregamento...');
+    fbUpd('despachos/' + dtCar, { statusFluxo:'carregado', 'carregamento/finalizada_em':Date.now(), 'carregamento/finalizada_por':usuario?{uid:usuario.uid,nome:usuario.nome}:{nome:'operador'}, 'carregamento/assinatura':sigData, 'carregamento/fotos':fotosCar })
+      .then(() => {
+        esconderLoading();
+        toast('🎉 Carregamento finalizado! Indo para despacho...', 'ok');
+        setTimeout(() => { window.location.href = '/despacho.html?dt=' + dtCar; }, 1800);
+      }).catch(e => { esconderLoading(); toast('❌ ' + e.message, 'err'); });
+  }
+};
+// ══════════════════════════════════════════════════════════════════════════════
+// HISTÓRICO DE FOTOS (separação + carregamento)
+// ══════════════════════════════════════════════════════════════════════════════
+function fmtDateInputHist(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+window.setAtalhoHist = function(tipo, btn) {
+  document.querySelectorAll('.hist-atalho').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const hoje = new Date();
+  let de = new Date(), ate = new Date();
+  if (tipo === 'ontem') { de.setDate(de.getDate() - 1); ate.setDate(ate.getDate() - 1); }
+  else if (tipo === '7d') { de.setDate(de.getDate() - 6); }
+  else if (tipo === '30d') { de.setDate(de.getDate() - 29); }
+  else if (tipo === 'mes') { de = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+  document.getElementById('hist-de').value = fmtDateInputHist(de);
+  document.getElementById('hist-ate').value = fmtDateInputHist(ate);
+  renderHist();
+};
+function popularSelectsHist() {
+  const selMot = document.getElementById('hist-mot'), valMot = selMot.value;
+  const selRota = document.getElementById('hist-rota'), valRota = selRota.value;
+  const nomes = [...new Set(Object.values(DTS).map(d => d.motoristaNome || '').filter(Boolean))].sort();
+  const rotas = [...new Set(Object.values(DTS).map(d => d.nomeRota || '').filter(Boolean))].sort();
+  selMot.innerHTML = '<option value="">Todos os motoristas</option>' + nomes.map(n => `<option value="${n}"${n === valMot ? ' selected' : ''}>${n}</option>`).join('');
+  selRota.innerHTML = '<option value="">Todas as rotas</option>' + rotas.map(r => `<option value="${r}"${r === valRota ? ' selected' : ''}>${r}</option>`).join('');
+}
+window.renderHist = function() {
+  const de = document.getElementById('hist-de').value;
+  const ate = document.getElementById('hist-ate').value;
+  const tipoF = document.getElementById('hist-tipo').value;
+  const fm = document.getElementById('hist-mot').value;
+  const fr = document.getElementById('hist-rota').value;
+  const tsDE = de ? new Date(de + 'T00:00:00').getTime() : 0;
+  const tsATE = ate ? new Date(ate + 'T23:59:59').getTime() : Infinity;
+  const entradas = [];
+  Object.keys(DTS).forEach(tk => {
+    const dt = DTS[tk];
+    if (fm && dt.motoristaNome !== fm) return;
+    if (fr && dt.nomeRota !== fr) return;
+    const sep = dt.separacao || {};
+    const car = dt.carregamento || {};
+    if ((!tipoF || tipoF === 'separacao') && sep.finalizada_em && sep.finalizada_em >= tsDE && sep.finalizada_em <= tsATE) {
+      const fotosObj = sep.fotos || {};
+      const fotos = [];
+      Object.keys(fotosObj).forEach(i => {
+        const p = (dt.paradas || [])[i] || {};
+        (fotosObj[i] || []).forEach(f => fotos.push({ f, label: 'Ped. ' + (p.pedido || ('#' + i)) + ' — ' + (p.cliente || '') }));
+      });
+      entradas.push({ tk, dt, tipo: 'separacao', ts: sep.finalizada_em, por: sep.finalizada_por, fotos, assinatura: sep.assinatura });
+    }
+    if ((!tipoF || tipoF === 'carregamento') && car.finalizada_em && car.finalizada_em >= tsDE && car.finalizada_em <= tsATE) {
+      const fotos = (car.fotos || []).map(f => ({ f, label: 'Carregamento' }));
+      entradas.push({ tk, dt, tipo: 'carregamento', ts: car.finalizada_em, por: car.finalizada_por, fotos, assinatura: car.assinatura });
+    }
+  });
+  entradas.sort((a, b) => b.ts - a.ts);
+  let totFotos = 0;
+  entradas.forEach(e => totFotos += e.fotos.length);
+  document.getElementById('hr-dts').textContent = entradas.length;
+  document.getElementById('hr-fotos').textContent = totFotos;
+  document.getElementById('hist-lista').innerHTML = entradas.length
+    ? entradas.map(cardHist).join('')
+    : `<div class="vazio"><div class="ico">🕘</div>Nenhum registro no período selecionado.</div>`;
+};
+function cardHist(e) {
+  const dtObj = new Date(e.ts);
+  const dataStr = dtObj.toLocaleDateString('pt-BR') + ' ' + dtObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const icoTipo = e.tipo === 'separacao' ? '📦' : '🚛';
+  const labelTipo = e.tipo === 'separacao' ? 'Separação' : 'Carregamento';
+  const badgeCls = e.tipo === 'separacao' ? 'b-separado' : 'b-carregado';
+  const cardCls = e.tipo === 'separacao' ? 's-separado' : 's-carregado';
+  const fotosHtml = e.fotos.length
+    ? e.fotos.map(x => `<img class="foto-thumb" src="${x.f}" title="${x.label}" onclick="verFoto('${encodeURIComponent(x.f)}')">`).join('')
+    : '<span style="font-size:11px;color:var(--ink3)">Sem fotos</span>';
+  const assinaturaHtml = e.assinatura
+    ? `<img class="foto-thumb" src="${e.assinatura}" title="Assinatura" onclick="verFoto('${encodeURIComponent(e.assinatura)}')" style="border-color:var(--gold2)">`
+    : '';
+  return `<div class="dt-card ${cardCls}" style="cursor:default">
+    <div class="dt-h"><div class="dt-nome">${icoTipo} ${e.dt.nomeRota||'—'}</div><div class="dt-badge ${badgeCls}">${labelTipo}</div></div>
+    <div class="dt-mot">🚗 ${e.dt.motoristaNome||'—'} · ${e.dt.motoristaPlaca||''}</div>
+    <div class="dt-placa">🕐 ${dataStr}${e.por && e.por.nome ? ' · por ' + e.por.nome : ''}</div>
+    <div class="fotos-sec" style="margin-top:10px"><div class="fotos-lbl">📸 Fotos (${e.fotos.length})</div><div class="fotos-row">${fotosHtml}${assinaturaHtml}</div></div>
+  </div>`;
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════════════════════
+function comprimirImg(dataUrl, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 1200; let w = img.width, h = img.height;
+    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+    if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(c.toDataURL('image/jpeg', 0.78));
+  };
+  img.src = dataUrl;
+}
+window.verFoto = function(enc) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.onclick = () => el.remove();
+  el.innerHTML = `<img src="${decodeURIComponent(enc)}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain">`;
+  document.body.appendChild(el);
+};
+function setLoading(msg) {
+  document.getElementById('loading-tx').textContent = msg || 'Aguarde...';
+  document.getElementById('loading').classList.remove('hide');
+}
+function esconderLoading() { document.getElementById('loading').classList.add('hide'); }
+let toastT = null;
+function toast(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo === 'ok' ? ' ok' : tipo === 'err' ? ' err' : '');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+window.addEventListener('resize', () => {
+  if (!document.getElementById('tela-assina-sep').classList.contains('hide')) iniciarCanvas('sep');
+  if (!document.getElementById('tela-assina-car').classList.contains('hide')) iniciarCanvas('car');
+});
+// ══════════════════════════════════════════════════════════════════════════════
+// ROMANEIO
+// ══════════════════════════════════════════════════════════════════════════════
+window.abrirRomaneio = function() {
+  const dt = DTS[dtSep]; if (!dt) return;
+  const paradas = dt.paradas || [];
+  // Consolida itens por SKU
+  const mapa = {}; // sku -> { sku, desc, qtdTotal, pedidos: [{num, cliente, qtd}] }
+  paradas.forEach(p => {
+    const itens = p.itens && p.itens.length ? p.itens : [{ sku: p.sku||'—', descricao: p.produto||'—', quantidade: p.peso||0 }];
+    itens.forEach(it => {
+      const sku = (it.sku || '—').trim();
+      const desc = it.descricao || it.produto || '—';
+      const qtd = parseFloat(it.quantidade || it.qtd || 0) || 0;
+      if (!mapa[sku]) mapa[sku] = { sku, desc, qtdTotal: 0, pedidos: [] };
+      mapa[sku].qtdTotal += qtd;
+      mapa[sku].pedidos.push({ num: p.pedido||'—', cliente: p.cliente||'—', qtd });
+    });
+  });
+  const itens = Object.values(mapa).sort((a, b) => b.qtdTotal - a.qtdTotal);
+  const totalItens = itens.reduce((s, it) => s + it.qtdTotal, 0);
+  const totalSkus = itens.length;
+  // Preenche header
+  document.getElementById('rom-subtitulo').textContent = (dt.nomeRota||'—') + ' · ' + (dt.motoristaNome||'—');
+  // Info grid
+  document.getElementById('rom-info').innerHTML = `
+    <div class="rom-info-item"><div class="l">Pedidos</div><div class="v">${paradas.length}</div></div>
+    <div class="rom-info-item"><div class="l">SKUs únicos</div><div class="v">${totalSkus}</div></div>
+    <div class="rom-info-item"><div class="l">Total kg</div><div class="v">${totalItens.toLocaleString('pt-BR', {maximumFractionDigits:1})}</div></div>`;
+  // Tabela
+  document.getElementById('rom-table').innerHTML =
+    `<div class="rom-thead"><div>SKU</div><div>Produto</div><div style="text-align:right">Total (kg)</div><div style="text-align:right">Pedidos</div></div>` +
+    itens.map((it, i) => `
+      <div class="rom-row ${i % 2 === 1 ? 'alt' : ''}">
+        <div class="rom-sku">${it.sku}</div>
+        <div class="rom-desc">${it.desc}
+          <small>${it.pedidos.map(p => 'Ped.' + p.num + ' · ' + p.cliente.substring(0,20) + (p.cliente.length>20?'…':'') + ' (' + p.qtd + ' kg)').join('<br>')}</small>
+        </div>
+        <div class="rom-qtd">${it.qtdTotal.toLocaleString('pt-BR', {maximumFractionDigits:2})}</div>
+        <div class="rom-peds">${it.pedidos.length} ped.</div>
+      </div>`).join('');
+  // Guarda para impressão
+  window._romaneioData = { dt, itens, paradas, totalItens, totalSkus };
+  document.getElementById('tela-romaneio').classList.remove('hide');
+};
+window.fecharRomaneio = function() {
+  document.getElementById('tela-romaneio').classList.add('hide');
+};
+window.imprimirRomaneio = function() {
+  const { dt, itens, paradas, totalItens, totalSkus } = window._romaneioData || {};
+  if (!dt) return;
+  const hoje = new Date().toLocaleString('pt-BR');
+  const rastrosTodos = dt.separacao?.rastros || {};
+  // Tabela consolidada por SKU (resumo)
+  const linhasConsolidado = itens.map((it, i) => `
+    <tr>
+      <td style="text-align:center;color:#888">${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:#1d4ed8">${it.sku}</td>
+      <td>${it.desc}<br><small style="color:#666">${it.pedidos.map(p => 'Ped.'+p.num+' — '+p.cliente+' ('+p.qtd+' kg)').join(' | ')}</small></td>
+      <td style="text-align:right;font-weight:700">${it.qtdTotal.toLocaleString('pt-BR', {maximumFractionDigits:2})}</td>
+      <td style="text-align:center">${it.pedidos.length}</td>
+    </tr>`).join('') +
+    `<tr style="background:#f0f4ff;font-weight:700">
+      <td colspan="3" style="text-align:right">TOTAL GERAL</td>
+      <td style="text-align:right">${totalItens.toLocaleString('pt-BR', {maximumFractionDigits:2})} kg</td>
+      <td style="text-align:center">${paradas.length}</td>
+    </tr>`;
+  // Tabela de rastreabilidade por pedido/item
+  const linhasRastro = paradas.map((p, i) => {
+    const itensPed = p.itens && p.itens.length ? p.itens
+      : [{ sku: p.sku||'—', descricao: p.produto||'—', quantidade: p.peso||0 }];
+    const rastros = rastrosTodos[i] || {};
+    return itensPed.map((it, j) => {
+      const r = rastros[j] || {};
+      const semRastro = !r.op;
+      return `<tr${semRastro ? ' style="background:#fff8f0"' : ''}>
+        <td>${p.pedido||'—'}</td>
+        <td style="max-width:110px;overflow:hidden;font-size:9px">${p.cliente||'—'}</td>
+        <td style="font-family:monospace;font-weight:700;color:#1d4ed8">${it.sku||'—'}</td>
+        <td style="font-size:9px">${it.descricao||it.produto||'—'}</td>
+        <td style="text-align:right">${it.quantidade||it.qtd||0}</td>
+        <td style="font-weight:700;color:#92400e">${r.op||'<span style="color:#dc2626">—</span>'}</td>
+      </tr>`;
+    }).join('');
+  }).join('');
+  const html = `
+    <div class="print-title">ROMANEIO DE CARREGAMENTO</div>
+    <div class="print-sub">
+      <strong>Rota:</strong> ${dt.nomeRota||'—'} &nbsp;|&nbsp;
+      <strong>Motorista:</strong> ${dt.motoristaNome||'—'} · ${dt.motoristaPlaca||'—'} &nbsp;|&nbsp;
+      <strong>Veículo:</strong> ${dt.motoristaVeiculo||'—'}<br>
+      <strong>Emissão:</strong> ${hoje} &nbsp;|&nbsp;
+      <strong>Pedidos:</strong> ${paradas.length} &nbsp;|&nbsp;
+      <strong>SKUs únicos:</strong> ${totalSkus} &nbsp;|&nbsp;
+      <strong>Total:</strong> ${totalItens.toLocaleString('pt-BR', {maximumFractionDigits:1})} kg
+    </div>
+    <div style="font-size:11px;font-weight:700;margin:14px 0 6px;border-bottom:2px solid #0a1728;padding-bottom:4px;">CONSOLIDADO POR SKU</div>
+    <table>
+      <thead><tr><th>#</th><th>SKU</th><th>Produto / Descrição</th><th>Total (kg)</th><th>Pedidos</th></tr></thead>
+      <tbody>${linhasConsolidado}</tbody>
+    </table>
+    <div style="font-size:11px;font-weight:700;margin:18px 0 6px;border-bottom:2px solid #0a1728;padding-bottom:4px;">RASTREABILIDADE POR PEDIDO / ITEM</div>
+    <table>
+      <thead><tr>
+        <th>Pedido</th><th>Cliente</th><th>SKU</th><th>Produto</th>
+        <th>Qtd</th><th>Ordem de Produção</th>
+      </tr></thead>
+      <tbody>${linhasRastro}</tbody>
+    </table>
+    <div style="margin-top:40px;display:flex;gap:60px">
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Responsável pela separação</div>
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Motorista</div>
+      <div style="flex:1;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:10px">Conferência / Aprovação</div>
+    </div>`;
+  const area = document.getElementById('romaneio-print-area');
+  area.innerHTML = html;
+  area.style.display = 'block';
+  setTimeout(() => { window.print(); area.style.display = 'none'; }, 200);
+};
+// Init
+(function initDatasHist() {
+  const hoje = new Date();
+  const d7 = new Date(); d7.setDate(d7.getDate() - 6);
+  document.getElementById('hist-de').value = fmtDateInputHist(d7);
+  document.getElementById('hist-ate').value = fmtDateInputHist(hoje);
+})();
+mostrarLista('sep');
+</script>
+<!-- ROMANEIO -->
+<div class="romaneio-tela hide" id="tela-romaneio">
+  <div class="romaneio-hdr">
+    <button onclick="fecharRomaneio()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0;">←</button>
+    <div class="romaneio-hdr-t">
+      <div class="romaneio-hdr-t1">📋 Romaneio de Separação</div>
+      <div class="romaneio-hdr-t2" id="rom-subtitulo">—</div>
+    </div>
+  </div>
+  <div class="romaneio-scr">
+    <div class="romaneio-pad">
+      <div class="rom-info" id="rom-info"></div>
+      <div class="rom-table" id="rom-table"></div>
+      <div style="background:var(--info-bg);border:1px solid rgba(29,78,216,.2);border-radius:10px;padding:11px 13px;font-size:11px;color:var(--info);line-height:1.6;margin-bottom:12px;">
+        💡 <strong>Como usar:</strong> separe todos os itens desta lista de uma vez no estoque. Depois confira pedido a pedido na tela anterior.
+      </div>
+    </div>
+  </div>
+  <div class="rom-footer">
+    <button class="rom-btn rom-btn-fechar" onclick="fecharRomaneio()">← Voltar</button>
+    <button class="rom-btn rom-btn-pdf" onclick="imprimirRomaneio()">🖨️ Imprimir / PDF</button>
+  </div>
+</div>
+<!-- ÁREA DE IMPRESSÃO -->
+<div id="romaneio-print-area" style="display:none"></div>
+<!-- ROMANEIO DE CARREGAMENTO (RASTREABILIDADE) -->
+<div class="romcar-tela hide" id="tela-romcar">
+  <div class="romcar-hdr">
+    <button onclick="fecharRomaneioCarregamento()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0;">←</button>
+    <div>
+      <div class="romcar-hdr-t1">📋 Romaneio de Carregamento</div>
+      <div class="romcar-hdr-t2" id="romcar-subtitulo">—</div>
+    </div>
+  </div>
+  <div class="romcar-scr">
+    <div class="romcar-pad">
+      <div class="romcar-info" id="romcar-info"></div>
+      <div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:11px 13px;font-size:11px;color:#15803d;line-height:1.6;margin-bottom:12px;">
+        🔍 <strong>Rastreabilidade completa:</strong> todos os produtos separados com a ordem de produção registrada na separação.
+      </div>
+      <div id="romcar-peds"></div>
+    </div>
+  </div>
+  <div class="romcar-footer">
+    <button class="romcar-btn romcar-btn-fechar" onclick="fecharRomaneioCarregamento()">← Voltar</button>
+    <button class="romcar-btn romcar-btn-pdf" onclick="imprimirRomaneioCarregamento()">🖨️ Imprimir / PDF</button>
+  </div>
+</div>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

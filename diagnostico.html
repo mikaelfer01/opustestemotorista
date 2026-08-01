@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="UTF-8"/>
+<title>Diagnóstico Lista Técnica v2</title>
+<style>
+body{font-family:sans-serif;padding:30px;background:#f5f5f5;}
+button{padding:10px 20px;font-size:13px;cursor:pointer;background:#1A2B4A;color:#fff;border:none;border-radius:8px;margin:4px;}
+input{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:160px;}
+pre{background:#1A2B4A;color:#7dd3fc;padding:14px;border-radius:8px;margin-top:8px;white-space:pre-wrap;font-size:11px;max-height:350px;overflow-y:auto;}
+h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
+.ok{color:#4ade80;font-weight:bold;}
+.err{color:#f87171;font-weight:bold;}
+</style></head>
+<body>
+<h2>Diagnóstico Lista Técnica v2</h2>
+<input id="sku" value="123058" placeholder="Código SKU"/>
+<input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
+<button onclick="testar()">Testar Todos</button>
+<div id="res"></div>
+<script>
+const KEY = '952260381072', SECRET = '8300b385eeec583c71439709ab866fc7';
+const KEY2 = '1340821992510', SECRET2 = 'dac287f9b3ec422dc93da6cdbcc3e0b2';
+
+async function omie(ep, call, param, k, s) {
+  const r = await fetch('/api/omie', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({endpoint:ep, payload:{call, app_key:k||KEY, app_secret:s||SECRET, param}})
+  });
+  return r.json();
+}
+
+async function testar() {
+  const sku = document.getElementById('sku').value.trim();
+  const omieId = parseInt(document.getElementById('omie_id').value.trim());
+  const div = document.getElementById('res');
+  div.innerHTML = '';
+
+  const TESTES = [
+    // Endpoint geral/produtos — métodos de estrutura
+    {label:'geral/produtos — ConsultarEstrutura (nCodProduto)',
+     ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ConsultarEstrutura',
+     param:[{nCodProduto: omieId}]},
+
+    {label:'geral/produtos — ListarEstruturas (nCodProduto)',
+     ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ListarEstruturas',
+     param:[{nCodProduto: omieId, nPagina:1, nRegPorPagina:50}]},
+
+    {label:'geral/produtos — ListarEstruturas (sem filtro)',
+     ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ListarEstruturas',
+     param:[{nPagina:1, nRegPorPagina:5}]},
+
+    {label:'geral/produtos — ConsultarEstrutura (cCodigo = SKU)',
+     ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ConsultarEstrutura',
+     param:[{cCodigo: sku}]},
+
+    // DMS — mesmo teste
+    {label:'DMS — geral/produtos ConsultarEstrutura',
+     ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ConsultarEstrutura',
+     param:[{nCodProduto: omieId}], k:KEY2, s:SECRET2},
+
+    // Endpoint produto — estrutura
+    {label:'produto/produto — ConsultarEstrutura',
+     ep:'https://app.omie.com.br/api/v1/produto/produto/', call:'ConsultarEstrutura',
+     param:[{nCodProduto: omieId}]},
+  ];
+
+  for (const t of TESTES) {
+    await new Promise(r => setTimeout(r, 700));
+    const h = document.createElement('h3');
+    h.textContent = t.label;
+    div.appendChild(h);
+    const pre = document.createElement('pre');
+    pre.textContent = '...';
+    div.appendChild(pre);
+    try {
+      const data = await omie(t.ep, t.call, t.param, t.k, t.s);
+      if (data.faultstring || (data.error && data.error.status_code)) {
+        pre.innerHTML = '<span class="err">ERRO: ' + (data.faultstring || JSON.stringify(data.error)) + '</span>';
+      } else {
+        pre.innerHTML = '<span class="ok">✓ RESPOSTA!</span>\n' + JSON.stringify(data, null, 2).slice(0, 800);
+      }
+    } catch(e) {
+      pre.innerHTML = '<span class="err">' + e.message + '</span>';
+    }
+  }
+}
+</script>
+<script src="js/sidebar.js" defer></script>
+</body></html>

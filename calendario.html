@@ -1,0 +1,1219 @@
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Calendário de Produção — Grupo MF Paris</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0b1220;--ink2:#2a3a52;--ink3:#526077;--ink4:#8496a9;
+  --surface:#f7f5f0;--surface2:#eeeae0;--surface3:#e4dfd2;--surface4:#d8d2c6;
+  --white:#ffffff;
+  --gold:#c09a4a;--gold-dim:rgba(192,154,74,.12);--gold-line:rgba(192,154,74,.3);
+  --lacteo:#1d6fa3;--lacteo-bg:rgba(29,111,163,.07);--lacteo-mid:rgba(29,111,163,.18);--lacteo-line:rgba(29,111,163,.25);
+  --sacaria:#6a3fbf;--sacaria-bg:rgba(106,63,191,.07);--sacaria-mid:rgba(106,63,191,.18);--sacaria-line:rgba(106,63,191,.25);
+  --cafe:#8c4a1a;--cafe-bg:rgba(140,74,26,.07);--cafe-mid:rgba(140,74,26,.18);--cafe-line:rgba(140,74,26,.25);
+  --ok:#1a7a45;--ok-bg:rgba(26,122,69,.08);--ok-line:rgba(26,122,69,.2);
+  --warn:#a36c00;--warn-bg:rgba(163,108,0,.08);
+  --danger:#b52a20;--danger-bg:rgba(181,42,32,.08);--danger-line:rgba(181,42,32,.2);
+  --r:10px;--r-sm:6px;
+}
+html,body{min-height:100vh;background:var(--surface);font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+/* PAGE HEADER */
+.page-header{background:var(--white);border-bottom:1px solid var(--surface3);position:sticky;top:46px;z-index:200}
+.header-top{display:flex;align-items:center;justify-content:space-between;padding:14px 28px 12px}
+.header-title{font-family:'Fraunces',serif;font-size:24px;font-weight:900;color:var(--ink);letter-spacing:-.02em}
+.header-title em{font-style:italic;color:var(--gold)}
+.header-sub{font-size:10.5px;color:var(--ink4);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:8px}
+
+/* NAV ROW */
+.nav-row{display:flex;align-items:center;justify-content:space-between;padding:0 28px 12px;gap:10px;flex-wrap:wrap}
+.nav-group{display:flex;align-items:center;gap:6px}
+.btn-nav{background:var(--surface);border:1px solid var(--surface3);border-radius:var(--r-sm);padding:6px 13px;font-family:inherit;font-size:11px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.btn-nav:hover{border-color:var(--gold);background:var(--gold-dim)}
+.btn-nav svg{width:12px;height:12px}
+/* DATE RANGE */
+.date-range-group{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--surface3);border-radius:var(--r-sm);padding:4px 10px;transition:border-color .15s}
+.date-range-group:focus-within{border-color:var(--gold);background:var(--white)}
+.date-range-group label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4);white-space:nowrap}
+.date-range-sep{font-size:10px;color:var(--surface4);padding:0 2px}
+.date-input{background:transparent;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink2);outline:none;cursor:pointer;padding:2px 0;min-width:98px}
+.date-input::-webkit-calendar-picker-indicator{opacity:.5;cursor:pointer;width:12px;height:12px}
+.date-input::-webkit-calendar-picker-indicator:hover{opacity:1}
+.btn-date-apply{background:var(--ink);color:var(--gold);border:none;border-radius:4px;padding:3px 10px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-date-apply:hover{background:var(--ink2)}
+.btn-date-clear{background:transparent;border:none;font-size:10px;color:var(--ink4);cursor:pointer;padding:2px 4px;border-radius:3px;transition:all .15s;font-family:inherit}
+.btn-date-clear:hover{color:var(--danger)}
+.period-label{font-family:'Fraunces',serif;font-size:16px;font-weight:700;color:var(--ink);min-width:220px;text-align:center}
+.view-tabs{display:flex;border:1px solid var(--surface3);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.view-tab{padding:6px 15px;font-family:inherit;font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;background:transparent;border:none;transition:all .15s}
+.view-tab:hover{color:var(--ink)}
+.view-tab.active{background:var(--ink);color:var(--gold)}
+
+/* STATUS PILL */
+.sp{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:10.5px;font-weight:500;border:1px solid}
+.sp-loading{background:var(--warn-bg);color:var(--warn);border-color:rgba(163,108,0,.2)}
+.sp-ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+.sp-err{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-line)}
+.sp-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* PDF BTN */
+.btn-pdf-all{background:var(--ink);color:var(--gold);border:none;border-radius:var(--r-sm);padding:6px 14px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.btn-pdf-all:hover{background:var(--ink2)}
+.btn-pdf-all:disabled{opacity:.4;cursor:not-allowed}
+.btn-pdf-all svg{width:12px;height:12px}
+
+/* KPI CARDS */
+.kpi-section{padding:0 28px 20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi-card{border-radius:var(--r);overflow:hidden;background:var(--white);border:1px solid var(--surface3)}
+.kpi-card-header{padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--surface2)}
+.kpi-card-title{display:flex;align-items:center;gap:8px}
+.kpi-linha-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.kci-nome{font-size:12px;font-weight:700;color:var(--ink)}
+.kci-ops{font-size:10px;color:var(--ink4)}
+.kpi-pct-big{font-family:'Fraunces',serif;font-size:22px;font-weight:900;line-height:1}
+.kpi-card-body{padding:10px 16px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi-metric{background:var(--surface);border-radius:var(--r-sm);padding:8px 10px}
+.km-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4);margin-bottom:3px}
+.km-val{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);line-height:1}
+.km-sub{font-size:9.5px;color:var(--ink4);margin-top:2px}
+.kpi-prog-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin:10px 16px 0}
+.kpi-prog-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* LINHAS */
+.linhas-wrap{padding:0 28px 48px;display:flex;flex-direction:column;gap:28px}
+.linha-bloco{background:var(--white);border:1px solid var(--surface3);border-radius:var(--r);overflow:hidden}
+.linha-bloco-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--surface2)}
+.linha-stripe{width:4px;height:28px;border-radius:2px;flex-shrink:0}
+.linha-bloco-nome{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--ink)}
+.linha-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:12px;border:1px solid}
+.lb-lacteo{background:var(--lacteo-bg);color:var(--lacteo);border-color:var(--lacteo-line)}
+.lb-sacaria{background:var(--sacaria-bg);color:var(--sacaria);border-color:var(--sacaria-line)}
+.lb-cafe{background:var(--cafe-bg);color:var(--cafe);border-color:var(--cafe-line)}
+.linha-bloco-resumo{font-size:10.5px;color:var(--ink4);margin-left:auto}
+.btn-pdf-linha{background:transparent;border:1px solid var(--surface3);border-radius:var(--r-sm);padding:5px 12px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--ink3);transition:all .15s;white-space:nowrap}
+.btn-pdf-linha:hover{border-color:var(--gold);color:var(--ink);background:var(--gold-dim)}
+.btn-pdf-linha svg{width:11px;height:11px}
+
+/* CALENDÁRIO GRID */
+.cal-grid-wrap{overflow-x:auto}
+.cal-grid{display:grid;gap:0;background:var(--surface2)}
+.cal-grid.semana{grid-template-rows:auto auto}
+.cal-col-hdr{background:var(--surface);padding:7px 10px;text-align:center;border-right:1px solid var(--surface2)}
+.cal-col-hdr:last-child{border-right:none}
+.cdh-dow{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4)}
+.cdh-num{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);line-height:1;margin-top:1px}
+.cdh-num.today{color:var(--gold)}
+.cdh-month{font-size:8px;color:var(--ink4);margin-top:1px}
+.cal-day-col{background:var(--white);min-height:140px;padding:6px 5px;display:flex;flex-direction:column;gap:5px;border-right:1px solid var(--surface2)}
+.cal-day-col:last-child{border-right:none}
+.cal-day-col.today-col{background:#fffef9}
+.cal-day-col.weekend{background:var(--surface)}
+
+/* MÊS */
+.month-grid-wrap{padding:0}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);background:var(--surface2);gap:1px}
+.month-dow-hdr{background:var(--ink);padding:8px;text-align:center;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold)}
+.month-cell{background:var(--white);min-height:90px;padding:6px 7px;display:flex;flex-direction:column;gap:3px}
+.month-cell.other-month{background:var(--surface)}
+.month-cell.today-cell{background:#fffef9;outline:2px solid var(--gold);outline-offset:-2px}
+.month-cell.weekend{background:var(--surface)}
+.mc-num{font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:2px}
+.mc-num.today{color:var(--gold)}
+
+/* OP CHIP */
+.op-chip{border-radius:6px;padding:6px 8px;border-left:3px solid;cursor:pointer;transition:all .15s;position:relative;background:var(--white)}
+.op-chip:hover{filter:brightness(.97);transform:translateY(-1px);box-shadow:0 3px 10px rgba(11,18,32,.1)}
+.op-chip.lacteo{background:#f0f6fc;border-left-color:var(--lacteo)}
+.op-chip.sacaria{background:#f4f0fb;border-left-color:var(--sacaria)}
+.op-chip.cafe{background:#faf4ef;border-left-color:var(--cafe)}
+.op-chip.encerrada{opacity:.65}
+.op-chip.selected{outline:2px solid var(--gold);outline-offset:1px}
+.chip-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px}
+.chip-sku{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#0b1220;letter-spacing:.02em}
+.chip-st{font-size:8px;font-weight:700;text-transform:uppercase;padding:2px 5px;border-radius:3px;flex-shrink:0}
+.chip-st.pendente{background:#e4dfd2;color:#0b1220}
+.chip-st.andamento{background:#fff3dc;color:#7a4f00}
+.chip-st.encerrada{background:#e4f0e8;color:#0f5c2a}
+.chip-desc{font-size:10.5px;font-weight:700;color:#0b1220;line-height:1.25;margin-bottom:4px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.chip-nums{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.chip-plan{font-size:10px;font-weight:700;color:#0b1220}
+.chip-sep{font-size:9px;color:var(--surface4)}
+.chip-real{font-size:10px;font-weight:700}
+.chip-real.ok{color:#0f5c2a}
+.chip-real.warn{color:#7a4f00}
+.chip-pct{font-family:'DM Mono',monospace;font-size:9.5px;font-weight:700;margin-left:auto}
+.chip-pct.low{color:var(--danger)}
+.chip-pct.mid{color:#7a4f00}
+.chip-pct.high{color:#0f5c2a}
+.chip-bar-bg{height:3px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:4px;overflow:hidden}
+.chip-bar-fill{height:100%;border-radius:2px}
+.chip-check{position:absolute;top:5px;right:5px;width:14px;height:14px;border-radius:3px;border:1.5px solid var(--surface4);background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.chip-check.checked{background:var(--gold);border-color:var(--gold)}
+.chip-check svg{width:9px;height:9px;color:#fff;display:none}
+.chip-check.checked svg{display:block}
+.mais-badge{font-size:9px;font-weight:600;color:var(--ink3);padding:3px 6px;cursor:pointer;font-style:italic;text-align:center}
+.mais-badge:hover{color:var(--ink)}
+.empty-day{font-size:9px;color:var(--surface4);text-align:center;padding:8px 0;font-style:italic}
+
+/* DETAIL PANEL */
+.detail-panel{position:fixed;right:0;top:46px;bottom:0;width:320px;background:var(--white);border-left:1px solid var(--surface3);z-index:250;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;box-shadow:-4px 0 24px rgba(11,18,32,.08)}
+.detail-panel.open{transform:none}
+.dp-header{padding:16px 18px;border-bottom:1px solid var(--surface3);position:sticky;top:0;background:var(--white);z-index:1}
+.dp-stripe{height:3px;border-radius:2px;margin-bottom:10px}
+.dp-close{position:absolute;top:14px;right:14px;background:var(--surface);border:1px solid var(--surface3);border-radius:5px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.dp-close:hover{border-color:var(--danger);color:var(--danger)}
+.dp-sku{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--ink4);margin-bottom:2px}
+.dp-desc{font-size:13px;font-weight:700;color:var(--ink);line-height:1.3;padding-right:28px}
+.dp-body{padding:14px 18px}
+.dp-sec{margin-bottom:16px}
+.dp-sec-title{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink4);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--surface2)}
+.dp-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--surface2)}
+.dp-row:last-child{border-bottom:none}
+.dp-rl{font-size:10.5px;color:var(--ink4)}
+.dp-rv{font-size:11px;font-weight:600;color:var(--ink);font-family:'DM Mono',monospace}
+.dp-rv.ok{color:var(--ok)}
+.dp-rv.warn{color:var(--warn)}
+.dp-rv.danger{color:var(--danger)}
+.dp-prog{margin:8px 0}
+.dp-prog-labels{display:flex;justify-content:space-between;font-size:10px;margin-bottom:5px}
+.dp-prog-bar{height:7px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.dp-prog-fill{height:100%;border-radius:4px;transition:width .5s}
+.dp-btn{width:100%;padding:9px;border-radius:var(--r-sm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:7px;transition:all .15s}
+.dp-btn svg{width:13px;height:13px}
+.dp-btn.pdf{background:var(--ink);color:var(--gold)}
+.dp-btn.pdf:hover{background:var(--ink2)}
+.dp-btn.batelada{background:var(--gold);color:var(--ink)}
+.dp-btn.batelada:hover{background:#a8813d}
+.dp-btn.outline{background:var(--white);color:var(--ink2);border:1px solid var(--surface3)}
+.dp-btn.outline:hover{border-color:var(--gold);background:var(--gold-dim)}
+.dp-input-row{margin-bottom:8px}
+.dp-input-label{font-size:10px;font-weight:700;color:var(--ink3);margin-bottom:5px;display:block}
+.dp-input{width:100%;padding:8px 10px;border:1px solid var(--surface3);border-radius:var(--r-sm);font-family:'DM Mono',monospace;font-size:13px;color:var(--ink);background:var(--white);outline:none;transition:border-color .15s}
+.dp-input:focus{border-color:var(--gold)}
+.dp-batch-info{background:var(--gold-dim);border:1px solid var(--gold-line);border-radius:var(--r-sm);padding:9px 11px;margin-top:8px;font-size:11px;color:var(--ink2);line-height:1.5}
+.dp-batch-info strong{color:var(--ink)}
+.dp-batch-info.warn{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger)}
+
+/* DAY MODAL (lista completa de OPs do dia) */
+.day-modal-ov{position:fixed;inset:0;background:rgba(11,18,32,.45);z-index:400;display:none;align-items:flex-start;justify-content:center;padding:60px 20px}
+.day-modal-ov.open{display:flex}
+.day-modal{background:var(--white);border-radius:var(--r);width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(11,18,32,.25)}
+.dm-header{padding:16px 18px;border-bottom:1px solid var(--surface3);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dm-title{font-size:13px;font-weight:700;color:var(--ink)}
+.dm-sub{font-size:10.5px;color:var(--ink4);margin-top:2px}
+.dm-close{background:var(--surface);border:1px solid var(--surface3);border-radius:5px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.dm-close:hover{border-color:var(--danger);color:var(--danger)}
+.dm-body{padding:10px;overflow-y:auto}
+.dm-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);cursor:pointer;transition:background .15s}
+.dm-row:hover{background:var(--surface)}
+.dm-row+.dm-row{border-top:1px solid var(--surface2)}
+.dm-row-stripe{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.dm-row-main{flex:1;min-width:0}
+.dm-row-cod{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--ink4)}
+.dm-row-desc{font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.25;margin-top:1px}
+.dm-row-meta{font-size:10px;color:var(--ink4);margin-top:3px}
+.dm-row-st{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+
+/* TOAST */
+.toast-cont{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:6px}
+.toast-item{padding:9px 15px;border-radius:8px;font-size:11.5px;font-weight:500;display:flex;align-items:center;gap:6px;animation:tIn .2s ease;box-shadow:0 4px 16px rgba(11,18,32,.12)}
+@keyframes tIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.t-ok{background:var(--ok);color:#fff}
+.t-err{background:var(--danger);color:#fff}
+.t-info{background:var(--ink);color:var(--gold)}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <div class="page-header">
+  <div class="header-top">
+    <div>
+      <div class="header-title">Calendário de <em>Produção</em></div>
+      <div class="header-sub">Lácteo · Sacaria · Café — espelhado do Apontamento</div>
+    </div>
+    <div class="header-right">
+      <div class="sp sp-loading" id="conn-pill"><span class="sp-dot"></span><span id="conn-txt">Carregando...</span></div>
+      <button class="btn-nav" onclick="carregar()" id="btn-reload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="reload-ico"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Atualizar
+      </button>
+      <button class="btn-pdf-all" id="btn-pdf-sel" onclick="gerarPDFSelecionados()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PDF (<span id="sel-count-btn">0</span>)
+      </button>
+    </div>
+  </div>
+  <div class="nav-row">
+    <div class="nav-group">
+      <button class="btn-nav" onclick="navAnterior()" id="btn-anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button class="btn-nav" onclick="navHoje()">Hoje</button>
+      <button class="btn-nav" onclick="navProximo()" id="btn-proximo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="date-range-group">
+      <label>De</label>
+      <input type="date" class="date-input" id="dt-ini" onchange="onDateChange()"/>
+      <span class="date-range-sep">→</span>
+      <label>Até</label>
+      <input type="date" class="date-input" id="dt-fim" onchange="onDateChange()"/>
+      <button class="btn-date-clear" id="btn-date-clear" onclick="limparDatas()" title="Limpar datas" style="display:none">✕</button>
+    </div>
+    <span class="period-label" id="period-label">—</span>
+    <div class="view-tabs">
+      <button class="view-tab active" id="vt-semana" onclick="setView('semana')">Semana</button>
+      <button class="view-tab" id="vt-15" onclick="setView('15')">15 dias</button>
+      <button class="view-tab" id="vt-mes" onclick="setView('mes')">Mês</button>
+      <button class="view-tab" id="vt-30" onclick="setView('30')">30 dias</button>
+      <button class="view-tab" id="vt-180" onclick="setView('180')">180 dias</button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI CARDS -->
+<div style="padding:20px 28px 0">
+  <div class="kpi-grid" id="kpi-grid">
+    <!-- gerado via JS -->
+  </div>
+</div>
+
+<!-- LINHAS -->
+<div class="linhas-wrap" style="padding-top:20px" id="linhas-wrap">
+  <div style="text-align:center;padding:48px;color:var(--ink4);font-style:italic">Carregando OPs do OMIE...</div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-header">
+    <div class="dp-stripe" id="dp-stripe"></div>
+    <button class="dp-close" onclick="fecharDetalhe()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="dp-sku" id="dp-sku"></div>
+    <div class="dp-desc" id="dp-desc"></div>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+</div>
+
+<!-- DAY MODAL -->
+<div class="day-modal-ov" id="day-modal-ov" onclick="if(event.target===this)fecharDiaModal()">
+  <div class="day-modal">
+    <div class="dm-header">
+      <div>
+        <div class="dm-title" id="dm-title"></div>
+        <div class="dm-sub" id="dm-sub"></div>
+      </div>
+      <button class="dm-close" onclick="fecharDiaModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="dm-body" id="dm-body"></div>
+  </div>
+</div>
+
+<div class="toast-cont" id="toast-cont"></div>
+
+<script>
+'use strict';
+const EP_OP='https://app.omie.com.br/api/v1/produtos/op/';
+const EP_PROD='https://app.omie.com.br/api/v1/geral/produtos/';
+const EP_MALHA='https://app.omie.com.br/api/v1/geral/malha/';
+const EP_EST='https://app.omie.com.br/api/v1/estoque/consultar/';
+const USE_PROXY=!['localhost','127.0.0.1',''].includes(window.location.hostname);
+const OMIE_KEYS=[
+  {nome:'MF Paris',key:'952260381072',secret:'8300b385eeec583c71439709ab866fc7'},
+  {nome:'DMS',key:'1340821992510',secret:'dac287f9b3ec422dc93da6cdbcc3e0b2'},
+];
+const LINHAS=[
+  {id:'LACTEO',label:'Lácteo',cor:'#1d6fa3',cls:'lacteo',badge:'lb-lacteo'},
+  {id:'SACARIA',label:'Sacaria',cor:'#6a3fbf',cls:'sacaria',badge:'lb-sacaria'},
+  {id:'CAFE',label:'Café',cor:'#8c4a1a',cls:'cafe',badge:'lb-cafe'},
+];
+const DOW_PT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MES_ABR=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+let OPS=[],realLocal={},malhaCache={},estoqueCache={};
+let selecionados=new Set();
+let viewAtiva='semana';
+let cursorDt=new Date();cursorDt.setHours(0,0,0,0);
+
+async function omieCall(ep,call,key,secret,param,_r){
+  const payload={call,app_key:String(key),app_secret:String(secret),param};
+  let resp;
+  if(USE_PROXY){resp=await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload})});}
+  else{resp=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});}
+  if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  if(data.faultstring){
+    if(data.faultstring.includes('REDUNDANT')&&!_r){
+      let s=35;const m=data.faultstring.match(/Aguarde (\d+) segundo/);if(m)s=parseInt(m[1])+3;
+      toast('Rate limit — aguardando '+s+'s...','info');await sleep(s*1000);
+      return omieCall(ep,call,key,secret,param,true);
+    }
+    throw new Error(data.faultstring);
+  }
+  return data;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const fmt=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+function cvDt(s){if(!s)return'';s=String(s).trim();if(s.includes('/')){const p=s.split('/');if(p.length===3)return`${p[2]}-${p[1]}-${p[0]}`;}return s.slice(0,10);}
+function fmtDt(iso){if(!iso||iso.length<8)return'—';const p=iso.slice(0,10).split('-');return`${p[2]}/${p[1]}/${p[0]}`;}
+function parseDt(iso){if(!iso||iso.length<8)return null;const p=iso.slice(0,10).split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function isoDate(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function detectarLinha(desc){
+  if(!desc)return'LACTEO';
+  const d=desc.toUpperCase();
+  // CAFÉ — palavras-chave específicas de café
+  if(d.includes('CAFE')||d.includes('CAFÉ')||d.includes('BELVEDER')||d.includes('ALMOFADA')||d.includes('VACUO')||d.includes('VÁCUO')||d.includes('TORRADO')||d.includes('MOIDO')||d.includes('MOÍDO')||d.includes('CAPPUCCINO')||d.includes('CAPUCCINO'))return'CAFE';
+  // SACARIA — 25KG é sempre sacaria
+  if(d.includes('25KG')||d.includes('25 KG')||d.includes('SACARIA')||d.includes('SACO '))return'SACARIA';
+  // LÁCTEO por gramatura: 200g, 400g, 800g, 1kg
+  if(d.match(/\b200\s*G\b/)||d.match(/\b400\s*G\b/)||d.match(/\b800\s*G\b/)||d.match(/\b1\s*KG\b/)||d.match(/\b1000\s*G\b/))return'LACTEO';
+  // CAFÉ por gramatura pequena: 250g, 500g (quando não detectou por palavra-chave mas está nessa faixa)
+  if(d.match(/\b250\s*G\b/)||d.match(/\b500\s*G\b/))return'CAFE';
+  // fallback — qualquer outro produto lácteo
+  return'LACTEO';
+}
+function extrairReal(cObs){if(!cObs)return 0;const s=String(cObs).trim();const m=s.match(/^\s*([\d.]+)\s*-\s*LOTE/i)||s.match(/^\s*([\d.]+)\s*-/)||s.match(/^\s*([\d.]+)/);if(!m)return 0;const v=parseFloat(m[1]);return isNaN(v)?0:v;}
+function mapSt(etapa){const v=String(etapa||'').toUpperCase();if(v==='60'||v==='E'||v.includes('ENCERR')||v.includes('CONCL'))return'Encerrada';if(v==='A'||v.includes('ANDAMENTO'))return'Em andamento';return'Pendente';}
+function realEfetivo(op){const loc=realLocal[op.id];if(loc&&parseFloat(loc.real)>0)return parseFloat(loc.real);return op.realOmie||0;}
+function statusEfetivo(op){const loc=realLocal[op.id];if(loc&&loc.status)return loc.status;return op.status||'Pendente';}
+
+async function carregar(){
+  setConn('loading','Carregando...');setLoading(true);OPS=[];
+  try{realLocal=JSON.parse(localStorage.getItem('opus_apontamento')||localStorage.getItem('opus_farol_real')||'{}');}catch(e){realLocal={};}
+  for(const emp of OMIE_KEYS){
+    let pag=1;
+    while(true){
+      setConn('loading',`${emp.nome} p.${pag}...`);
+      try{
+        const data=await omieCall(EP_OP,'ListarOrdemProducao',emp.key,emp.secret,[{pagina:pag,registros_por_pagina:100,apenas_importado_api:'N',ordenar_por:'DATA_PREVISAO',ordem_decrescente:'S'}]);
+        const lista=data.cadastros||[];
+        if(!lista.length)break;
+        for(const op of lista){
+          const ident=op.identificacao||{};const infAd=op.infAdicionais||{};
+          const outras=op.outrasInf||{};const obsObj=op.observacoes||{};
+          const cObs=String(obsObj.cObs||'');const concluida=String(outras.cConcluida||'').toUpperCase();
+          OPS.push({id:String(ident.nCodOP||''),op:String(ident.cNumOP||ident.nCodOP||''),
+            nCodProduto:String(ident.nCodProduto||''),codProd:'…',descProd:'…',
+            plan:parseFloat(ident.nQtde||0),cObs,realOmie:extrairReal(cObs),
+            dtAbertura:cvDt(infAd.dDtAbertura||''),dtPrev:cvDt(ident.dDtPrevisao||''),
+            dtEnc:cvDt(infAd.dDtConclusao||''),concluida,
+            status:concluida==='S'?'Encerrada':mapSt(infAd.cEtapa||''),
+            empresa:emp.nome,_emp:emp,linha:'LACTEO'});
+        }
+const tot=data.total_de_registros||lista.length;
+        const corte=new Date();corte.setDate(corte.getDate()-180);
+        const maisAntiga=lista.reduce((min,op)=>{const dt=new Date((op.identificacao||{}).dDtPrevisao||'2099-01-01');return dt<min?dt:min;},new Date());
+        if(maisAntiga<corte)break;
+        if(pag*100>=tot||lista.length<100)break;pag++;await sleep(300);
+      }catch(e){console.error(emp.nome,e.message);break;}
+    }
+  }
+  setConn('loading','Produtos...');await enrichProdutos();
+  setConn('ok',`${OPS.length} OPs`);setLoading(false);
+  renderTudo();toast(`${OPS.length} OPs carregadas`,'ok');
+}
+
+async function enrichProdutos(){
+  for(const emp of OMIE_KEYS){
+    const opsEmp=OPS.filter(o=>o.empresa===emp.nome&&o.nCodProduto);
+    if(!opsEmp.length)continue;
+    const cacheById={};
+    let pag=1, totalProds=0;
+    setConn('loading','Produtos '+emp.nome+'...');
+    while(true){
+      try{
+        const data=await omieCall(EP_PROD,'ListarProdutos',emp.key,emp.secret,[{
+          pagina:pag,registros_por_pagina:500,apenas_importado_api:'N'
+        }]);
+        const lista=data.produto_servico_cadastro||data.produto_servico_resumido||[];
+        if(!lista.length)break;
+        for(const p of lista){
+          const idInt=String(p.codigo_produto||p.nCodProd||p.nCodigo||'');
+          const codExt=String(p.codigo||p.cCodigo||p.codigo_produto_integracao||'').trim();
+          const desc=String(p.descricao||p.cDescricao||p.descr_detalhada||'').trim()||'—';
+          if(idInt) cacheById[idInt]={cod:codExt||idInt, desc, idInt};
+        }
+        totalProds+=lista.length;
+        const tot=data.total_de_registros||lista.length;
+        setConn('loading',emp.nome+' prods '+totalProds+'/'+tot+'...');
+        if(pag*500>=tot||lista.length<500)break;
+       pag++;await sleep(200);
+      }catch(e){console.error('[enrichProdutos]',emp.nome,e.message);break;}
+    }
+    console.log('[Cache '+emp.nome+']',Object.keys(cacheById).length,'produtos | OPs:',opsEmp.length);
+
+    // Aplica cache
+    const semMatch=[];
+    for(const op of opsEmp){
+      const key=String(op.nCodProduto);
+      const entry=cacheById[key];
+      if(entry&&entry.desc&&entry.desc!=='—'){
+        op.codProd=entry.cod;
+        op.descProd=entry.desc;
+        op.linha=detectarLinha(entry.desc);
+      }else{
+        semMatch.push(op);
+      }
+    }
+
+    if(semMatch.length){
+      console.warn('[enrichProdutos] '+semMatch.length+'/'+opsEmp.length+' sem match. Buscando individualmente...');
+      const vistos={};
+      for(const op of semMatch){
+        const key=String(op.nCodProduto);
+        if(vistos[key]){
+          op.codProd=vistos[key].cod;
+          op.descProd=vistos[key].desc;
+          op.linha=detectarLinha(vistos[key].desc);
+          continue;
+        }
+        try{
+          const d=await omieCall(EP_PROD,'ConsultarProduto',emp.key,emp.secret,[{
+            codigo_produto:parseInt(op.nCodProduto)||0
+          }]);
+          const codExt=String(d.codigo||d.cCodigo||d.codigo_produto_integracao||'').trim();
+          const desc=String(d.descricao||d.cDescricao||d.descr_detalhada||'').trim()||'—';
+          op.codProd=codExt||key;
+          op.descProd=desc;
+          op.linha=detectarLinha(desc);
+          vistos[key]={cod:op.codProd,desc};
+        }catch(e){
+          console.warn('[ConsultarProduto] falhou ID',key,e.message);
+          op.codProd=key;
+          op.descProd='—';
+          op.linha='LACTEO';
+          vistos[key]={cod:key,desc:'—'};
+        }
+        await sleep(150);
+      }
+    }
+
+    const comDesc=opsEmp.filter(o=>o.descProd&&o.descProd!=='—'&&o.descProd!=='…').length;
+    console.log('[enrichProdutos] '+emp.nome+': '+comDesc+'/'+opsEmp.length+' com descricao');
+  }
+}
+
+// NAVEGAÇÃO
+let customIni=null,customFim=null;
+
+function setView(v){
+  viewAtiva=v;
+  ['semana','15','mes','30','180'].forEach(x=>document.getElementById('vt-'+x).classList.toggle('active',x===v));
+  // limpa datas custom ao trocar view pelo botão
+  limparDatas();
+}
+
+function onDateChange(){
+  const ini=document.getElementById('dt-ini').value;
+  const fim=document.getElementById('dt-fim').value;
+  if(ini&&fim){
+    const dIni=new Date(ini+'T12:00:00');
+    const dFim=new Date(fim+'T12:00:00');
+    if(dFim<dIni){toast('Data final menor que a inicial','err');return;}
+    const diff=Math.round((dFim-dIni)/864e5);
+    if(diff>179){
+      // ajusta fim para max 180 dias a partir do início
+      const novoFim=new Date(dIni.getTime()+179*864e5);
+      document.getElementById('dt-fim').value=isoDate(novoFim);
+      toast('Período limitado a 180 dias — ajustado automaticamente','info');
+    }
+    customIni=new Date(document.getElementById('dt-ini').value+'T12:00:00');
+    customFim=new Date(document.getElementById('dt-fim').value+'T12:00:00');
+    // desseleciona view-tabs pois é modo custom
+    document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('btn-date-clear').style.display='';
+    document.getElementById('btn-anterior').style.opacity='.35';
+    document.getElementById('btn-proximo').style.opacity='.35';
+    renderTudo();
+  } else if(ini&&!fim){
+    // define fim automaticamente como ini + 6 dias (semana)
+    const dIni=new Date(ini+'T12:00:00');
+    const dFim=new Date(dIni.getTime()+6*864e5);
+    document.getElementById('dt-fim').value=isoDate(dFim);
+    customIni=dIni;customFim=dFim;
+    document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('btn-date-clear').style.display='';
+    document.getElementById('btn-anterior').style.opacity='.35';
+    document.getElementById('btn-proximo').style.opacity='.35';
+    renderTudo();
+  }
+}
+
+function limparDatas(){
+  customIni=null;customFim=null;
+  document.getElementById('dt-ini').value='';
+  document.getElementById('dt-fim').value='';
+  document.getElementById('btn-date-clear').style.display='none';
+  document.getElementById('btn-anterior').style.opacity='';
+  document.getElementById('btn-proximo').style.opacity='';
+  // reativa aba de view atual
+  document.getElementById('vt-'+viewAtiva).classList.add('active');
+  renderTudo();
+}
+
+function navAnterior(){
+  if(customIni)return;
+  const s=viewAtiva;
+  if(s==='semana')cursorDt.setDate(cursorDt.getDate()-7);
+  else if(s==='15')cursorDt.setDate(cursorDt.getDate()-15);
+  else if(s==='mes')cursorDt=new Date(cursorDt.getFullYear(),cursorDt.getMonth()-1,1);
+  else if(s==='180')cursorDt.setDate(cursorDt.getDate()-180);
+  else cursorDt.setDate(cursorDt.getDate()-30);
+  renderTudo();
+}
+function navProximo(){
+  if(customIni)return;
+  const s=viewAtiva;
+  if(s==='semana')cursorDt.setDate(cursorDt.getDate()+7);
+  else if(s==='15')cursorDt.setDate(cursorDt.getDate()+15);
+  else if(s==='mes')cursorDt=new Date(cursorDt.getFullYear(),cursorDt.getMonth()+1,1);
+  else if(s==='180')cursorDt.setDate(cursorDt.getDate()+180);
+  else cursorDt.setDate(cursorDt.getDate()+30);
+  renderTudo();
+}
+function navHoje(){
+  limparDatas();
+  cursorDt=new Date();cursorDt.setHours(0,0,0,0);
+  if(viewAtiva==='mes')cursorDt=new Date(cursorDt.getFullYear(),cursorDt.getMonth(),1);
+  renderTudo();
+}
+
+function getDias(){
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  let inicio,fim;
+
+  // modo custom: usa datas selecionadas pelo usuário
+  if(customIni&&customFim){
+    inicio=new Date(customIni);fim=new Date(customFim);
+    inicio.setHours(0,0,0,0);fim.setHours(0,0,0,0);
+  } else if(viewAtiva==='semana'){
+    inicio=new Date(cursorDt);const dow=inicio.getDay();inicio.setDate(inicio.getDate()-dow);fim=new Date(inicio);fim.setDate(fim.getDate()+6);
+  } else if(viewAtiva==='15'){
+    inicio=new Date(cursorDt);fim=new Date(cursorDt);fim.setDate(fim.getDate()+14);
+  } else if(viewAtiva==='30'){
+    inicio=new Date(cursorDt);fim=new Date(cursorDt);fim.setDate(fim.getDate()+29);
+  } else if(viewAtiva==='180'){
+    fim=new Date(cursorDt);inicio=new Date(cursorDt);inicio.setDate(inicio.getDate()-179);
+  } else {
+    inicio=new Date(cursorDt.getFullYear(),cursorDt.getMonth(),1);fim=new Date(cursorDt.getFullYear(),cursorDt.getMonth()+1,0);
+  }
+
+  // hard cap 180 dias
+  const diff=Math.round((fim-inicio)/864e5);
+  if(diff>179)fim=new Date(inicio.getTime()+179*864e5);
+
+  const dias=[];let d=new Date(inicio);while(d<=fim){dias.push(new Date(d));d.setDate(d.getDate()+1);}
+
+  // label período
+  if(dias.length){
+    const ini=dias[0],fin=dias[dias.length-1];
+    let lbl='';
+    if(ini.getMonth()===fin.getMonth()&&ini.getFullYear()===fin.getFullYear())lbl=`${ini.getDate()} – ${fin.getDate()} de ${MES_PT[ini.getMonth()]} ${ini.getFullYear()}`;
+    else lbl=`${ini.getDate()} ${MES_ABR[ini.getMonth()]} – ${fin.getDate()} ${MES_ABR[fin.getMonth()]} ${fin.getFullYear()}`;
+    document.getElementById('period-label').textContent=lbl;
+  }
+  return dias;
+}
+
+function opsNoDia(iso,linha){return OPS.filter(op=>op.linha===linha&&(op.dtPrev===iso||op.dtAbertura===iso));}
+
+function abrirDiaModal(iso,linhaId){
+  const L=LINHAS.find(l=>l.id===linhaId)||LINHAS[0];
+  const ops=opsNoDia(iso,linhaId);
+  document.getElementById('dm-title').textContent=`${L.label} · ${fmtDt(iso)}`;
+  document.getElementById('dm-sub').textContent=`${ops.length} OP${ops.length===1?'':'s'} neste dia`;
+  document.getElementById('dm-body').innerHTML=ops.map(op=>{
+    const rv=realEfetivo(op);
+    const pct=op.plan>0?Math.min(Math.round(rv/op.plan*100),100):0;
+    const st=statusEfetivo(op);
+    const stCls={Pendente:'pendente','Em andamento':'andamento',Encerrada:'encerrada'}[st]||'pendente';
+    const stColors={pendente:['var(--warn-bg)','var(--warn)'],andamento:['var(--lacteo-bg)','var(--lacteo)'],encerrada:['var(--ok-bg)','var(--ok)']}[stCls]||['var(--surface2)','var(--ink4)'];
+    const opNum=op.op?`OP ${op.op}`:'';
+    return `<div class="dm-row" onclick="fecharDiaModal();abrirDetalhe('${op.id}')">
+      <div class="dm-row-stripe" style="background:${L.cor}"></div>
+      <div class="dm-row-main">
+        <div class="dm-row-cod">${op.codProd}${opNum?' · '+opNum:''}</div>
+        <div class="dm-row-desc">${op.descProd}</div>
+        <div class="dm-row-meta">Plan: ${fmt(op.plan)} kg${rv>0?' · Real: '+fmt(rv)+' kg ('+pct+'%)':''}</div>
+      </div>
+      <div class="dm-row-st" style="background:${stColors[0]};color:${stColors[1]}">${st}</div>
+    </div>`;
+  }).join('')||'<div style="padding:20px;text-align:center;color:var(--ink4);font-style:italic;font-size:11px">Nenhuma OP encontrada</div>';
+  document.getElementById('day-modal-ov').classList.add('open');
+}
+function fecharDiaModal(){document.getElementById('day-modal-ov').classList.remove('open');}
+
+// RENDER TUDO
+function renderTudo(){
+  renderKpis();
+  const dias=viewAtiva==='mes'?null:getDias();
+  const wrap=document.getElementById('linhas-wrap');
+  wrap.innerHTML=LINHAS.map(L=>renderBlocoLinha(L,dias)).join('');
+}
+
+function renderKpis(){
+  const dias=viewAtiva==='mes'?null:getDias();
+  const diasSet=dias?new Set(dias.map(d=>isoDate(d))):null;
+  const grid=document.getElementById('kpi-grid');
+  grid.innerHTML=LINHAS.map(L=>{
+    const ops=OPS.filter(o=>{
+      if(o.linha!==L.id)return false;
+      if(!diasSet)return true; // vista mês — filtra pelo mês do cursor
+      const ref=o.dtPrev||o.dtAbertura||'';
+      return diasSet.has(ref);
+    });
+    const totalPlan=ops.reduce((s,o)=>s+o.plan,0);
+    const totalReal=ops.reduce((s,o)=>s+realEfetivo(o),0);
+    const pct=totalPlan>0?Math.min(Math.round(totalReal/totalPlan*100),100):0;
+    const pctCls=pct>=90?'var(--ok)':pct>=50?'var(--warn)':'var(--danger)';
+    const enc=ops.filter(o=>statusEfetivo(o)==='Encerrada').length;
+    return `<div class="kpi-card">
+      <div class="kpi-card-header">
+        <div class="kpi-card-title">
+          <div class="kpi-linha-dot" style="background:${L.cor}"></div>
+          <span class="kci-nome">${L.label}</span>
+          <span class="kci-ops">${ops.length} OPs &nbsp;·&nbsp; ${enc} enc.</span>
+        </div>
+        <div class="kpi-pct-big" style="color:${pctCls}">${pct}%</div>
+      </div>
+      <div class="kpi-prog-bar"><div class="kpi-prog-fill" style="width:${pct}%;background:${L.cor}"></div></div>
+      <div class="kpi-card-body">
+        <div class="kpi-metric">
+          <div class="km-label">Qtd. Planejada</div>
+          <div class="km-val" style="color:${L.cor}">${fmt(totalPlan)}</div>
+          <div class="km-sub">kg</div>
+        </div>
+        <div class="kpi-metric">
+          <div class="km-label">Qtd. Produzida</div>
+          <div class="km-val" style="color:${totalReal>0?'var(--ok)':'var(--ink4)'}">${totalReal>0?fmt(totalReal):'—'}</div>
+          <div class="km-sub">${totalReal>0?'kg':'aguardando'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBlocoLinha(L,dias){
+  const ops=OPS.filter(o=>o.linha===L.id);
+  let calHTML='';
+  if(viewAtiva==='mes') calHTML=renderMesLinha(L);
+  else calHTML=renderGradeLinha(L,dias);
+
+  const totalPlan=ops.reduce((s,o)=>s+o.plan,0);
+  const totalReal=ops.reduce((s,o)=>s+realEfetivo(o),0);
+  const enc=ops.filter(o=>statusEfetivo(o)==='Encerrada').length;
+
+  return `<div class="linha-bloco">
+    <div class="linha-bloco-hdr">
+      <div class="linha-stripe" style="background:${L.cor}"></div>
+      <span class="linha-bloco-nome">${L.label}</span>
+      <span class="linha-badge ${L.badge}">${L.id}</span>
+      <span class="linha-bloco-resumo">${ops.length} OPs &nbsp;·&nbsp; ${enc} enc. &nbsp;·&nbsp; ${fmt(totalPlan)} kg plan. &nbsp;·&nbsp; ${totalReal>0?fmt(totalReal)+' kg real.':'—'}</span>
+      <button class="btn-pdf-linha" onclick="gerarPDFLinha('${L.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PDF todas OPs
+      </button>
+    </div>
+    ${calHTML}
+  </div>`;
+}
+
+function renderGradeLinha(L,dias){
+  if(!dias||!dias.length)return'';
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  const nCols=dias.length;
+  const minW=nCols<=7?'130px':nCols<=15?'100px':nCols<=30?'72px':'46px';
+  let html=`<div class="cal-grid-wrap"><div class="cal-grid" style="display:grid;grid-template-rows:auto auto;grid-template-columns:repeat(${nCols},minmax(${minW},1fr));background:var(--surface2);gap:1px">`;
+  // headers
+  dias.forEach(d=>{
+    const isToday=d.getTime()===hoje.getTime();
+    const isWE=d.getDay()===0||d.getDay()===6;
+    html+=`<div class="cal-col-hdr${isWE?' weekend':''}">
+      <div class="cdh-dow">${DOW_PT[d.getDay()]}</div>
+      <div class="cdh-num${isToday?' today':''}">${d.getDate()}</div>
+      <div class="cdh-month">${MES_ABR[d.getMonth()]}</div>
+    </div>`;
+  });
+  // colunas
+  dias.forEach(d=>{
+    const iso=isoDate(d);
+    const isToday=d.getTime()===hoje.getTime();
+    const isWE=d.getDay()===0||d.getDay()===6;
+    const ops=opsNoDia(iso,L.id);
+    const MAX=nCols<=7?4:3;
+    const visiveis=ops.slice(0,MAX);const extras=ops.length-MAX;
+    html+=`<div class="cal-day-col${isToday?' today-col':''}${isWE?' weekend':''}">`;
+    if(!ops.length) html+=`<div class="empty-day">—</div>`;
+    else{visiveis.forEach(op=>{html+=buildChip(op,L);});if(extras>0)html+=`<div class="mais-badge" onclick="abrirDiaModal('${iso}','${L.id}')">+${extras}</div>`;}
+    html+=`</div>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
+
+function renderMesLinha(L){
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  const ano=cursorDt.getFullYear(),mes=cursorDt.getMonth();
+  const ini=new Date(ano,mes,1),fim=new Date(ano,mes+1,0);
+  let html=`<div class="month-grid-wrap"><div class="month-grid">`;
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>{html+=`<div class="month-dow-hdr">${d}</div>`;});
+  let dowIni=ini.getDay();
+  for(let i=0;i<dowIni;i++)html+=`<div class="month-cell other-month"></div>`;
+  let d=new Date(ini);
+  while(d<=fim){
+    const iso=isoDate(d);const isToday=d.getTime()===hoje.getTime();const isWE=d.getDay()===0||d.getDay()===6;
+    const ops=opsNoDia(iso,L.id);const MAX=2;const visiveis=ops.slice(0,MAX);const extras=ops.length-MAX;
+    html+=`<div class="month-cell${isToday?' today-cell':''}${isWE?' weekend':''}">
+      <div class="mc-num${isToday?' today':''}">${d.getDate()}</div>`;
+    visiveis.forEach(op=>{html+=buildChip(op,L);});
+    if(extras>0)html+=`<div class="mais-badge" onclick="abrirDiaModal('${iso}','${L.id}')">+${extras}</div>`;
+    html+=`</div>`;
+    d.setDate(d.getDate()+1);
+  }
+  const dowFim=6-fim.getDay();
+  for(let i=0;i<dowFim;i++)html+=`<div class="month-cell other-month"></div>`;
+  html+=`</div></div>`;
+  return html;
+}
+
+function buildChip(op,L){
+  const rv=realEfetivo(op);
+  const pct=op.plan>0?Math.min(Math.round(rv/op.plan*100),100):0;
+  const pctCls=pct>=90?'high':pct>=50?'mid':'low';
+  const st=statusEfetivo(op);
+  const stCls={Pendente:'pendente','Em andamento':'andamento',Encerrada:'encerrada'}[st]||'pendente';
+  const stLbl={Pendente:'Pend.','Em andamento':'And.',Encerrada:'Enc.'}[st]||st;
+  const sel=selecionados.has(op.id);
+  const opNum=op.op?`OP ${op.op}`:'';
+  return `<div class="op-chip ${L.cls}${st==='Encerrada'?' encerrada':''}${sel?' selected':''}" onclick="abrirDetalhe('${op.id}')" id="chip-${op.id}">
+    <div class="chip-check${sel?' checked':''}" onclick="toggleSel(event,'${op.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="chip-top">
+      <span class="chip-sku">${op.codProd}</span>
+      <span class="chip-st ${stCls}">${stLbl}</span>
+    </div>
+    <div class="chip-desc" title="${op.descProd}">${op.descProd}</div>
+    <div class="chip-nums">
+      <span class="chip-plan">Plan: <strong>${fmt(op.plan)} kg</strong></span>
+      ${rv>0?`<span class="chip-sep">·</span><span class="chip-real ${pct>=90?'ok':'warn'}">Real: <strong>${fmt(rv)} kg</strong></span>`:''}
+      <span class="chip-pct ${pctCls}" style="margin-left:auto">${pct}%</span>
+    </div>
+    <div class="chip-bar-bg"><div class="chip-bar-fill" style="width:${pct}%;background:${st==='Encerrada'?'var(--ok)':L.cor}"></div></div>
+  </div>`;
+}
+
+// SELEÇÃO
+function toggleSel(e,id){
+  e.stopPropagation();
+  if(selecionados.has(id))selecionados.delete(id);else selecionados.add(id);
+  atualizarSelUI();
+  const chip=document.getElementById('chip-'+id);
+  if(chip){chip.classList.toggle('selected',selecionados.has(id));const chk=chip.querySelector('.chip-check');if(chk)chk.classList.toggle('checked',selecionados.has(id));}
+}
+function atualizarSelUI(){
+  const n=selecionados.size;
+  document.getElementById('sel-count-btn').textContent=n;
+  document.getElementById('btn-pdf-sel').disabled=n===0;
+}
+
+// DETALHE
+function abrirDetalhe(id){
+  const op=OPS.find(o=>o.id===id);if(!op)return;
+  const L=LINHAS.find(l=>l.id===op.linha)||LINHAS[0];
+  const rv=realEfetivo(op);const pct=op.plan>0?Math.min(Math.round(rv/op.plan*100),100):0;
+  const st=statusEfetivo(op);
+  const isAtrasado=()=>{const h=new Date();h.setHours(0,0,0,0);const dt=parseDt(op.dtPrev);return dt&&dt<h&&st!=='Encerrada';};
+  document.getElementById('dp-stripe').style.background=L.cor;
+  document.getElementById('dp-sku').textContent=`${op.codProd}  ·  OP ${op.op}`;
+  document.getElementById('dp-desc').textContent=op.descProd;
+  document.getElementById('dp-body').innerHTML=`
+    <div class="dp-sec">
+      <div class="dp-sec-title">Progresso</div>
+      <div class="dp-prog">
+        <div class="dp-prog-labels">
+          <span style="color:var(--ink4)">Plan: <strong style="color:var(--ink)">${fmt(op.plan)} kg</strong></span>
+          <span>Real: <strong style="color:${pct>=90?'var(--ok)':pct>=50?'var(--warn)':'var(--ink4)'}">${rv>0?fmt(rv)+' kg':'—'}</strong></span>
+        </div>
+        <div class="dp-prog-bar"><div class="dp-prog-fill" style="width:${pct}%;background:${pct>=90?'var(--ok)':L.cor}"></div></div>
+        <div style="text-align:right;font-size:13px;font-weight:700;margin-top:4px;color:${pct>=90?'var(--ok)':pct>=50?'var(--warn)':'var(--danger)'}">${pct}%</div>
+      </div>
+    </div>
+    <div class="dp-sec">
+      <div class="dp-sec-title">Dados da OP</div>
+      <div class="dp-row"><span class="dp-rl">Número</span><span class="dp-rv">${op.op}</span></div>
+      <div class="dp-row"><span class="dp-rl">Empresa</span><span class="dp-rv">${op.empresa}</span></div>
+      <div class="dp-row"><span class="dp-rl">Linha</span><span class="dp-rv">${L.label}</span></div>
+      <div class="dp-row"><span class="dp-rl">Status</span><span class="dp-rv ${st==='Encerrada'?'ok':st==='Em andamento'?'warn':''}">${st}</span></div>
+      <div class="dp-row"><span class="dp-rl">Abertura</span><span class="dp-rv">${fmtDt(op.dtAbertura)||'—'}</span></div>
+      <div class="dp-row"><span class="dp-rl">Previsão enc.</span><span class="dp-rv ${isAtrasado()?'danger':''}">${fmtDt(op.dtPrev)||'—'}${isAtrasado()?' ⚠':''}</span></div>
+      ${op.dtEnc?`<div class="dp-row"><span class="dp-rl">Encerrada em</span><span class="dp-rv ok">${fmtDt(op.dtEnc)}</span></div>`:''}
+    </div>
+    <div class="dp-sec">
+      <div class="dp-sec-title">Produção por Batelada</div>
+      <div class="dp-input-row">
+        <label class="dp-input-label">Batelada a ser produzida (kg)</label>
+        <input type="number" class="dp-input" id="dp-batelada" min="0.01" step="0.01" value="${bateladaPadrao(op)}" oninput="atualizarBateladaInfo('${op.id}')"/>
+      </div>
+      <div id="dp-batch-info"></div>
+    </div>
+    <button class="dp-btn batelada" onclick="gerarPDFBatelada('${op.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      PDF · Batelada
+    </button>
+    <button class="dp-btn outline" onclick="gerarPDFOp('${op.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      PDF · OP Completa
+    </button>`;
+  document.getElementById('detail-panel').classList.add('open');
+  atualizarBateladaInfo(op.id);
+}
+function fecharDetalhe(){document.getElementById('detail-panel').classList.remove('open');}
+
+// BATELADA
+function calcBateladas(planKg,bateladaKg){
+  if(!bateladaKg||bateladaKg<=0)return null;
+  const inteiras=Math.floor((planKg+1e-6)/bateladaKg);
+  const resto=Math.max(0,+(planKg-inteiras*bateladaKg).toFixed(4));
+  const temResto=resto>0.01;
+  const numBateladas=temResto?inteiras+1:inteiras;
+  return{numBateladas,inteiras,resto:temResto?resto:0,temResto,bateladaKg,planKg};
+}
+function bateladaPadrao(op){
+  const salvo=parseFloat(localStorage.getItem('opus_batelada_'+op.codProd));
+  if(salvo>0)return salvo;
+  return Math.min(250,op.plan)||250;
+}
+function atualizarBateladaInfo(opId){
+  const op=OPS.find(o=>o.id===opId);if(!op)return;
+  const inp=document.getElementById('dp-batelada');const el=document.getElementById('dp-batch-info');
+  if(!inp||!el)return;
+  const bateladaKg=parseFloat(inp.value);
+  if(!bateladaKg||bateladaKg<=0){el.innerHTML='<div class="dp-batch-info warn">Informe um valor de batelada válido.</div>';return;}
+  if(bateladaKg>op.plan){el.innerHTML=`<div class="dp-batch-info warn">A batelada (${fmt(bateladaKg)} kg) é maior que o total planejado da OP (${fmt(op.plan)} kg).</div>`;return;}
+  localStorage.setItem('opus_batelada_'+op.codProd,String(bateladaKg));
+  const c=calcBateladas(op.plan,bateladaKg);
+  const txt=c.temResto
+    ?`<strong>${c.inteiras}</strong> batelada(s) de <strong>${fmt(bateladaKg)} kg</strong> + <strong>1</strong> batelada final de <strong>${fmt(c.resto)} kg</strong> — total <strong>${c.numBateladas}</strong> bateladas`
+    :`<strong>${c.numBateladas}</strong> batelada(s) de <strong>${fmt(bateladaKg)} kg</strong>`;
+  el.innerHTML=`<div class="dp-batch-info">${txt} para produzir os <strong>${fmt(op.plan)} kg</strong> planejados.</div>`;
+}
+async function gerarPDFBatelada(id){
+  const op=OPS.find(o=>o.id===id);if(!op)return;
+  const inp=document.getElementById('dp-batelada');
+  const bateladaKg=parseFloat(inp?inp.value:'')||bateladaPadrao(op);
+  if(!bateladaKg||bateladaKg<=0){toast('Informe uma batelada válida','err');return;}
+  if(bateladaKg>op.plan){toast('Batelada maior que o total planejado da OP','err');return;}
+  toast('Gerando PDF de batelada — OP '+op.op+'...','info');
+  const itens=await buscarMalha(op);await buscarEstoque(op._emp);
+  const c=calcBateladas(op.plan,bateladaKg);
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  renderPaginaBatelada(doc,op,itens,c);
+  doc.save(`Batelada_OP_${op.op}_${op.codProd}.pdf`);
+  toast(`PDF de batelada gerado: OP ${op.op}`,'ok');
+}
+function renderPaginaBatelada(doc,op,itens,c){
+  const W=210,H=297,ml=15,mr=15;
+  const L=LINHAS.find(l=>l.id===op.linha)||LINHAS[0];
+  const cor=L.cor==='#1d6fa3'?[29,111,163]:L.cor==='#6a3fbf'?[106,63,191]:[140,74,26];
+
+  doc.setFillColor(11,18,32);doc.rect(0,0,W,36,'F');
+  doc.setFillColor(...cor);doc.rect(0,36,W,2.5,'F');
+
+  doc.setFont('helvetica','bolditalic');doc.setFontSize(16);doc.setTextColor(192,154,74);
+  doc.text('Grupo MF Paris',ml,13);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(82,96,119);
+  doc.text('CALENDÁRIO DE PRODUÇÃO · FICHA DE BATELADA',ml,19);
+  doc.text(`Gerado: ${new Date().toLocaleString('pt-BR')}`,ml,25);
+
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);
+  doc.text(`OP ${op.op}`,W-mr,14,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(130,150,170);
+  doc.text(`${op.empresa} · ${L.label}`,W-mr,22,{align:'right'});
+
+  let y=44;
+  doc.setFillColor(247,245,240);doc.roundedRect(ml,y,W-ml-mr,24,2,2,'F');
+  doc.setFillColor(...cor);doc.rect(ml,y,3,24,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(130,150,170);
+  doc.text('CÓDIGO',ml+6,y+6);doc.text('DESCRIÇÃO',ml+30,y+6);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(11,18,32);
+  doc.text(String(op.codProd),ml+6,y+13);
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+  doc.text(doc.splitTextToSize(op.descProd,110),ml+30,y+13);
+
+  y+=30;
+  const bw=(W-ml-mr-12)/3;
+  const boxes=[
+    ['BATELADA',fmt(c.bateladaKg)+' kg',[229,240,255],[29,111,163]],
+    ['Nº DE BATELADAS',String(c.numBateladas),[247,240,225],[163,108,0]],
+    ['TOTAL DA OP',fmt(c.planKg)+' kg',[228,240,228],[26,122,69]],
+  ];
+  boxes.forEach(([lbl,val,bg,tc],i)=>{
+    const bx=ml+i*(bw+6);
+    doc.setFillColor(...bg);doc.roundedRect(bx,y,bw,16,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...tc);doc.text(lbl,bx+5,y+6);
+    doc.setFontSize(11);doc.setTextColor(11,18,32);doc.text(val,bx+5,y+13);
+  });
+  y+=22;
+  if(c.temResto){
+    doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(163,108,0);
+    doc.text(`${c.inteiras} batelada(s) de ${fmt(c.bateladaKg)} kg + 1 batelada final de ${fmt(c.resto)} kg`,ml,y);
+    y+=6;
+  }else{y+=2;}
+
+  y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(11,18,32);doc.text('Insumos & Matéria-Prima — por Batelada',ml,y);
+  y+=5;doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,150,170);
+  doc.text(`${itens.length} itens · batelada de ${fmt(c.bateladaKg)} kg · ${c.numBateladas} batelada(s) para ${fmt(c.planKg)} kg`,ml,y);y+=6;
+
+  const TH=[{x:ml+2,l:'CÓDIGO'},{x:ml+20,l:'DESCRIÇÃO'},{x:ml+78,l:'TIPO'},{x:ml+96,l:'QTD/BATELADA'},{x:ml+128,l:'QTD TOTAL OP'},{x:ml+157,l:'ESTOQUE'},{x:ml+176,l:'STATUS'}];
+  doc.setFillColor(11,18,32);doc.rect(ml,y,W-ml-mr,7,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(192,154,74);
+  TH.forEach(cc=>doc.text(cc.l,cc.x,y+5));y+=7;
+
+  if(!itens.length){
+    doc.setFillColor(247,245,240);doc.rect(ml,y,W-ml-mr,12,'F');
+    doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(130,150,170);
+    doc.text('Nenhuma lista técnica cadastrada no OMIE.',W/2,y+8,{align:'center'});y+=12;
+  }else{
+    itens.forEach((it,idx)=>{
+      if(y>H-18){
+        doc.setDrawColor(192,154,74);doc.setLineWidth(0.4);doc.line(ml,H-10,W-mr,H-10);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(130,150,170);
+        doc.text(`OP ${op.op} · Batelada · continua...`,ml,H-5);doc.text(`${L.label}`,W-mr,H-5,{align:'right'});
+        doc.addPage();y=20;
+        doc.setFillColor(11,18,32);doc.rect(0,0,W,10,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(192,154,74);
+        doc.text(`OP ${op.op} · ${op.codProd} · Batelada · continuação`,ml,7);y+=12;
+        doc.setFillColor(11,18,32);doc.rect(ml,y,W-ml-mr,7,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(192,154,74);
+        TH.forEach(cc=>doc.text(cc.l,cc.x,y+5));y+=7;
+      }
+      const rH=8;
+      doc.setFillColor(idx%2===0?255:248,idx%2===0?255:246,idx%2===0?255:242);doc.rect(ml,y,W-ml-mr,rH,'F');
+      doc.setDrawColor(228,223,210);doc.setLineWidth(0.15);doc.line(ml,y+rH,W-mr,y+rH);
+      const necBatelada=(it.qtd1k/1000)*c.bateladaKg;
+      const necTotal=(it.qtd1k/1000)*c.planKg;
+      const estq=estoqueCache[String(it.cod)]||0;const saldo=estq-necTotal;const ok=saldo>=0;
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(82,96,119);doc.text(String(it.cod).slice(0,12),TH[0].x,y+5.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(42,58,82);doc.text(doc.splitTextToSize(it.desc,56)[0]||'',TH[1].x,y+5.5);
+      doc.setFontSize(6.5);doc.setTextColor(82,96,119);doc.text((it.tipo||'').slice(0,9),TH[2].x,y+5.5);
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(11,18,32);doc.text(necBatelada.toFixed(2)+' '+it.un,TH[3].x,y+5.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(42,58,82);doc.text(necTotal.toFixed(2)+' '+it.un,TH[4].x,y+5.5);
+      doc.setTextColor(estq>0?26:130,estq>0?122:150,estq>0?69:170);doc.text(estq>0?estq.toFixed(2):'—',TH[5].x,y+5.5);
+      doc.setTextColor(ok?26:181,ok?122:42,ok?69:32);doc.text(ok?'OK':'COMPRAR',TH[6].x,y+5.5);
+      y+=rH;
+    });
+  }
+  doc.setDrawColor(192,154,74);doc.setLineWidth(0.4);doc.line(ml,H-10,W-mr,H-10);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(130,150,170);
+  doc.text(`Grupo MF Paris · OPUS · Calendário de Produção`,ml,H-5);
+  doc.text(`OP ${op.op} · ${op.empresa} · ${new Date().toLocaleDateString('pt-BR')}`,W-mr,H-5,{align:'right'});
+}
+
+// PDF
+async function buscarMalha(op){
+  const cacheKey=op.nCodProduto||op.codProd;
+  if(malhaCache[cacheKey])return malhaCache[cacheKey];
+  
+  const mapItens=data=>(data.itens||data.itensEstrutura||[]).map(it=>({
+    cod: it.codProdMalha||it.codigo_componente||'',
+    desc: it.descrProdMalha||it.descricao_componente||'',
+    qtd1k: parseFloat(it.quantProdMalha||it.qtdProdMalha||it.nQtde||it.quantidade||0)*1000,
+    un: it.unidProdMalha||it.cUnid||it.unidade||'KG',
+    tipo: it.descrFamMalha||it.cTipoComp||it.tipo||'MP'
+  }));
+
+  // Tenta 1: pelo código externo (SKU tipo 1230019)
+  if(op.codProd && op.codProd !== op.nCodProduto){
+    try{
+      const data=await omieCall(EP_MALHA,'ConsultarEstrutura',op._emp.key,op._emp.secret,[{
+        idProduto:0, intProduto:'', codProduto:String(op.codProd)
+      }]);
+      const itens=mapItens(data);
+      if(itens.length){malhaCache[cacheKey]=itens;return itens;}
+    }catch(e){console.warn('[Malha] falhou pelo codExt:',op.codProd,e.message);}
+  }
+
+  // Tenta 2: pelo ID numérico interno
+  if(op.nCodProduto){
+    try{
+      const data=await omieCall(EP_MALHA,'ConsultarEstrutura',op._emp.key,op._emp.secret,[{
+        idProduto:parseInt(op.nCodProduto)||0, intProduto:'', codProduto:''
+      }]);
+      const itens=mapItens(data);
+      malhaCache[cacheKey]=itens;
+      return itens;
+    }catch(e){console.warn('[Malha] falhou pelo idInt:',op.nCodProduto,e.message);}
+  }
+
+  malhaCache[cacheKey]=[];
+  return [];
+}
+async function buscarEstoque(emp){
+  if(Object.keys(estoqueCache).length>0)return;
+  try{const data=await omieCall(EP_EST,'ListarPosicaoEstoque',emp.key,emp.secret,[{pagina:1,registros_por_pagina:500}]);(data.posicaoEstoque||data.lista_posicao||[]).forEach(it=>{estoqueCache[String(it.codigo_produto||it.codigo||'')]=parseFloat(it.saldo_fisico)||0;});}catch(e){}
+}
+
+async function gerarPDFOp(id){
+  const op=OPS.find(o=>o.id===id);if(!op)return;
+  toast('Gerando PDF OP '+op.op+'...','info');
+  const itens=await buscarMalha(op);await buscarEstoque(op._emp);
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  renderPaginaOP(doc,op,itens,realEfetivo(op),statusEfetivo(op));
+  doc.save(`OP_${op.op}_${op.codProd}.pdf`);toast(`PDF gerado: OP ${op.op}`,'ok');
+}
+
+async function gerarPDFSelecionados(){
+  if(!selecionados.size){toast('Selecione OPs primeiro','err');return;}
+  const opsArr=Array.from(selecionados).map(id=>OPS.find(o=>o.id===id)).filter(Boolean);
+  document.getElementById('btn-pdf-sel').disabled=true;
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  for(let i=0;i<opsArr.length;i++){
+    const op=opsArr[i];if(i>0)doc.addPage();
+    toast(`Buscando OP ${op.op}...`,'info');
+    const itens=await buscarMalha(op);await buscarEstoque(op._emp);
+    renderPaginaOP(doc,op,itens,realEfetivo(op),statusEfetivo(op),i+1,opsArr.length);
+  }
+  doc.save(`ListaTecnica_${opsArr.length}OPs_${new Date().toISOString().slice(0,10)}.pdf`);
+  document.getElementById('btn-pdf-sel').disabled=false;
+  toast(`PDF com ${opsArr.length} OP(s) gerado!`,'ok');
+}
+
+async function gerarPDFLinha(linhaId){
+  const ops=OPS.filter(o=>o.linha===linhaId);
+  if(!ops.length){toast('Nenhuma OP nesta linha','err');return;}
+  const L=LINHAS.find(l=>l.id===linhaId);
+  toast(`Gerando PDF ${L.label} (${ops.length} OPs)...`,'info');
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  for(let i=0;i<ops.length;i++){
+    const op=ops[i];if(i>0)doc.addPage();
+    const itens=await buscarMalha(op);await buscarEstoque(op._emp);
+    renderPaginaOP(doc,op,itens,realEfetivo(op),statusEfetivo(op),i+1,ops.length);
+  }
+  doc.save(`${L.label}_TodasOPs_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast(`PDF ${L.label} gerado!`,'ok');
+}
+
+function renderPaginaOP(doc,op,itens,rv,st,pgNum,pgTotal){
+  const W=210,H=297,ml=15,mr=15;
+  const L=LINHAS.find(l=>l.id===op.linha)||LINHAS[0];
+  const cor=L.cor==='#1d6fa3'?[29,111,163]:L.cor==='#6a3fbf'?[106,63,191]:[140,74,26];
+
+  doc.setFillColor(11,18,32);doc.rect(0,0,W,36,'F');
+  doc.setFillColor(...cor);doc.rect(0,36,W,2.5,'F');
+
+  doc.setFont('helvetica','bolditalic');doc.setFontSize(16);doc.setTextColor(192,154,74);
+  doc.text('Grupo MF Paris',ml,13);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(82,96,119);
+  doc.text('CALENDÁRIO DE PRODUÇÃO · LISTA TÉCNICA',ml,19);
+  doc.text(`Gerado: ${new Date().toLocaleString('pt-BR')}`,ml,25);
+
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);
+  doc.text(`OP ${op.op}`,W-mr,14,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(130,150,170);
+  doc.text(`${op.empresa} · ${L.label}`,W-mr,22,{align:'right'});
+  if(pgNum&&pgTotal)doc.text(`${pgNum} / ${pgTotal}`,W-mr,29,{align:'right'});
+
+  let y=44;
+  doc.setFillColor(247,245,240);doc.roundedRect(ml,y,W-ml-mr,30,2,2,'F');
+  doc.setFillColor(...cor);doc.rect(ml,y,3,30,'F');
+
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(130,150,170);
+  doc.text('CÓDIGO',ml+6,y+6);doc.text('DESCRIÇÃO',ml+30,y+6);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(11,18,32);
+  doc.text(String(op.codProd),ml+6,y+13);
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+  doc.text(doc.splitTextToSize(op.descProd,110),ml+30,y+13);
+
+  doc.setDrawColor(228,223,210);doc.setLineWidth(0.2);doc.line(ml+4,y+18,W-mr,y+18);
+
+  const campos=[['ABERTURA',op.dtAbertura?fmtDt(op.dtAbertura):'—'],['PREVISÃO',op.dtPrev?fmtDt(op.dtPrev):'—'],['ENCERRADA',op.dtEnc?fmtDt(op.dtEnc):'—'],['STATUS',st],['PLANEJADO',fmt(op.plan)+' kg'],['REALIZADO',rv>0?fmt(rv)+' kg':'—']];
+  const cw=(W-ml-mr-8)/6;
+  campos.forEach(([lbl,val],i)=>{const cx=ml+6+i*cw;doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(130,150,170);doc.text(lbl,cx,y+23);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(11,18,32);doc.text(val,cx,y+29);});
+
+  y+=36;
+  const bw=(W-ml-mr-6)/2;const pct=op.plan>0?Math.min(rv/op.plan,1):0;
+  doc.setFillColor(229,240,255);doc.roundedRect(ml,y,bw,14,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(29,111,163);doc.text('PLANEJADO',ml+5,y+5);
+  doc.setFontSize(12);doc.setTextColor(11,18,32);doc.text(fmt(op.plan)+' kg',ml+5,y+12);
+  doc.setFillColor(...(rv>0?[228,240,228]:[245,245,245]));doc.roundedRect(ml+bw+6,y,bw,14,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(rv>0?26:130,rv>0?122:150,rv>0?69:170);
+  doc.text('REALIZADO · '+Math.round(pct*100)+'%',ml+bw+11,y+5);
+  doc.setFontSize(12);doc.setTextColor(11,18,32);doc.text(rv>0?fmt(rv)+' kg':'—',ml+bw+11,y+12);
+
+  y+=20;
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(11,18,32);doc.text('Lista Técnica de Insumos & Matéria-Prima',ml,y);
+  y+=5;doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,150,170);
+  doc.text(`${itens.length} itens · baseado em ${fmt(op.plan)} kg planejados`,ml,y);y+=6;
+
+  const TH=[{x:ml+2,l:'CÓDIGO'},{x:ml+22,l:'DESCRIÇÃO'},{x:ml+88,l:'TIPO'},{x:ml+108,l:'QTD/1000'},{x:ml+132,l:'TOTAL NEC.'},{x:ml+157,l:'ESTOQUE'},{x:ml+176,l:'STATUS'}];
+  doc.setFillColor(11,18,32);doc.rect(ml,y,W-ml-mr,7,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(192,154,74);
+  TH.forEach(c=>doc.text(c.l,c.x,y+5));y+=7;
+
+  if(!itens.length){
+    doc.setFillColor(247,245,240);doc.rect(ml,y,W-ml-mr,12,'F');
+    doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(130,150,170);
+    doc.text('Nenhuma lista técnica cadastrada no OMIE.',W/2,y+8,{align:'center'});y+=12;
+  }else{
+    itens.forEach((it,idx)=>{
+      if(y>H-18){
+        doc.setDrawColor(192,154,74);doc.setLineWidth(0.4);doc.line(ml,H-10,W-mr,H-10);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(130,150,170);
+        doc.text(`OP ${op.op} · continua...`,ml,H-5);doc.text(`${L.label}`,W-mr,H-5,{align:'right'});
+        doc.addPage();y=20;
+        doc.setFillColor(11,18,32);doc.rect(0,0,W,10,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(192,154,74);
+        doc.text(`OP ${op.op} · ${op.codProd} · continuação`,ml,7);y+=12;
+        doc.setFillColor(11,18,32);doc.rect(ml,y,W-ml-mr,7,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(192,154,74);
+        TH.forEach(c=>doc.text(c.l,c.x,y+5));y+=7;
+      }
+      const rH=8;
+      doc.setFillColor(idx%2===0?255:248,idx%2===0?255:246,idx%2===0?255:242);doc.rect(ml,y,W-ml-mr,rH,'F');
+      doc.setDrawColor(228,223,210);doc.setLineWidth(0.15);doc.line(ml,y+rH,W-mr,y+rH);
+      const nec=(it.qtd1k/1000)*op.plan;const estq=estoqueCache[String(it.cod)]||0;const saldo=estq-nec;const ok=saldo>=0;
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(82,96,119);doc.text(String(it.cod).slice(0,14),TH[0].x,y+5.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(42,58,82);doc.text(doc.splitTextToSize(it.desc,64)[0]||'',TH[1].x,y+5.5);
+      doc.setFontSize(6.5);doc.setTextColor(82,96,119);doc.text((it.tipo||'').slice(0,10),TH[2].x,y+5.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(42,58,82);doc.text(it.qtd1k.toFixed(2)+' '+it.un,TH[3].x,y+5.5);
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(nec.toFixed(2)+' '+it.un,TH[4].x,y+5.5);
+      doc.setTextColor(estq>0?26:130,estq>0?122:150,estq>0?69:170);doc.text(estq>0?estq.toFixed(2):'—',TH[5].x,y+5.5);
+      doc.setTextColor(ok?26:181,ok?122:42,ok?69:32);doc.text(ok?'OK':'COMPRAR',TH[6].x,y+5.5);
+      y+=rH;
+    });
+  }
+  doc.setDrawColor(192,154,74);doc.setLineWidth(0.4);doc.line(ml,H-10,W-mr,H-10);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(130,150,170);
+  doc.text(`Grupo MF Paris · OPUS · Calendário de Produção`,ml,H-5);
+  doc.text(`OP ${op.op} · ${op.empresa} · ${new Date().toLocaleDateString('pt-BR')}`,W-mr,H-5,{align:'right'});
+}
+
+function setConn(t,txt){const el=document.getElementById('conn-pill');el.className='sp '+{loading:'sp-loading',ok:'sp-ok',err:'sp-err'}[t];document.getElementById('conn-txt').textContent=txt;}
+function setLoading(on){document.getElementById('reload-ico').style.animation=on?'spin .7s linear infinite':'';document.getElementById('btn-reload').disabled=on;}
+function toast(msg,type='info'){const c=document.getElementById('toast-cont');const el=document.createElement('div');el.className=`toast-item t-${type}`;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3600);}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharDetalhe();});
+carregar();
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

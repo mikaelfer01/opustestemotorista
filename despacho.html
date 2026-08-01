@@ -1,0 +1,413 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1728">
+<title>OPUS — Despacho</title>
+<script type="module" src="/checar-login.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a1728; --navy2:#0d1f3c; --gold:#e8c96a; --gold2:#b8902a;
+  --bg:#f5f7fb; --card:#ffffff; --border:#e5e9f2;
+  --ink:#0b1437; --ink2:#3f4a6b; --ink3:#6b7691; --ink4:#9aa3b8;
+  --ok:#16a34a; --ok-bg:rgba(22,163,74,.1);
+  --warn:#ea580c; --warn-bg:rgba(234,88,12,.1);
+  --err:#dc2626; --err-bg:rgba(220,38,38,.1);
+  --info:#1d4ed8; --info-bg:rgba(29,78,216,.1);
+  --wapp:#25d366;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;}
+
+.hdr{flex-shrink:0;height:56px;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:2px solid var(--gold2);box-shadow:0 4px 16px rgba(10,15,40,.3);z-index:10;}
+.hdr-back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;}
+.hdr-back:active{background:rgba(255,255,255,.15)}
+.hdr-title{flex:1;min-width:0}
+.hdr-t1{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;font-weight:700;color:var(--gold);line-height:1}
+.hdr-t2{font-size:11px;font-weight:500;color:rgba(255,255,255,.7);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-user{font-size:10px;color:rgba(255,255,255,.6);text-align:right;flex-shrink:0;line-height:1.3}
+.hdr-user b{display:block;color:#fff;font-size:11px;font-weight:700}
+
+.scr{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scr::-webkit-scrollbar{width:0}
+.pad{padding:14px}
+
+.sec-t{font-size:10px;font-weight:800;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:14px 4px 8px;display:flex;align-items:center;gap:6px;}
+.sec-t::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* DT CARD */
+.dt-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s;}
+.dt-card:active{transform:scale(.98)}
+.dt-card.s-carregado{border-left:4px solid var(--ok)}
+.dt-card.s-despachado{border-left:4px solid var(--info);opacity:.8}
+.dt-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dt-nome{font-size:14px;font-weight:800;color:var(--ink);flex:1}
+.dt-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;flex-shrink:0}
+.badge-carregado{background:var(--ok-bg);color:#15803d}
+.badge-despachado{background:var(--info-bg);color:#1e40af}
+.dt-mot{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px}
+.dt-tel{font-size:12px;color:var(--ink3);margin-bottom:2px}
+.dt-placa{font-size:11px;color:var(--ink3);font-family:monospace}
+.dt-stats{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.dt-stat{flex:1;text-align:center}
+.dt-stat-l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.dt-stat-v{font-size:14px;font-weight:800;color:var(--ink);margin-top:2px}
+
+.vazio{text-align:center;padding:40px 20px;color:var(--ink3);font-size:13px;line-height:1.6;}
+.vazio .ico{font-size:48px;margin-bottom:12px;opacity:.4}
+
+/* DETALHE */
+.dt-detail{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px;}
+.dt-detail-hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));padding:16px;color:#fff}
+.dt-detail-rota{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.dt-detail-mot{font-size:13px;color:rgba(255,255,255,.9);font-weight:600}
+.dt-detail-body{padding:14px}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--ink3);font-weight:500}
+.info-val{color:var(--ink);font-weight:700;text-align:right}
+
+/* LINK BOX */
+.link-box{background:var(--info-bg);border:1px solid rgba(29,78,216,.2);border-radius:12px;padding:14px;margin-bottom:12px}
+.link-titulo{font-size:12px;font-weight:800;color:var(--info);margin-bottom:8px}
+.link-url{font-family:monospace;font-size:11px;color:var(--ink2);background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;word-break:break-all;line-height:1.5;margin-bottom:10px}
+.btn-copiar{width:100%;padding:10px;border-radius:9px;border:1px solid rgba(29,78,216,.3);background:var(--info-bg);color:var(--info);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.btn-copiar:active{background:var(--info);color:#fff}
+
+/* BOTÃO WHATSAPP */
+.btn-wapp{width:100%;padding:15px;border-radius:12px;border:none;background:var(--wapp);color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;box-shadow:0 4px 16px rgba(37,211,102,.3)}
+.btn-wapp:active{transform:scale(.98)}
+.btn-wapp .wapp-ico{font-size:22px}
+
+.btn-despachar{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--ok),#15803d);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:8px}
+.btn-despachar:active{transform:scale(.98)}
+.btn-despachar:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}
+
+.btn-sec{width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--ink2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+
+/* PARADAS LISTA */
+.paradas-list{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.parada-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.parada-item:last-child{border-bottom:none}
+.parada-num{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.parada-cli{flex:1;min-width:0}
+.parada-cli-n{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.parada-cli-c{font-size:10px;color:var(--ink3);margin-top:1px}
+.parada-peso{font-size:11px;font-weight:700;color:var(--ink2);flex-shrink:0}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:2000;box-shadow:0 10px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+.toast.on{opacity:1}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--err)}
+
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:3000}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--ok);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-tx{margin-top:14px;font-size:13px;color:var(--ink3);font-weight:600}
+
+.hide{display:none!important}
+
+.despachado-banner{background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;display:flex;align-items:center;gap:8px}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-tx" id="loading-tx">Carregando...</div>
+</div>
+
+<header class="hdr">
+  <div class="hdr-back hide" id="btn-voltar" onclick="voltarLista()">←</div>
+  <div class="hdr-title">
+    <div class="hdr-t1" id="hdr-t1">OPUS · Despacho</div>
+    <div class="hdr-t2" id="hdr-t2">Rotas prontas para despachar</div>
+  </div>
+  <div class="hdr-user">
+    <span>Despachante</span>
+    <b id="hdr-nome">—</b>
+  </div>
+</header>
+
+<!-- TELA LISTA -->
+<div class="scr hide" id="tela-lista">
+  <div class="pad">
+    <div class="sec-t">Prontos para despachar</div>
+    <div id="lista-prontos"></div>
+    <div class="sec-t" id="sec-despachados-t" style="margin-top:20px">Despachados hoje</div>
+    <div id="lista-despachados"></div>
+  </div>
+</div>
+
+<!-- TELA DETALHE -->
+<div class="scr hide" id="tela-detalhe">
+  <div class="pad" id="detalhe-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { onUsuarioPronto } from '/js/auth.js';
+import { db as _modDb } from '/js/firebase-init.js';
+import {
+  ref as fbRef, onValue, update as fbUpdate
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const MOTORISTA_URL_BASE = 'https://programacao-teste.vercel.app/motorista.html';
+
+const db = {
+  ref: (path) => {
+    const r = fbRef(_modDb, path);
+    return {
+      on:     (_, cb, err) => onValue(r, s => cb({ val: () => s.val() }), err),
+      update: (v) => fbUpdate(r, v),
+    };
+  }
+};
+
+let usuario = null;
+let DTS = {};
+let dtAtual = null;
+
+onUsuarioPronto(u => {
+  usuario = u;
+  document.getElementById('hdr-nome').textContent = u ? (u.nome || u.email) : '—';
+});
+
+const urlParams = new URLSearchParams(window.location.search);
+const dtParam = urlParams.get('dt');
+
+const safetyTimer = setTimeout(() => {
+  document.getElementById('loading').classList.add('hide');
+  mostrarLista();
+}, 8000);
+
+db.ref('despachos').on('value', snap => {
+  clearTimeout(safetyTimer);
+  DTS = snap.val() || {};
+  document.getElementById('loading').classList.add('hide');
+
+  if (dtParam && DTS[dtParam] && !dtAtual) {
+    abrirDetalhe(dtParam);
+  } else if (dtAtual && DTS[dtAtual]) {
+    renderDetalhe();
+  } else {
+    mostrarLista();
+  }
+}, err => {
+  clearTimeout(safetyTimer);
+  document.getElementById('loading').classList.add('hide');
+  mostrarLista();
+});
+
+// ── LISTA ──────────────────────────────────────────────────────────────────────
+function mostrarLista() {
+  dtAtual = null;
+  document.getElementById('btn-voltar').classList.add('hide');
+  setTela('tela-lista');
+  document.getElementById('hdr-t1').textContent = 'OPUS · Despacho';
+  document.getElementById('hdr-t2').textContent = 'Rotas prontas para despachar';
+  renderLista();
+}
+window.voltarLista = mostrarLista;
+
+function renderLista() {
+  const prontos = [], despachados = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  Object.keys(DTS).forEach(token => {
+    const dt = DTS[token];
+    const st = dt.statusFluxo || '';
+    if (st === 'carregado') {
+      prontos.push({ token, dt });
+    } else if (st === 'despachado' || st === 'em_transito') {
+      if (dt.despacho && dt.despacho.ts) {
+        const dia = new Date(dt.despacho.ts).toISOString().slice(0, 10);
+        if (dia === hoje) despachados.push({ token, dt });
+      }
+    }
+  });
+
+  const elP = document.getElementById('lista-prontos');
+  const elD = document.getElementById('lista-despachados');
+
+  elP.innerHTML = prontos.length
+    ? prontos.map(({ token, dt }) => cardDT(token, dt, false)).join('')
+    : '<div class="vazio"><div class="ico">🚚</div>Nenhuma rota pronta para despachar.<br><small>Finalize o carregamento para que as rotas apareçam aqui.</small></div>';
+
+  document.getElementById('sec-despachados-t').style.display = despachados.length ? '' : 'none';
+  elD.innerHTML = despachados.map(({ token, dt }) => cardDT(token, dt, true)).join('');
+}
+
+function cardDT(token, dt, despachado) {
+  const stShort = despachado ? 'despachado' : 'carregado';
+  const stLabel = despachado ? 'Despachado' : 'Pronto';
+  const paradas = dt.paradas || [];
+  const tel = (dt.motoristaTel || '').replace(/\D/g, '');
+
+  return `<div class="dt-card s-${stShort}" onclick="abrirDetalhe('${token}')">
+    <div class="dt-h">
+      <div class="dt-nome">${dt.nomeRota || '—'}</div>
+      <div class="dt-badge badge-${stShort}">${stLabel}</div>
+    </div>
+    <div class="dt-mot">🚗 ${dt.motoristaNome || '—'}</div>
+    ${tel ? `<div class="dt-tel">📱 ${dt.motoristaTel || '—'}</div>` : ''}
+    <div class="dt-placa">${dt.motoristaPlaca || '—'}${dt.motoristaVeiculo ? ' · ' + dt.motoristaVeiculo : ''}</div>
+    <div class="dt-stats">
+      <div class="dt-stat"><div class="dt-stat-l">Paradas</div><div class="dt-stat-v">${paradas.length}</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Peso</div><div class="dt-stat-v">${Math.round(dt.totalPeso || 0)} kg</div></div>
+      <div class="dt-stat"><div class="dt-stat-l">Km</div><div class="dt-stat-v">${Math.round(dt.totalKm || 0)}</div></div>
+    </div>
+  </div>`;
+}
+
+// ── DETALHE ────────────────────────────────────────────────────────────────────
+window.abrirDetalhe = function(token) {
+  dtAtual = token;
+  document.getElementById('btn-voltar').classList.remove('hide');
+  setTela('tela-detalhe');
+  renderDetalhe();
+};
+
+function renderDetalhe() {
+  const dt = DTS[dtAtual];
+  if (!dt) { mostrarLista(); return; }
+
+  document.getElementById('hdr-t1').textContent = dt.nomeRota || '—';
+  document.getElementById('hdr-t2').textContent = dt.motoristaNome || '—';
+
+  const paradas = dt.paradas || [];
+  const tel = (dt.motoristaTel || '').replace(/\D/g, '');
+  const telWapp = tel.startsWith('55') ? tel : '55' + tel;
+  const link = MOTORISTA_URL_BASE + '?token=' + dtAtual;
+  const despachado = dt.statusFluxo === 'despachado' || dt.statusFluxo === 'em_transito';
+  const msg = montarMensagem(dt, paradas, link);
+  const waUrl = 'https://wa.me/' + telWapp + '?text=' + encodeURIComponent(msg);
+
+  let html = '';
+
+  // Banner despachado
+  if (despachado && dt.despacho) {
+    const hora = new Date(dt.despacho.ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    html += `<div class="despachado-banner">✅ Despachado às ${hora} por ${dt.despacho.por || '—'}</div>`;
+  }
+
+  // Card info
+  html += `<div class="dt-detail">
+    <div class="dt-detail-hdr">
+      <div class="dt-detail-rota">${dt.nomeRota || '—'}</div>
+      <div class="dt-detail-mot">🚗 ${dt.motoristaNome || '—'} · ${dt.motoristaPlaca || '—'}</div>
+    </div>
+    <div class="dt-detail-body">
+      <div class="info-row"><span class="info-label">Veículo</span><span class="info-val">${dt.motoristaVeiculo || '—'}</span></div>
+      <div class="info-row"><span class="info-label">Telefone</span><span class="info-val">${dt.motoristaTel || '—'}</span></div>
+      <div class="info-row"><span class="info-label">Paradas</span><span class="info-val">${paradas.length}</span></div>
+      <div class="info-row"><span class="info-label">Peso total</span><span class="info-val">${Math.round(dt.totalPeso || 0)} kg</span></div>
+      <div class="info-row"><span class="info-label">Distância</span><span class="info-val">${Math.round(dt.totalKm || 0)} km</span></div>
+      <div class="info-row"><span class="info-label">Embarque</span><span class="info-val">${dt.emb || '—'}</span></div>
+    </div>
+  </div>`;
+
+  // Link da rota
+  html += `<div class="link-box">
+    <div class="link-titulo">🔗 Link da rota para o motorista</div>
+    <div class="link-url">${link}</div>
+    <button class="btn-copiar" onclick="copiarLink('${link}')">📋 Copiar link</button>
+  </div>`;
+
+  // Ações
+  if (tel) {
+    html += `<a href="${waUrl}" target="_blank" onclick="marcarDespachado()" class="btn-wapp">
+      <span class="wapp-ico">💬</span> Enviar via WhatsApp
+    </a>`;
+  }
+
+  if (!despachado) {
+    html += `<button class="btn-despachar" onclick="marcarDespachado()">✅ Marcar como despachado</button>`;
+  }
+
+  html += `<button class="btn-sec" onclick="copiarLink('${link}')">📋 Só copiar o link</button>`;
+
+  // Lista de paradas
+  html += `<div class="sec-t" style="margin-top:16px">Paradas da rota</div>
+  <div class="paradas-list">
+    ${paradas.map((p, i) => `
+      <div class="parada-item">
+        <div class="parada-num">${i + 1}</div>
+        <div class="parada-cli">
+          <div class="parada-cli-n">${p.cliente || '—'}</div>
+          <div class="parada-cli-c">${(p.cidade || '') + (p.estado ? ' / ' + p.estado : '')} · Ped. ${p.pedido || '—'}</div>
+        </div>
+        <div class="parada-peso">${p.peso || 0} kg</div>
+      </div>`).join('')}
+  </div>`;
+
+  document.getElementById('detalhe-content').innerHTML = html;
+}
+
+function montarMensagem(dt, paradas, link) {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  let msg = `🚛 *OPUS — Roteiro ${hoje}*\n\n`;
+  msg += `👤 *Motorista:* ${dt.motoristaNome || '—'}\n`;
+  msg += `🚗 *Veículo:* ${dt.motoristaPlaca || '—'} · ${dt.motoristaVeiculo || '—'}\n`;
+  msg += `📦 *Rota:* ${dt.nomeRota || '—'}\n`;
+  msg += `📍 *Paradas:* ${paradas.length}\n`;
+  msg += `⚖️ *Peso:* ${Math.round(dt.totalPeso || 0)} kg\n\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━\n📋 *Paradas:*\n\n`;
+  paradas.forEach((p, i) => {
+    msg += `${i + 1}. *${p.cliente || '—'}*\n`;
+    msg += `   📍 ${p.cidade || ''}/${p.estado || ''}\n`;
+    msg += `   📦 ${p.peso || 0} kg · Ped. ${p.pedido || '—'}\n\n`;
+  });
+  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  msg += `🔗 *Seu link:*\n${link}\n\n`;
+  msg += `_Abra o link para confirmar as entregas._`;
+  return msg;
+}
+
+window.marcarDespachado = function() {
+  if (!dtAtual || !DTS[dtAtual]) return;
+  if (DTS[dtAtual].statusFluxo === 'despachado') return;
+  db.ref('despachos/' + dtAtual).update({
+    statusFluxo: 'despachado',
+    'despacho/ts': Date.now(),
+    'despacho/por': usuario ? usuario.nome : 'despachante'
+  });
+  toast('✅ Marcado como despachado!', 'ok');
+};
+
+window.copiarLink = function(link) {
+  navigator.clipboard.writeText(link).then(() => {
+    toast('📋 Link copiado!', 'ok');
+  }).catch(() => {
+    // Fallback
+    const el = document.createElement('textarea');
+    el.value = link; el.style.position = 'fixed'; el.style.opacity = '0';
+    document.body.appendChild(el); el.select();
+    document.execCommand('copy'); el.remove();
+    toast('📋 Link copiado!', 'ok');
+  });
+};
+
+function setTela(id) {
+  ['tela-lista', 'tela-detalhe'].forEach(t => {
+    document.getElementById(t).classList.toggle('hide', t !== id);
+  });
+}
+
+let toastTimer = null;
+function toast(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo === 'ok' ? ' ok' : tipo === 'err' ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+</script>
+<script src="js/sidebar.js" defer></script>
+</body>
+</html>

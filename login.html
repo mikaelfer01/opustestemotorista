@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPUS - Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #0a1f6b;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    width: 100%;
+    max-width: 360px;
+    padding: 36px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  }
+  .card h1 { font-size: 20px; margin-bottom: 4px; color: #0a1f6b; }
+  .card p.subtitle { color: #666; font-size: 13px; margin-bottom: 22px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; margin-top: 14px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid #d8d8d8; border-radius: 8px; font-size: 14px; }
+  input:focus { outline: none; border-color: #1e40af; }
+  button {
+    width: 100%; margin-top: 20px; padding: 11px; background: #1e40af;
+    color: #fff; border: none; border-radius: 8px; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  button:disabled { background: #93b4f0; }
+  .msg { margin-top: 14px; padding: 9px 11px; border-radius: 8px; font-size: 13px; display: none; }
+  .msg.erro { background: #fde8e8; color: #b42318; display: block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>OPUS</h1>
+  <p class="subtitle">Entre com seu usuário e senha</p>
+  <div id="mensagem" class="msg"></div>
+  <form id="formLogin">
+    <label for="email">E-mail</label>
+    <input type="email" id="email" required autocomplete="username">
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" required autocomplete="current-password">
+    <button type="submit" id="btnEntrar">Entrar</button>
+  </form>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAch7_Sn4jq1cuTGV1ijGsDGUXC9dyilOs",
+    authDomain: "mfparis-bd054.firebaseapp.com",
+    databaseURL: "https://mfparis-bd054-default-rtdb.firebaseio.com",
+    projectId: "mfparis-bd054",
+    storageBucket: "mfparis-bd054.firebasestorage.app",
+    messagingSenderId: "106506342977",
+    appId: "1:106506342977:web:cda4d2d0f3296c4284ecc0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const form = document.getElementById("formLogin");
+  const btn = document.getElementById("btnEntrar");
+  const msg = document.getElementById("mensagem");
+
+  // Se a página que pediu login estava guardada, volta pra ela depois.
+  const destino = sessionStorage.getItem("opus_destino_pos_login") || "/torre.html";
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value;
+
+    btn.disabled = true;
+    btn.textContent = "Entrando...";
+    msg.style.display = "none";
+
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+      window.location.href = destino;
+    } catch (erro) {
+      msg.className = "msg erro";
+      msg.textContent = "E-mail ou senha incorretos.";
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+    }
+  });
+</script>
+
+</body>
+</html>
