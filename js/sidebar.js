@@ -7,31 +7,43 @@
 (function () {
   "use strict";
 
-  var MENU_ITEMS = [
-    { href: "index.html", label: "Início", icon: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
-    { href: "calendario.html", label: "Calendário", icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
-    { href: "apontamento.html", label: "Produtividade", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>' },
-    { href: "programacao.html", label: "Programação da Produção", icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
-    { href: "simulador-producao.html", label: "Simulador de Programação", icon: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>' },
-    { href: "fechamento-op.html", label: "Fechamento de OP", icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>' },
-    { href: "simulador.html", label: "Simulador de Frete", icon: '<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
-    { href: "farol.html", label: "Farol de Entregas", icon: '<line x1="12" y1="2" x2="12" y2="4"/><path d="M9 4h6l1 4H8L9 4z"/><path d="M8 8l-1 8h10l-1-8"/>' },
-    { href: "torre.html", label: "Torre de Controle", icon: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>' },
-    { href: "carteira.html", label: "Carteira de Pedidos", icon: '<path d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/>' },
-    { href: "separacao.html", label: "Separação & Carregamento", icon: '<path d="M21 8V5a2 2 0 00-2-2H5a2 2 0 00-2 2v3"/><path d="M3 8h18l-1.5 11a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/>' },
-    { href: "carregamento.html", label: "Carregamento", icon: '<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h3l3 3v4h-6z"/><circle cx="5.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/>' },
-    { href: "despacho.html", label: "Despacho", icon: '<path d="M3 3h11v10H3zM14 8h4l3 3v2h-7z"/><circle cx="6.5" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/>' },
-    { href: "motorista.html", label: "Entregas / Motorista", icon: '<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h3l3 3v4h-6z"/><circle cx="5.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/>' },
-    { href: "roteirizador.html", label: "Roteirização", icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>' },
-    { href: "estoque.html", label: "Estoque", icon: '<line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/><circle cx="6" cy="19.5" r="1.5"/><circle cx="15" cy="19.5" r="1.5"/>' },
-    { href: "estoque-omie.html", label: "Estoque OMIE", icon: '<line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/>' },
-    { href: "comercial.html", label: "Estoque Comercial", icon: '<path d="M3 3h18v4H3zM5 7v13h14V7"/><path d="M9 12h6"/>' },
-    { href: "notas-fiscais.html", label: "Notas Fiscais", icon: '<path d="M6 2h9l5 5v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>' },
-    { href: "anexos.html", label: "Anexos do Pedido", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
-    { href: "anexo-ar.html", label: "Anexar AR", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
-    { href: "termos.html", label: "Termos de Transporte", icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>' },
-    { href: "usuarios.html", label: "Usuários", icon: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>' },
-    { href: "trocar-senha.html", label: "Trocar Senha", icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>' }
+  var MENU_GROUPS = [
+    { titulo: "Geral", itens: [
+      { href: "index.html", label: "Início", icon: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+      { href: "calendario.html", label: "Calendário", icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' }
+    ]},
+    { titulo: "Produção", itens: [
+      { href: "apontamento.html", label: "Produtividade", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>' },
+      { href: "programacao.html", label: "Programação da Produção", icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+      { href: "simulador-producao.html", label: "Simulador de Programação", icon: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>' },
+      { href: "fechamento-op.html", label: "Fechamento de OP", icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>' }
+    ]},
+    { titulo: "Logística & Entregas", itens: [
+      { href: "simulador.html", label: "Simulador de Frete", icon: '<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
+      { href: "farol.html", label: "Farol de Entregas", icon: '<line x1="12" y1="2" x2="12" y2="4"/><path d="M9 4h6l1 4H8L9 4z"/><path d="M8 8l-1 8h10l-1-8"/>' },
+      { href: "torre.html", label: "Torre de Controle", icon: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>' },
+      { href: "roteirizador.html", label: "Roteirização", icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>' },
+      { href: "separacao.html", label: "Separação & Carregamento", icon: '<path d="M21 8V5a2 2 0 00-2-2H5a2 2 0 00-2 2v3"/><path d="M3 8h18l-1.5 11a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/>' },
+      { href: "carregamento.html", label: "Carregamento", icon: '<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h3l3 3v4h-6z"/><circle cx="5.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/>' },
+      { href: "despacho.html", label: "Despacho", icon: '<path d="M3 3h11v10H3zM14 8h4l3 3v2h-7z"/><circle cx="6.5" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/>' },
+      { href: "motorista.html", label: "Entregas / Motorista", icon: '<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h3l3 3v4h-6z"/><circle cx="5.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/>' }
+    ]},
+    { titulo: "Comercial", itens: [
+      { href: "carteira.html", label: "Carteira de Pedidos", icon: '<path d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/>' },
+      { href: "notas-fiscais.html", label: "Notas Fiscais", icon: '<path d="M6 2h9l5 5v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>' },
+      { href: "anexos.html", label: "Anexos do Pedido", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
+      { href: "anexo-ar.html", label: "Anexar AR", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
+      { href: "termos.html", label: "Termos de Transporte", icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>' }
+    ]},
+    { titulo: "Estoque", itens: [
+      { href: "estoque.html", label: "Estoque", icon: '<line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/><circle cx="6" cy="19.5" r="1.5"/><circle cx="15" cy="19.5" r="1.5"/>' },
+      { href: "estoque-omie.html", label: "Estoque OMIE", icon: '<line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/>' },
+      { href: "comercial.html", label: "Estoque Comercial", icon: '<path d="M3 3h18v4H3zM5 7v13h14V7"/><path d="M9 12h6"/>' }
+    ]},
+    { titulo: "Conta", itens: [
+      { href: "usuarios.html", label: "Usuários", icon: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>' },
+      { href: "trocar-senha.html", label: "Trocar Senha", icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>' }
+    ]}
   ];
 
   var CURRENT = (location.pathname.split("/").pop() || "index.html");
@@ -50,7 +62,9 @@
   "#opus-sidebar .opus-close{display:none;position:absolute;top:14px;right:12px;background:transparent;border:none;color:#9fb0c9;cursor:pointer;padding:4px;}" +
   "#opus-sidebar .opus-close svg{width:18px;height:18px;}" +
   "#opus-sidebar nav{display:flex;flex-direction:column;padding:8px;gap:2px;}" +
-  "#opus-sidebar .opus-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:rgba(255,255,255,.82);text-decoration:none;font-size:12.5px;font-weight:700;letter-spacing:.02em;background:transparent;border:none;text-align:left;cursor:pointer;font-family:inherit;white-space:normal;line-height:1.25;}" +
+  "#opus-sidebar .opus-group-title{margin:12px 0 4px;padding:0 10px;font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;text-align:center;color:rgba(232,201,106,.55);white-space:nowrap;}" +
+  "#opus-sidebar nav>.opus-group-title:first-child{margin-top:4px;}" +
+  "#opus-sidebar .opus-link{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border-radius:8px;color:rgba(255,255,255,.82);text-decoration:none;font-size:12.5px;font-weight:700;letter-spacing:.02em;background:transparent;border:none;text-align:center;cursor:pointer;font-family:inherit;white-space:normal;line-height:1.25;}" +
   "#opus-sidebar .opus-link:hover{background:rgba(255,255,255,.07);color:#fff;}" +
   "#opus-sidebar .opus-link.active{background:rgba(184,144,42,.16);color:var(--opus-gold);box-shadow:inset 3px 0 0 var(--opus-gold2);}" +
   "#opus-sidebar .opus-link svg{width:16px;height:16px;flex-shrink:0;opacity:.8;}" +
@@ -63,6 +77,7 @@
   "#opus-sidebar.opus-collapsed{width:var(--opus-sidebar-w-collapsed);}" +
   "#opus-sidebar.opus-collapsed .opus-brand small,#opus-sidebar.opus-collapsed .opus-brand{font-size:0;padding-left:0;padding-right:0;text-align:center;}" +
   "#opus-sidebar.opus-collapsed .opus-brand-logo{display:block;}" +
+  "#opus-sidebar.opus-collapsed .opus-group-title{display:none;}" +
   "#opus-sidebar.opus-collapsed .opus-link{justify-content:center;padding:10px;}" +
   "#opus-sidebar.opus-collapsed .opus-link span{display:none;}" +
   "#opus-sidebar.opus-collapsed #opus-collapse-toggle{right:50%;transform:translateX(50%);top:54px;}" +
@@ -117,15 +132,19 @@
     sidebar.appendChild(collapseBtn);
 
     var nav = el("nav");
-    MENU_ITEMS.forEach(function (item) {
-      var isActive = item.href === CURRENT;
-      var a = el("a", {
-        class: "opus-link" + (isActive ? " active" : ""),
-        href: item.href,
-        title: item.label
-      }, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + item.icon + '</svg><span>' + item.label + '</span>');
-      if (isActive) a.setAttribute("aria-current", "page");
-      nav.appendChild(a);
+    MENU_GROUPS.forEach(function (group) {
+      var title = el("div", { class: "opus-group-title" }, group.titulo);
+      nav.appendChild(title);
+      group.itens.forEach(function (item) {
+        var isActive = item.href === CURRENT;
+        var a = el("a", {
+          class: "opus-link" + (isActive ? " active" : ""),
+          href: item.href,
+          title: item.label
+        }, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + item.icon + '</svg><span>' + item.label + '</span>');
+        if (isActive) a.setAttribute("aria-current", "page");
+        nav.appendChild(a);
+      });
     });
     sidebar.appendChild(nav);
 
