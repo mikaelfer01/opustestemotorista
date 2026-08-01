@@ -29,6 +29,7 @@
     { href: "notas-fiscais.html", label: "Notas Fiscais", icon: '<path d="M6 2h9l5 5v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>' },
     { href: "anexos.html", label: "Anexos do Pedido", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
     { href: "anexo-ar.html", label: "Anexar AR", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
+    { href: "termos.html", label: "Termos de Transporte", icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>' },
     { href: "usuarios.html", label: "Usuários", icon: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>' },
     { href: "trocar-senha.html", label: "Trocar Senha", icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>' }
   ];
