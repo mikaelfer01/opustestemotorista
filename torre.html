@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OPUS — Torre de Controle</title>
 <script type="module" src="/checar-login.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
 <style>
 :root{--azul-d:#0a1f6b;--azul:#1e40af;--verde:#16a34a;--vm:#dc2626;--lj:#ea580c;--gold:#d4af37;--txt:#0b1437;--txtm:#3f4a6b;--txts:#6b7691;--glass:rgba(255,255,255,0.92);--border:rgba(15,23,42,0.08);--shadow:0 4px 20px rgba(0,0,0,0.1);--r:10px;--rl:16px;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -497,10 +497,29 @@ window.atualizarTodasNFsPendentes = async function(){
 };
 
 // ── MAPA ──────────────────────────────────────────────────────────────────────
-map = L.map('map', {zoomControl:true}).setView([-19.921307,-44.025736], 6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OSM',maxZoom:19}).addTo(map);
-var cdIco = L.divIcon({html:'<div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 8px rgba(34,197,94,.7)"></div>',className:'',iconAnchor:[7,7]});
-L.marker([-19.921307,-44.025736],{icon:cdIco}).bindPopup('<b>CD MFParis — Contagem/MG</b>').addTo(map);
+(async function initMapa(){
+  try {
+    var r = await fetch('/api/mapbox-token');
+    var d = await r.json();
+    if (!d.token) throw new Error('token vazio');
+    mapboxgl.accessToken = d.token;
+  } catch (e) {
+    alert('Não foi possível carregar o mapa (token Mapbox): ' + e.message);
+    return;
+  }
+  map = new mapboxgl.Map({container:'map', style:'mapbox://styles/mapbox/navigation-day-v1', center:[-44.025736,-19.921307], zoom:6});
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+  var cdEl = document.createElement('div');
+  cdEl.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 8px rgba(34,197,94,.7)';
+  new mapboxgl.Marker({element:cdEl}).setLngLat([-44.025736,-19.921307])
+    .setPopup(new mapboxgl.Popup().setHTML('<b>CD MFParis — Contagem/MG</b>')).addTo(map);
+
+  // ── FIREBASE — aguarda auth do checar-login.js ────────────────────────────────
+  onAuthStateChanged(auth, function(user) {
+    if (!user) return; // checar-login.js já redireciona se não logado
+    iniciarListener();
+  });
+})();
 
 setInterval(function(){document.getElementById('badge-hora').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}, 1000);
 
@@ -511,12 +530,6 @@ setInterval(function(){document.getElementById('badge-hora').textContent = new D
   document.getElementById('hist-ate').value = fmtDateInput(hoje);
   document.getElementById('hist-de').value = fmtDateInput(d7);
 })();
-
-// ── FIREBASE — aguarda auth do checar-login.js ────────────────────────────────
-onAuthStateChanged(auth, function(user) {
-  if (!user) return; // checar-login.js já redireciona se não logado
-  iniciarListener();
-});
 
 function iniciarListener() {
   onValue(ref(_db, 'despachos'), function(snap) {
@@ -656,7 +669,7 @@ function atualizarMarcadores() {
   Object.keys(despachos).forEach(function(t) {
     var d = despachos[t];
     if (d.concluido) {
-      if (marcadores[t]) { map.removeLayer(marcadores[t]); delete marcadores[t]; }
+      if (marcadores[t]) { marcadores[t].remove(); delete marcadores[t]; }
       return;
     }
     if (!d.gps||!d.gps.lat) return;
@@ -664,15 +677,18 @@ function atualizarMarcadores() {
     var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
     var stale = d.iniciou && !d.concluido && (Date.now()-(d.gps.ts||0)) > GPS_STALE_MS;
     if (marcadores[t]) {
-      marcadores[t].setLatLng([d.gps.lat,d.gps.lng]);
-      marcadores[t].setIcon(mkMotIco(cor,d.motoristaNome,nC,nP,stale));
+      marcadores[t].setLngLat([d.gps.lng,d.gps.lat]);
+      marcadores[t].getElement().innerHTML = mkMotIco(cor,d.motoristaNome,nC,nP,stale);
     } else {
-      var m = L.marker([d.gps.lat,d.gps.lng],{icon:mkMotIco(cor,d.motoristaNome,nC,nP,stale)})
-        .bindPopup(buildPopup(t,d)).addTo(map);
-      m.on('click', function(){ selecionarMot(t); });
+      var el = document.createElement('div');
+      el.innerHTML = mkMotIco(cor,d.motoristaNome,nC,nP,stale);
+      var m = new mapboxgl.Marker({element:el}).setLngLat([d.gps.lng,d.gps.lat])
+        .setPopup(new mapboxgl.Popup({offset:20}).setHTML(buildPopup(t,d))).addTo(map);
+      el.addEventListener('click', function(){ selecionarMot(t); });
       marcadores[t] = m;
     }
-    if (marcadores[t].isPopupOpen()) marcadores[t].setPopupContent(buildPopup(t,d));
+    var pop = marcadores[t].getPopup();
+    if (pop && pop.isOpen()) pop.setHTML(buildPopup(t,d));
   });
   if (motoristaSel && despachos[motoristaSel]) desenharParadas(motoristaSel, despachos[motoristaSel]);
 }
@@ -681,7 +697,7 @@ function mkMotIco(cor,nome,nC,nP,stale) {
   var ini = (nome||'?').charAt(0).toUpperCase();
   var borda = stale ? '3px solid #dc2626' : '3px solid #fff';
   var alerta = stale ? '<div style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;box-shadow:0 0 0 2px #fff">!</div>' : '';
-  return L.divIcon({html:'<div style="position:relative"><div style="width:38px;height:38px;border-radius:50%;background:'+cor+';border:'+borda+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.3)">'+ini+'</div>'+alerta+'<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:5px;padding:1px 4px;font-size:9px;font-weight:800;color:'+cor+';border:1px solid '+cor+'">'+nC+'/'+nP+'</div></div>',className:'',iconAnchor:[19,19]});
+  return '<div style="position:relative;cursor:pointer"><div style="width:38px;height:38px;border-radius:50%;background:'+cor+';border:'+borda+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.3)">'+ini+'</div>'+alerta+'<div style="position:absolute;bottom:-3px;right:-3px;background:#fff;border-radius:5px;padding:1px 4px;font-size:9px;font-weight:800;color:'+cor+';border:1px solid '+cor+'">'+nC+'/'+nP+'</div></div>';
 }
 
 function buildPopup(t,d) {
@@ -702,23 +718,29 @@ function buildPopup(t,d) {
 }
 
 function desenharParadas(t,d) {
-  paradaLy.forEach(function(l){map.removeLayer(l);}); paradaLy=[];
+  paradaLy.forEach(function(l){l.remove();}); paradaLy=[];
   (d.paradas||[]).forEach(function(p,idx){
     if (!p.lat||!p.lng) return;
     var c = d.confirmacoes && d.confirmacoes[idx];
     var cor = c ? (c.tipo==='entregue'?'#22c55e':c.tipo==='entregue-avaria'?'#f59e0b':c.tipo==='entregue-parcial'?'#f97316':c.tipo==='devolucao'?'#dc2626':'#22c55e') : '#94a3b8';
-    var ico = L.divIcon({html:'<div style="width:22px;height:22px;border-radius:50%;background:'+cor+';border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(idx+1)+'</div>',className:'',iconAnchor:[11,11]});
-    var m = L.marker([p.lat,p.lng],{icon:ico}).bindTooltip((idx+1)+'. '+(p.cliente||'—')+(c&&c.foraRaio?' ⚠ FORA DO RAIO':''),{permanent:false}).addTo(map);
+    var el = document.createElement('div');
+    el.style.cursor = 'pointer';
+    el.innerHTML = '<div style="width:22px;height:22px;border-radius:50%;background:'+cor+';border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(idx+1)+'</div>';
+    var tooltipTxt = (idx+1)+'. '+(p.cliente||'—')+(c&&c.foraRaio?' ⚠ FORA DO RAIO':'');
+    var popup = new mapboxgl.Popup({closeButton:false, closeOnClick:false, offset:14}).setText(tooltipTxt);
+    el.addEventListener('mouseenter', function(){ popup.setLngLat([p.lng,p.lat]).addTo(map); });
+    el.addEventListener('mouseleave', function(){ popup.remove(); });
+    var m = new mapboxgl.Marker({element:el}).setLngLat([p.lng,p.lat]).addTo(map);
     paradaLy.push(m);
   });
 }
 
 window.selecionarMot = function(t) {
   motoristaSel = motoristaSel===t ? null : t;
-  paradaLy.forEach(function(l){map.removeLayer(l);}); paradaLy=[];
+  paradaLy.forEach(function(l){l.remove();}); paradaLy=[];
   if (motoristaSel && despachos[t]) {
     desenharParadas(t, despachos[t]);
-    if (marcadores[t]) map.setView(marcadores[t].getLatLng(), 10, {animate:true});
+    if (marcadores[t]) map.flyTo({center: marcadores[t].getLngLat(), zoom:10});
   }
   renderPainel();
 };
@@ -786,8 +808,10 @@ window.toggleColapsarPainel = function() {
   painel.classList.toggle('colapsado', painelColapsado);
   btn.textContent = painelColapsado ? '⇥' : '⇤';
   btn.title = painelColapsado ? 'Mostrar lista de motoristas' : 'Ocultar lista para focar no mapa';
-  setTimeout(function(){ if (map) map.invalidateSize(); }, 220);
+  setTimeout(function(){ if (map) map.resize(); }, 220);
 };
+
+window.addEventListener('opus-sidebar-toggle', function(){ if (map) map.resize(); });
 
 // ── ABAS ──────────────────────────────────────────────────────────────────────
 window.setAba = function(aba) {

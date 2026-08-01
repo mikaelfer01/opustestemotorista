@@ -155,6 +155,9 @@
       document.body.classList.toggle("opus-sidebar-collapsed", collapsed);
       collapseBtn.setAttribute("aria-expanded", String(!collapsed));
       collapseBtn.setAttribute("aria-label", collapsed ? "Expandir menu" : "Recolher menu");
+      setTimeout(function () {
+        window.dispatchEvent(new CustomEvent("opus-sidebar-toggle", { detail: { collapsed: collapsed } }));
+      }, 210);
     }
     var savedCollapsed = localStorage.getItem("opus-sidebar-collapsed") === "1";
     applyCollapsed(savedCollapsed);
