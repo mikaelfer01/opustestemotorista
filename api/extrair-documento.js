@@ -6,22 +6,33 @@
 // aceitando preenchimento manual normalmente (esta rota so preenche o
 // que conseguir identificar).
 const CAMPOS_POR_TIPO = {
-  cnh: ['nome', 'cpf', 'nascimento', 'numeroCnh', 'categoria', 'validade'],
+  cnh: ['nome', 'cpf', 'nascimento', 'numeroCnh', 'categoria', 'validade', 'fotoBoundingBox'],
   crlv: ['placa', 'uf', 'modelo', 'renavam', 'proprietarioNome', 'proprietarioDoc', 'proprietarioTerceiro'],
 };
 
-function instrucoes(tipo) {
+function instrucoes(tipo, qrTexto) {
+  var txt;
   if (tipo === 'cnh') {
-    return 'Este documento e uma Carteira Nacional de Habilitacao (CNH) brasileira. Extraia: ' +
+    txt = 'Este documento e uma Carteira Nacional de Habilitacao (CNH) brasileira. Extraia: ' +
       'nome (nome completo do condutor), cpf (formato 000.000.000-00), nascimento (data de nascimento no formato AAAA-MM-DD), ' +
       'numeroCnh (numero de registro da CNH, so digitos), categoria (ex: A, B, AB, C, D, E), ' +
-      'validade (data de validade no formato AAAA-MM-DD).';
+      'validade (data de validade no formato AAAA-MM-DD). Tambem localize a foto 3x4 do condutor impressa no documento e ' +
+      'devolva fotoBoundingBox como um objeto {"xPct":0-1,"yPct":0-1,"wPct":0-1,"hPct":0-1} com a posicao e tamanho ' +
+      'aproximados dessa foto como fracao da largura/altura total da imagem (origem no canto superior esquerdo). ' +
+      'Se nao conseguir localizar a foto com confianca, use null em fotoBoundingBox.';
+  } else {
+    txt = 'Este documento e um CRLV (Certificado de Registro e Licenciamento de Veiculo) brasileiro. Extraia: ' +
+      'placa (formato ABC1D23 ou ABC1234, sem espacos), uf (sigla do estado emplacado), modelo (marca/modelo do veiculo), ' +
+      'renavam (so digitos), proprietarioNome (nome/razao social do proprietario no documento), ' +
+      'proprietarioDoc (CPF ou CNPJ do proprietario), proprietarioTerceiro (true se o proprietario parecer ser uma empresa ' +
+      'de arrendamento/financeira ao inves de pessoa fisica, senao false).';
   }
-  return 'Este documento e um CRLV (Certificado de Registro e Licenciamento de Veiculo) brasileiro. Extraia: ' +
-    'placa (formato ABC1D23 ou ABC1234, sem espacos), uf (sigla do estado emplacado), modelo (marca/modelo do veiculo), ' +
-    'renavam (so digitos), proprietarioNome (nome/razao social do proprietario no documento), ' +
-    'proprietarioDoc (CPF ou CNPJ do proprietario), proprietarioTerceiro (true se o proprietario parecer ser uma empresa ' +
-    'de arrendamento/financeira ao inves de pessoa fisica, senao false).';
+  if (qrTexto) {
+    txt += ' O documento tambem tem um QR code, que foi decodificado separadamente e contem este texto (pode ser um ' +
+      'link de validacao ou dados adicionais — use como contexto extra pra conferir os campos acima, mas os campos ' +
+      'devem vir da leitura visual do documento, nao apenas do QR): ' + String(qrTexto).slice(0, 500);
+  }
+  return txt;
 }
 
 module.exports = async function handler(req, res) {
@@ -36,7 +47,7 @@ module.exports = async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ erro: 'ANTHROPIC_API_KEY não configurado no ambiente' });
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-    const { tipo, mediaType, imagemBase64 } = body;
+    const { tipo, mediaType, imagemBase64, qrTexto } = body;
     if (!tipo || !CAMPOS_POR_TIPO[tipo]) return res.status(400).json({ erro: 'tipo deve ser "cnh" ou "crlv"' });
     if (!mediaType || !imagemBase64) return res.status(400).json({ erro: 'mediaType e imagemBase64 são obrigatórios' });
 
@@ -46,7 +57,7 @@ module.exports = async function handler(req, res) {
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: imagemBase64 } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType, data: imagemBase64 } };
 
-    const prompt = instrucoes(tipo) + ' Responda APENAS com um objeto JSON com exatamente estas chaves: ' +
+    const prompt = instrucoes(tipo, qrTexto) + ' Responda APENAS com um objeto JSON com exatamente estas chaves: ' +
       campos.join(', ') + '. Se algum campo nao estiver legivel ou nao existir no documento, use null nesse campo. ' +
       'Nao inclua nenhum texto antes ou depois do JSON, nem blocos de codigo markdown.';
 

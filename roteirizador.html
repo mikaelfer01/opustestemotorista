@@ -36,6 +36,7 @@ window._fbModularAuth = auth;
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ============================================================
@@ -5733,6 +5734,7 @@ function limparFormMotorista(){
   toggleTransportadoraPJ();
   ['mot-upload-cnh','mot-upload-crlv'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   ['mot-upload-cnh-status','mot-upload-crlv-status'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.textContent=''; } });
+  removerFotoMotorista();
   var t = document.querySelector('#m-motoristas .mt2'); if(t) t.textContent='🚗 Cadastrar Motorista';
 }
 
@@ -5776,6 +5778,66 @@ function _preencherCamposDocumento(tipo, campos){
   }
 }
 
+// Carrega um File de imagem num <img> (pra decodificar QR e recortar a
+// foto do motorista via canvas). Retorna null pra PDFs (sem como abrir
+// como imagem no navegador sem uma lib de PDF à parte).
+function _carregarImagem(file){
+  if(!file.type || file.type==='application/pdf') return Promise.resolve(null);
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){ resolve(img); };
+    img.onerror = function(){ resolve(null); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Documentos digitais (CNH-e/CRLV-e) costumam trazer um QR code de
+// validação. Decodifica com jsQR só pra dar contexto extra à IA — não
+// depende disso pra funcionar, se não achar QR nenhum segue normalmente.
+function _decodificarQR(img){
+  try{
+    if(typeof jsQR !== 'function' || !img) return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var code = jsQR(imgData.data, canvas.width, canvas.height);
+    return code ? code.data : null;
+  }catch(e){ console.error('Erro ao decodificar QR:', e); return null; }
+}
+
+// Recorta a região da foto 3x4 da CNH (bounding box em % devolvido pela
+// IA) e devolve como data URL JPEG pequena, pra usar como foto do
+// motorista no cadastro.
+function _recortarFoto(img, bbox){
+  try{
+    if(!img || !bbox) return null;
+    var xPct=Number(bbox.xPct), yPct=Number(bbox.yPct), wPct=Number(bbox.wPct), hPct=Number(bbox.hPct);
+    if([xPct,yPct,wPct,hPct].some(function(v){ return isNaN(v) || v<0 || v>1; })) return null;
+    if(wPct<0.02 || hPct<0.02) return null;
+    var sx=xPct*img.naturalWidth, sy=yPct*img.naturalHeight, sw=wPct*img.naturalWidth, sh=hPct*img.naturalHeight;
+    var canvas = document.createElement('canvas');
+    var destW = 160, destH = Math.round(destW*(sh/sw));
+    canvas.width = destW; canvas.height = destH;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, destW, destH);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  }catch(e){ console.error('Erro ao recortar foto da CNH:', e); return null; }
+}
+
+function _mostrarFotoMotorista(dataUrl){
+  var input = document.getElementById('mot-foto');
+  var wrap = document.getElementById('mot-foto-wrap');
+  var img = document.getElementById('mot-foto-preview');
+  if(!input || !wrap || !img) return;
+  input.value = dataUrl || '';
+  img.src = dataUrl || '';
+  wrap.style.display = dataUrl ? 'flex' : 'none';
+}
+
+function removerFotoMotorista(){ _mostrarFotoMotorista(''); }
+
 async function processarDocumentoMotorista(inputEl, tipo){
   var file = inputEl.files && inputEl.files[0];
   if(!file) return;
@@ -5783,17 +5845,27 @@ async function processarDocumentoMotorista(inputEl, tipo){
   if(statusEl){ statusEl.textContent='🔎 Analisando documento…'; statusEl.style.color='#2563eb'; }
   try{
     var b64 = await _fileParaBase64(file);
+    var imgEl = await _carregarImagem(file);
+    var qrTexto = _decodificarQR(imgEl);
     var resp = await fetch('/api/extrair-documento', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ tipo: tipo, mediaType: file.type || 'image/jpeg', imagemBase64: b64 })
+      body: JSON.stringify({ tipo: tipo, mediaType: file.type || 'image/jpeg', imagemBase64: b64, qrTexto: qrTexto||undefined })
     });
     var data = await resp.json().catch(function(){ return {}; });
     if(!resp.ok || data.erro) throw new Error(data.erro || 'Falha ao analisar documento');
     var campos = data.campos || {};
     _preencherCamposDocumento(tipo, campos);
-    var qtd = Object.keys(campos).filter(function(k){ return campos[k]!==null && campos[k]!==''; }).length;
+    if(tipo==='cnh' && campos.fotoBoundingBox && imgEl){
+      var fotoUrl = _recortarFoto(imgEl, campos.fotoBoundingBox);
+      if(fotoUrl) _mostrarFotoMotorista(fotoUrl);
+    }
+    var qtd = Object.keys(campos).filter(function(k){ return k!=='fotoBoundingBox' && campos[k]!==null && campos[k]!==''; }).length;
     if(statusEl){
-      if(qtd > 0){ statusEl.textContent='✅ '+qtd+' campo(s) identificado(s) — confira antes de salvar.'; statusEl.style.color='#16a34a'; }
+      var partes = [];
+      if(qtd > 0) partes.push('✅ '+qtd+' campo(s) identificado(s)');
+      if(qrTexto) partes.push('📱 QR code lido');
+      if(tipo==='cnh' && campos.fotoBoundingBox) partes.push('📷 foto extraída');
+      if(partes.length){ statusEl.textContent = partes.join(' · ')+' — confira antes de salvar.'; statusEl.style.color='#16a34a'; }
       else { statusEl.textContent='⚠ Não identificamos os dados — preencha manualmente.'; statusEl.style.color='#b45309'; }
     }
   }catch(e){
@@ -5804,6 +5876,7 @@ async function processarDocumentoMotorista(inputEl, tipo){
 
 function salvarMotorista(){
   var campos = {
+    foto:       (document.getElementById('mot-foto').value||''),
     nome:       (document.getElementById('mot-nome').value||'').trim(),
     cpf:        (document.getElementById('mot-cpf').value||'').trim(),
     nascimento: (document.getElementById('mot-nascimento').value||''),
@@ -5858,6 +5931,7 @@ function editarMotorista(id){
   var m = MOTORISTAS.find(function(x){ return String(x.id)===String(id); });
   if (!m) return;
   document.getElementById('mot-edit-id').value    = m.id;
+  _mostrarFotoMotorista(m.foto||'');
   document.getElementById('mot-nome').value        = m.nome||'';
   document.getElementById('mot-cpf').value         = m.cpf||'';
   document.getElementById('mot-nascimento').value  = m.nascimento||'';
@@ -7508,7 +7582,15 @@ function copiarTextoGerado(){
               <div class="mot-upload-status" id="mot-upload-crlv-status" style="font-size:11px;margin-top:4px;min-height:14px;"></div>
             </div>
           </div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px;">O sistema tenta identificar os dados automaticamente. Confira e complete manualmente o que não vier preenchido.</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">O sistema tenta identificar os dados automaticamente (inclusive lendo o QR code, se o documento digital tiver um) e extrair a foto do motorista da CNH. Confira e complete manualmente o que não vier preenchido.</div>
+          <input type="hidden" id="mot-foto"/>
+          <div class="fl" id="mot-foto-wrap" style="display:none;margin-top:8px;flex-direction:row;align-items:center;gap:10px;">
+            <img id="mot-foto-preview" alt="Foto do motorista" style="width:56px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--glass-hairline,#ccc);"/>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-size:11px;font-weight:600;">📷 Foto extraída da CNH</span>
+              <button type="button" class="btn" style="height:24px;padding:0 8px;font-size:11px;" onclick="removerFotoMotorista()">Remover</button>
+            </div>
+          </div>
         </div>
 
         <div class="mot-card">
