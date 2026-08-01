@@ -1379,6 +1379,28 @@ function baixarModeloRot() {
   </div>
 </div>
 
+<nav>
+  <div class="logo">
+    <div class="logo-mark"><img src="/logo-gmf.png" alt="Grupo MF Paris"></div>
+    <div class="logo-txt">
+      <div class="logo-t1">Roteirizador</div>
+      <div class="logo-t2">Grupo MF Paris</div>
+    </div>
+  </div>
+  <div class="nav-r">
+    <span class="bi" id="bt">0 clientes</span>
+    <span class="bi" id="bmap">Carregando mapa...</span>
+    <button class="btn" onclick="oModal('m-imp')" title="Importar pedidos (OMIE ou Excel)">📥 Importar</button>
+    <button class="btn" onclick="oModal('m-est')" title="Importar CSV de estoque">📦 Estoque</button>
+    <button class="btn" onclick="abrirCadastroMotoristas()" title="Cadastro de motoristas">🚗 Motoristas</button>
+    <button class="btn" id="btn-lasso" onclick="toggleLasso()" title="Desenhar área no mapa para selecionar clientes (atalho: L)">✏️ Desenhar rota</button>
+    <button class="btn" id="btn-medir" onclick="toggleMedir()" title="Medir distância no mapa (atalho: M)">📏 Medir</button>
+    <button class="btn p" onclick="if(typeof oModal==='function'){oModal('m-nr');if(typeof fMod==='function')fMod('nr-m');}" title="Criar rota (atalho: N)">➕ Criar rota</button>
+    <button class="btn" onclick="centralizar()" title="Centralizar mapa no CD">🎯 Centralizar</button>
+  </div>
+</nav>
+<div id="eb" style="display:none;position:relative;z-index:900;background:#dc2626;color:#fff;font-size:12px;font-weight:600;padding:8px 22px;text-align:center;"></div>
+
 <div class="main">
   <div class="sb">
     <div class="tabs">
@@ -7308,15 +7330,6 @@ function copiarTextoGerado(){
 
 </script>
    
-<!-- ══════════════════════════════════════════════════════════════════════════
-     MODAL MOTORISTAS — Cole este bloco ANTES do <script src="js/sidebar.js?v=2" defer></script>
-</body> do roteirizador.html
-     ══════════════════════════════════════════════════════════════════════════ -->
-
-<!-- Botão na barra de funções — cole junto dos outros botões da nav -->
-<!-- <button class="btn" onclick="abrirCadastroMotoristas()" title="Cadastro de motoristas">🚗 Motoristas</button> -->
-
-
 <!-- MODAL GERAR TEXTO MOTORISTA -->
 <div class="mo h" id="m-gerar-texto">
   <div class="mb" style="width:580px;max-height:90vh;overflow-y:auto;">
