@@ -53,9 +53,9 @@
   "#opus-sidebar .opus-link.active{background:rgba(184,144,42,.16);color:var(--opus-gold);box-shadow:inset 3px 0 0 var(--opus-gold2);}" +
   "#opus-sidebar .opus-link svg{width:16px;height:16px;flex-shrink:0;opacity:.8;}" +
   "#opus-sidebar .opus-link.active svg{opacity:1;}" +
-  "#opus-collapse-toggle{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px;padding:9px;border-radius:8px;border:1px solid rgba(232,201,106,.2);background:rgba(255,255,255,.04);color:#9fb0c9;cursor:pointer;font-family:inherit;flex-shrink:0;}" +
+  "#opus-collapse-toggle{position:absolute;top:16px;right:10px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:6px;border:none;background:transparent;color:#9fb0c9;cursor:pointer;font-family:inherit;flex-shrink:0;}" +
   "#opus-collapse-toggle:hover{background:rgba(255,255,255,.08);color:#fff;}" +
-  "#opus-collapse-toggle svg{width:16px;height:16px;flex-shrink:0;transition:transform .2s ease;}" +
+  "#opus-collapse-toggle svg{width:15px;height:15px;flex-shrink:0;transition:transform .2s ease;}" +
   "body.opus-has-sidebar{margin-left:var(--opus-sidebar-w);transition:margin-left .2s ease;}" +
   "body.opus-sidebar-collapsed{margin-left:var(--opus-sidebar-w-collapsed);}" +
   "#opus-sidebar.opus-collapsed{width:var(--opus-sidebar-w-collapsed);}" +
@@ -63,7 +63,7 @@
   "#opus-sidebar.opus-collapsed .opus-brand::before{content:'O';font-size:18px;}" +
   "#opus-sidebar.opus-collapsed .opus-link{justify-content:center;padding:10px;}" +
   "#opus-sidebar.opus-collapsed .opus-link span{display:none;}" +
-  "#opus-sidebar.opus-collapsed #opus-collapse-toggle span{display:none;}" +
+  "#opus-sidebar.opus-collapsed #opus-collapse-toggle{right:50%;transform:translateX(50%);top:54px;}" +
   "#opus-sidebar.opus-collapsed #opus-collapse-toggle svg{transform:rotate(180deg);}" +
   "@media (max-width:900px){" +
     "body.opus-has-sidebar{margin-left:0;}" +
@@ -75,7 +75,7 @@
     "#opus-sidebar.opus-collapsed .opus-brand,#opus-sidebar.opus-collapsed .opus-link{font-size:inherit;}" +
     "#opus-sidebar.opus-collapsed .opus-brand::before{content:none;}" +
     "#opus-sidebar.opus-collapsed .opus-link{justify-content:flex-start;padding:10px 12px;}" +
-    "#opus-sidebar.opus-collapsed .opus-link span,#opus-sidebar.opus-collapsed #opus-collapse-toggle span{display:inline;}" +
+    "#opus-sidebar.opus-collapsed .opus-link span{display:inline;}" +
     "#opus-collapse-toggle{display:none;}" +
     "body.opus-has-sidebar{padding-top:56px;}" +
   "}";
@@ -109,6 +109,11 @@
     brand.appendChild(closeBtn);
     sidebar.appendChild(brand);
 
+    // recolher/expandir (desktop) — botão minimalista, só a seta, no topo
+    var collapseBtn = el("button", { id: "opus-collapse-toggle", type: "button", "aria-label": "Recolher menu" },
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>');
+    sidebar.appendChild(collapseBtn);
+
     var nav = el("nav");
     MENU_ITEMS.forEach(function (item) {
       var isActive = item.href === CURRENT;
@@ -121,11 +126,6 @@
       nav.appendChild(a);
     });
     sidebar.appendChild(nav);
-
-    // recolher/expandir (desktop)
-    var collapseBtn = el("button", { id: "opus-collapse-toggle", type: "button", "aria-label": "Recolher menu" },
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg><span>Recolher</span>');
-    sidebar.appendChild(collapseBtn);
 
     document.body.classList.add("opus-has-sidebar");
     document.body.appendChild(overlay);
@@ -157,10 +157,21 @@
     }
     var savedCollapsed = localStorage.getItem("opus-sidebar-collapsed") === "1";
     applyCollapsed(savedCollapsed);
-    collapseBtn.addEventListener("click", function () {
+    collapseBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
       var next = !sidebar.classList.contains("opus-collapsed");
       applyCollapsed(next);
       localStorage.setItem("opus-sidebar-collapsed", next ? "1" : "0");
+    });
+
+    // desktop: clicar fora do menu expandido recolhe automaticamente
+    var isDesktop = window.matchMedia("(min-width:901px)");
+    document.addEventListener("click", function (e) {
+      if (!isDesktop.matches) return;
+      if (sidebar.classList.contains("opus-collapsed")) return;
+      if (sidebar.contains(e.target)) return;
+      applyCollapsed(true);
+      localStorage.setItem("opus-sidebar-collapsed", "1");
     });
   }
 
