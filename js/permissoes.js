@@ -26,7 +26,7 @@ export const SENHA_NOVA_DESCRICAO = 'Mínimo 8 caracteres, com letras, números 
 // Mapa pagina -> perfis permitidos
 export const PERMISSOES = {
   // Gestao
-  'usuarios.html':            ['admin'],
+  'usuarios.html':            ['admin', 'logistica'],
 
   // Operacao logistica
   'roteirizador.html':        ['admin', 'logistica'],
@@ -63,9 +63,9 @@ export const PERMISSOES = {
   // Tela de troca de senha - obrigatoria no 1o login
   'trocar-senha.html':        ['admin', 'logistica', 'comercial', 'operacao'],
 
-  // Ferramentas de diagnostico/debug (chamam a Omie direto) - so admin
-  'diagnostico.html':         ['admin'],
-  'teste-proxy.html':         ['admin'],
+  // Ferramentas de diagnostico/debug (chamam a Omie direto)
+  'diagnostico.html':         ['admin', 'logistica'],
+  'teste-proxy.html':         ['admin', 'logistica'],
 };
 
 // Paginas publicas (sem login)

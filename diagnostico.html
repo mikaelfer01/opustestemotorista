@@ -7,7 +7,7 @@
 document.documentElement.style.visibility = 'hidden';
 try {
   const m = await import('/js/auth.js');
-  m.exigirPerfis(['admin']);
+  m.exigirPerfis(['admin', 'logistica']);
 } catch (e) { document.documentElement.style.visibility = 'visible'; }
 </script>
 <style>
