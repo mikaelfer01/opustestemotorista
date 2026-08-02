@@ -46,6 +46,8 @@ async function firebaseRead(path) {
   return r.json();
 }
 
+var _histEntries = {}; // token -> registro do historico_roteirizados, pra reconstruir sem reler
+
 async function buscarOrfas() {
   const div = document.getElementById('res-orfas');
   div.innerHTML = '<pre>Buscando...</pre>';
@@ -71,26 +73,97 @@ async function buscarOrfas() {
         var statusVivo = !existe ? '❌ NÃO EXISTE em despachos/' :
           (d === null ? '⚠️ existe mas valor é null (corrompido)' :
           (d.concluido ? '✅ concluído' : (d.iniciou ? '🚗 em rota' : '⏳ aguardando início')));
+        _histEntries[tok] = h;
         linhas.push({
           data: dataKey, token: tok, motorista: h.motoristaNome || '—', rota: h.rotaNome || '—',
-          nParadas: (h.paradas||[]).length, existe: existe, statusVivo: statusVivo
+          nParadas: (h.paradas||[]).length, existe: existe, corrompido: existe && d === null, statusVivo: statusVivo
         });
       });
     });
 
-    var soOrfas = linhas.filter(function(l){ return !l.existe; });
+    var soOrfas = linhas.filter(function(l){ return !l.existe || l.corrompido; });
     var html = '<p style="font-size:12px;color:#555">'+linhas.length+' rota(s) no histórico'
       + (filtroNome ? ' (filtrado por "'+filtroNome+'")' : '') + ' nos últimos '+dias+' dias — '
       + '<b style="color:'+(soOrfas.length?'#f87171':'#4ade80')+'">'+soOrfas.length+' órfã(s)</b></p>';
-    html += '<pre>' + linhas.map(function(l){
-      return (l.existe ? '  ' : '❌') + ' [' + l.data + '] ' + l.motorista + ' — ' + l.rota
-        + ' (' + l.nParadas + ' paradas) — token: ' + l.token + '\n     status: ' + l.statusVivo;
-    }).join('\n\n') + '</pre>';
+    html += linhas.map(function(l){
+      var linha = '<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:12px">'
+        + (l.existe && !l.corrompido ? '' : '❌ ') + '[' + l.data + '] <b>' + l.motorista + '</b> — ' + l.rota
+        + ' (' + l.nParadas + ' paradas)<br><span style="color:#888;font-family:monospace;font-size:11px">token: ' + l.token + '</span>'
+        + '<br>status: ' + l.statusVivo;
+      if (!l.existe || l.corrompido) {
+        linha += '<br><button onclick="reconstruirDespacho(\''+l.token+'\')" style="margin-top:6px;background:#166534">🔧 Reconstruir despacho</button>'
+          + '<span id="rec-status-'+l.token+'" style="margin-left:8px;font-size:11px"></span>';
+      }
+      linha += '</div>';
+      return linha;
+    }).join('');
     div.innerHTML = html;
   } catch (e) {
     div.innerHTML = '<pre class="err">Erro: ' + e.message + '</pre>';
   }
 }
+
+// Recria despachos/{token} a partir do registro permanente em
+// historico_roteirizados — usa o MESMO token, então qualquer link que já
+// tenha sido mandado pro motorista passa a funcionar sem precisar reenviar
+// nada. IMPORTANTE: historico_roteirizados não guarda lat/lng de cada
+// parada nem os canhotos das confirmações (essas só existem dentro do
+// próprio despachos/{token}, que nunca chegou a ser criado) — ou seja,
+// isso NÃO recupera fotos antigas (não existem pra recuperar), mas volta a
+// deixar a rota rastreável e o motorista consegue confirmar as entregas
+// dali pra frente normalmente.
+window.reconstruirDespacho = async function(token){
+  var h = _histEntries[token];
+  if (!h) { alert('Registro do histórico não encontrado em memória — clique em "Buscar rotas órfãs" de novo.'); return; }
+  var statusEl = document.getElementById('rec-status-'+token);
+  var nParadas = (h.paradas||[]).length;
+  if (!confirm(
+    'Reconstruir despachos/'+token+' ('+h.motoristaNome+' — '+nParadas+' paradas)?\n\n' +
+    'Isso NÃO recupera fotos/canhotos antigos (eles nunca existiram, porque esse despacho nunca ' +
+    'chegou a ser criado). A rota volta a ficar rastreável na Torre e o motorista passa a conseguir ' +
+    'confirmar as entregas normalmente a partir de agora, pelo MESMO link que ele já tem.\n\n' +
+    'Marca como já iniciada (o motorista já está entregando de verdade).'
+  )) return;
+
+  var totalPeso = (h.paradas||[]).reduce(function(s,p){ return s + (parseFloat(p.peso)||0); }, 0);
+  var totalKm = (h.paradas||[]).reduce(function(s,p){ return s + (parseFloat(p.km)||0); }, 0);
+
+  var payload = {
+    token: token,
+    idRota: h.idRota || '',
+    nomeRota: h.rotaNome || '',
+    motoristaNome: h.motoristaNome || '',
+    motoristaPlaca: h.motoristaPlaca || '',
+    motoristaVeiculo: '',
+    motoristaTel: h.motoristaTel || '',
+    motoristaId: h.motoristaId || '',
+    paradas: h.paradas || [],
+    totalPeso: totalPeso,
+    totalKm: totalKm,
+    frete: h.freteTotal || 0,
+    emb: h.emb || '',
+    tsDespacho: h.tsDespacho || Date.now(),
+    statusFluxo: 'em_transito',
+    iniciou: true,
+    concluido: false,
+    confirmacoes: {},
+    separacao: {},
+    _reconstruido: { em: Date.now(), obs: 'Recriado a partir de historico_roteirizados — despacho original falhou silenciosamente ao gravar.' }
+  };
+
+  if (statusEl) statusEl.textContent = '⏳ Gravando...';
+  try {
+    var resp = await fetch('/api/firebase-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'despachos/' + token, data: payload })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' — ' + await resp.text());
+    if (statusEl) statusEl.innerHTML = '<span class="ok">✓ Reconstruído! Link: motorista.html?token=' + token + '</span>';
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span class="err">Erro: ' + e.message + '</span>';
+  }
+};
 
 async function omie(ep, call, param, empresa) {
   const r = await fetch('/api/omie-seguro', {
