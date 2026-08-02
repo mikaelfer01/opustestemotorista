@@ -118,6 +118,23 @@ tr:hover td{background:rgba(184,134,74,.04);}
     </div>
   </div>
 
+  <div class="sec" id="sec-enviados" style="display:none;">
+    <div class="sec-title">
+      <span>✅ Enviados</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Embarque</th><th>Rota</th><th>Motorista</th><th>Placa</th>
+            <th>Termo emitido em</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-enviados"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <div class="modal-overlay" id="modal-overlay">
@@ -297,6 +314,14 @@ async function fbRead(path) {
   return r.json();
 }
 
+async function fbWrite(path, data, method) {
+  const r = await fetch('/api/firebase-write', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, data, method: method || 'update' })
+  });
+  return r.json();
+}
+
 async function carregarRotas() {
   $('tbody-rotas').innerHTML = '<tr><td colspan="7" class="empty">Carregando rotas…</td></tr>';
   const de = $('f-de').value;
@@ -330,26 +355,54 @@ async function carregarRotas() {
 
 function renderRotas() {
   const tb = $('tbody-rotas');
-  if (!ROTAS.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma rota roteirizada no período selecionado.</td></tr>';
-    return;
+  const pendentes = ROTAS.filter(r => !r.reg.termoEmitido);
+  const enviados = ROTAS.filter(r => r.reg.termoEmitido);
+
+  if (!pendentes.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">' + (ROTAS.length ? 'Todas as rotas do período já tiveram o termo emitido.' : 'Nenhuma rota roteirizada no período selecionado.') + '</td></tr>';
+  } else {
+    tb.innerHTML = pendentes.map(r => {
+      const i = ROTAS.indexOf(r);
+      const embFmt = r.embIso ? r.embIso.split('-').reverse().join('/') : '—';
+      const sel = rotaAtual && rotaAtual.token === r.token && rotaAtual.dataKey === r.dataKey;
+      return '<tr class="rota-row' + (sel ? ' sel' : '') + '" data-i="' + i + '">'
+        + '<td>' + embFmt + '</td>'
+        + '<td>' + esc(r.reg.rotaNome || '—') + '</td>'
+        + '<td>' + esc(r.reg.motoristaNome || '—') + '</td>'
+        + '<td>' + esc(r.reg.motoristaPlaca || '—') + '</td>'
+        + '<td style="text-align:right">' + r.paradas.length + '</td>'
+        + '<td style="text-align:right">' + r.peso.toFixed(0) + '</td>'
+        + '<td><button class="btn-secondary" style="height:28px;padding:0 12px;font-size:11px;">📄 Emitir Termo</button></td>'
+        + '</tr>';
+    }).join('');
+    tb.querySelectorAll('.rota-row').forEach(tr => {
+      tr.addEventListener('click', () => selecionarRota(ROTAS[Number(tr.dataset.i)]));
+    });
   }
-  tb.innerHTML = ROTAS.map((r, i) => {
-    const embFmt = r.embIso ? r.embIso.split('-').reverse().join('/') : '—';
-    const sel = rotaAtual && rotaAtual.token === r.token && rotaAtual.dataKey === r.dataKey;
-    return '<tr class="rota-row' + (sel ? ' sel' : '') + '" data-i="' + i + '">'
-      + '<td>' + embFmt + '</td>'
-      + '<td>' + esc(r.reg.rotaNome || '—') + '</td>'
-      + '<td>' + esc(r.reg.motoristaNome || '—') + '</td>'
-      + '<td>' + esc(r.reg.motoristaPlaca || '—') + '</td>'
-      + '<td style="text-align:right">' + r.paradas.length + '</td>'
-      + '<td style="text-align:right">' + r.peso.toFixed(0) + '</td>'
-      + '<td><button class="btn-secondary" style="height:28px;padding:0 12px;font-size:11px;">📄 Emitir Termo</button></td>'
-      + '</tr>';
-  }).join('');
-  tb.querySelectorAll('.rota-row').forEach(tr => {
-    tr.addEventListener('click', () => selecionarRota(ROTAS[Number(tr.dataset.i)]));
-  });
+
+  const secEnviados = $('sec-enviados');
+  const tbEnv = $('tbody-enviados');
+  if (!enviados.length) {
+    secEnviados.style.display = 'none';
+  } else {
+    secEnviados.style.display = '';
+    tbEnv.innerHTML = enviados.map(r => {
+      const i = ROTAS.indexOf(r);
+      const embFmt = r.embIso ? r.embIso.split('-').reverse().join('/') : '—';
+      const emitFmt = r.reg.termoEmitido ? new Date(r.reg.termoEmitido).toLocaleString('pt-BR') : '—';
+      return '<tr>'
+        + '<td>' + embFmt + '</td>'
+        + '<td>' + esc(r.reg.rotaNome || '—') + '</td>'
+        + '<td>' + esc(r.reg.motoristaNome || '—') + '</td>'
+        + '<td>' + esc(r.reg.motoristaPlaca || '—') + '</td>'
+        + '<td><span class="badge b-ok">' + emitFmt + '</span></td>'
+        + '<td><button class="btn-secondary btn-reemitir" style="height:28px;padding:0 12px;font-size:11px;" data-i="' + i + '">🔄 Emitir novamente</button></td>'
+        + '</tr>';
+    }).join('');
+    tbEnv.querySelectorAll('.btn-reemitir').forEach(btn => {
+      btn.addEventListener('click', () => selecionarRota(ROTAS[Number(btn.dataset.i)]));
+    });
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -773,6 +826,20 @@ function gerarTermoPDF() {
 
   doc.save('Termo_Transporte_' + (r.rotaNome || rotaAtual.token).replace(/[^a-zA-Z0-9]+/g, '_') + '.pdf');
   toast('Termo gerado com sucesso.', 'ok');
+  marcarTermoEmitido(rotaAtual);
+}
+
+// Move o card da rota para "Enviados" depois de gerar o termo, guardando
+// a marca direto no registro da rota (sobrevive a reload da página).
+async function marcarTermoEmitido(rota) {
+  const agora = Date.now();
+  try {
+    await fbWrite('historico_roteirizados/' + rota.dataKey + '/' + rota.token, { termoEmitido: agora }, 'update');
+    rota.reg.termoEmitido = agora;
+    renderRotas();
+  } catch (e) {
+    console.error('Erro ao marcar termo como emitido:', e);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
