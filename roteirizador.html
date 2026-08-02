@@ -6635,6 +6635,15 @@ function gerarToken(rotaId){
   return 'rot_' + rotaId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
 }
 
+// ID curto e legível da rota (ex: "RT260802-K3F") — usado como referência
+// rápida (telefone/WhatsApp) e pela Torre de Controle pra localizar/buscar
+// a rota. Diferente do token (chave interna do Firebase, longa e opaca).
+function gerarIdRota(embDate){
+  var d = (embDate || new Date().toISOString().slice(0,10)).replace(/-/g,'').slice(2);
+  var suf = Math.random().toString(36).slice(2,5).toUpperCase();
+  return 'RT' + d + '-' + suf;
+}
+
 // ── REMOVE ROTA DESPACHADA DO MAPA / ABA "ROTAS" ───────────────────────────────
 // Depois de despachar, o historico permanente ja esta salvo em
 // historico_roteirizados (e o que alimenta a aba "Roteirizados" -- ver
@@ -6686,6 +6695,7 @@ function despacharRota(rotaId){
 
    if (!confirm('Enviar rota "' + r.nome + '" para separação?\n\nMotorista: ' + motorista.nome + '\nVeículo: ' + (motorista.placa||'—'))) return;
   var token = gerarToken(r.id);
+  var idRota = gerarIdRota(r.emb);
   var s = typeof stats === 'function' ? stats(r) : { peso: 0, dist: 0 };
 
   // Monta paradas com coordenadas
@@ -6738,6 +6748,7 @@ function despacharRota(rotaId){
   // 0 ou o valor de um modo errado) para o despacho.
   var payload = {
     token: token,
+    idRota: idRota,
     nomeRota: r.nome,
     motoristaNome: motorista.nome,
     motoristaPlaca: motorista.placa,
@@ -6842,7 +6853,7 @@ toastRot('📦 Rota enviada para separação!', 'ok');
 var _freteTotalDesp = paradas.reduce(function(s,p){ return s + (p.freteRateio || 0); }, 0)
   || (typeof stats === 'function' ? (stats(r).frete || 0) : 0)
   || payload.frete || 0;
-registrarRoteirizados(r, paradas, motorista, token, _freteTotalDesp);
+registrarRoteirizados(r, paradas, motorista, token, _freteTotalDesp, idRota);
 _removerRotaDespachadaDoMapa(r);
 upAll();
   }).catch(function(e){
@@ -7044,7 +7055,7 @@ function doGet(e) {
 */
 var _roteirizados = [];
 
-function registrarRoteirizados(r, paradas, motorista, token, freteTotal){
+function registrarRoteirizados(r, paradas, motorista, token, freteTotal, idRota){
   var agora = new Date();
   var dataKey = agora.getFullYear() + '-' + String(agora.getMonth()+1).padStart(2,'0') + '-' + String(agora.getDate()).padStart(2,'0');
   // Frete total da rota despachada — usado pelo "Gerar Texto" (gerarTextoRotas)
@@ -7053,6 +7064,7 @@ function registrarRoteirizados(r, paradas, motorista, token, freteTotal){
   // parada, que já reflete o rateio correto calculado no momento do despacho.
   var freteTotalCalc = freteTotal || paradas.reduce(function(s,p){ return s + (p.freteRateio || 0); }, 0);
   var registro = {
+    idRota: idRota || '',
     rotaNome: r.nome,
     motoristaNome: motorista.nome,
     motoristaPlaca: motorista.placa || '—',
