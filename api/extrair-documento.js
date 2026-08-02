@@ -1,7 +1,7 @@
 // api/extrair-documento.js
 // Le uma foto/PDF de CNH ou CRLV e devolve os campos extraidos usando a
 // API de visao da Anthropic (Claude). A chave fica so no ambiente do
-// Vercel (ANTHROPIC_API_KEY) — nunca no codigo. Se a extracao falhar ou
+// Vercel (OPUSCLAUDE) — nunca no codigo. Se a extracao falhar ou
 // vier incompleta, o formulario de cadastro de motoristas continua
 // aceitando preenchimento manual normalmente (esta rota so preenche o
 // que conseguir identificar).
@@ -43,8 +43,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ erro: 'Method not allowed' });
 
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(500).json({ erro: 'ANTHROPIC_API_KEY não configurado no ambiente' });
+    const apiKey = process.env.OPUSCLAUDE;
+    if (!apiKey) return res.status(500).json({ erro: 'OPUSCLAUDE não configurado no ambiente' });
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const { tipo, mediaType, imagemBase64, qrTexto } = body;
