@@ -6613,8 +6613,11 @@ async function sincronizarObsOmie() {
   alert(msg);
 }
    var SHEETS_ID = '1Ohjw_fvNKhr-m6BVRVNDh3yD57wJhV8wV0h2SQRZmUo';
-var MOTORISTA_URL_BASE = 'https://programacao-teste.vercel.app/motorista.html';
-var TORRE_URL = 'https://programacao-teste.vercel.app/torre.html';
+// Deriva do domínio atual em vez de fixar um domínio antigo (o projeto já
+// mudou de nome/domínio antes e o link do motorista ficou apontando pro
+// domínio velho — links gerados assim nunca abrem pro motorista).
+var MOTORISTA_URL_BASE = location.origin + '/motorista.html';
+var TORRE_URL = location.origin + '/torre.html';
 
 // ── FIREBASE INIT (se ainda não iniciado) ────────────────────────────────────
 var _fbDesp = null, _dbDesp = null;

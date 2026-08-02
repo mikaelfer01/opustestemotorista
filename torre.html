@@ -82,6 +82,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
 .contato-btn:active{transform:scale(.97)}
 .btn-ligar{background:rgba(22,163,74,.12);color:#166534;border:1px solid rgba(22,163,74,.25)}
 .btn-wapp{background:rgba(37,211,102,.12);color:#128c7e;border:1px solid rgba(37,211,102,.25)}
+.btn-link{background:rgba(30,64,175,.1);color:var(--azul-d);border:1px solid rgba(30,64,175,.25)}
 .mot-rota-info{font-size:10px;color:var(--txts);margin-bottom:7px}
 .mot-prog{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:7px}
 .mot-stat{text-align:center;background:rgba(255,255,255,.6);border-radius:7px;padding:5px 3px;border:1px solid var(--border)}
@@ -681,12 +682,13 @@ window.renderPainel = function() {
     html += '<div class="mot-sub"><div class="mot-nome">'+(d.motoristaNome||'—')+'</div>';
     html += '<div class="mot-placa">'+(d.motoristaPlaca||'—')+'</div></div>';
     html += '<div class="mot-rota-info">'+(d.nomeRota||'—')+'</div>';
+    html += '<div class="mot-contato">';
     if (tel) {
-      html += '<div class="mot-contato">';
       html += '<a class="contato-btn btn-ligar" href="tel:+'+telWapp+'" onclick="event.stopPropagation()">📞 '+telFmt+'</a>';
       html += '<a class="contato-btn btn-wapp" href="https://wa.me/'+telWapp+'" target="_blank" onclick="event.stopPropagation()">💬 WhatsApp</a>';
-      html += '</div>';
     }
+    html += '<button class="contato-btn btn-link" onclick="event.stopPropagation();copiarLinkMotorista(\''+t+'\',this)" title="Copiar link do motorista">🔗 Link</button>';
+    html += '</div>';
     if (buscaAtual) {
       var hits = paradasQueBatem(d, buscaAtual);
       if (hits.length) {
@@ -913,6 +915,20 @@ window.copiarIdRota = function(id, el) {
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(id).then(ok).catch(ok);
+  } else {
+    ok();
+  }
+};
+window.copiarLinkMotorista = function(t, el) {
+  var link = location.origin + '/motorista.html?token=' + t;
+  var ok = function(){
+    if (!el) return;
+    var txtOrig = el.textContent;
+    el.textContent = '✅ Copiado!';
+    setTimeout(function(){ el.textContent = txtOrig; }, 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(ok).catch(ok);
   } else {
     ok();
   }

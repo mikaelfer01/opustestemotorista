@@ -163,7 +163,8 @@ import {
   ref as fbRef, onValue, update as fbUpdate
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-const MOTORISTA_URL_BASE = 'https://programacao-teste.vercel.app/motorista.html';
+// Deriva do domínio atual em vez de fixar um domínio antigo do projeto.
+const MOTORISTA_URL_BASE = location.origin + '/motorista.html';
 
 const db = {
   ref: (path) => {
