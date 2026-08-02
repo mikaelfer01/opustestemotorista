@@ -6770,7 +6770,16 @@ fetch('/api/firebase-write', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ path: 'despachos/' + token, data: payload })
-}).then(function(resp){ return resp.json(); }).then(async function(){
+}).then(function(resp){
+  // fetch() só rejeita em falha de rede — um erro HTTP (Firebase fora do ar,
+  // rate limit, etc.) resolve normalmente e cairia direto no .then() de
+  // sucesso abaixo se não checarmos aqui, gravando o histórico permanente e
+  // tirando a rota da tela como se tivesse despachado, mesmo sem o registro
+  // em despachos/{token} ter sido criado — a rota some da Torre pra sempre
+  // e o link do motorista nunca funciona, sem nenhum aviso.
+  if (!resp.ok) return resp.text().then(function(t){ throw new Error('HTTP ' + resp.status + ' — ' + t.slice(0,200)); });
+  return resp.json();
+}).then(async function(){
     var link = MOTORISTA_URL_BASE + '?token=' + token;
     r._token = token;
     r._link = link;
