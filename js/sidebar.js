@@ -47,6 +47,38 @@
   ];
 
   var CURRENT = (location.pathname.split("/").pop() || "index.html");
+  var LAYOUT_KEY = "opus-sidebar-layout";
+
+  function getSavedLayout() {
+    try {
+      var raw = localStorage.getItem(LAYOUT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  // Aplica a personalização salva (itens arrastados p/ outras categorias)
+  // sobre a estrutura padrão do menu. Itens novos (adicionados ao MENU_GROUPS
+  // depois que o usuário já tinha personalizado) voltam pro grupo original.
+  function computeGroups() {
+    var saved = getSavedLayout();
+    if (!saved) return MENU_GROUPS;
+    var allItems = {};
+    MENU_GROUPS.forEach(function (g) { g.itens.forEach(function (it) { allItems[it.href] = it; }); });
+    var usedHrefs = {};
+    var groups = MENU_GROUPS.map(function (g) {
+      var hrefs = saved[g.titulo];
+      var itens = Array.isArray(hrefs)
+        ? hrefs.map(function (h) { usedHrefs[h] = true; return allItems[h]; }).filter(Boolean)
+        : [];
+      return { titulo: g.titulo, itens: itens };
+    });
+    MENU_GROUPS.forEach(function (g, gi) {
+      g.itens.forEach(function (it) {
+        if (!usedHrefs[it.href]) groups[gi].itens.push(it);
+      });
+    });
+    return groups;
+  }
 
   var STYLE = "" +
   ":root{--opus-sidebar-w:230px;--opus-sidebar-w-collapsed:64px;--opus-navy:#0d1f3c;--opus-navy2:#0a1728;--opus-gold:#e8c96a;--opus-gold2:#b8902a;}" +
@@ -71,6 +103,14 @@
   "#opus-sidebar .opus-link.active,#opus-sidebar .opus-link.active:visited{background:rgba(184,144,42,.16);color:var(--opus-gold)!important;box-shadow:inset 3px 0 0 var(--opus-gold2);}" +
   "#opus-sidebar .opus-link svg{width:16px;height:16px;flex-shrink:0;opacity:.8;}" +
   "#opus-sidebar .opus-link.active svg{opacity:1;}" +
+  "#opus-sidebar .opus-link{cursor:grab;}" +
+  "#opus-sidebar .opus-link.opus-dragging{opacity:.35;cursor:grabbing;}" +
+  "#opus-sidebar .opus-link.opus-drag-over-before{box-shadow:inset 0 2px 0 0 var(--opus-gold);}" +
+  "#opus-sidebar .opus-link.opus-drag-over-after{box-shadow:inset 0 -2px 0 0 var(--opus-gold);}" +
+  "#opus-reset-layout{display:none;margin:6px 12px 10px;padding:7px 10px;background:transparent;border:1px dashed rgba(232,201,106,.3);border-radius:7px;color:rgba(232,201,106,.6);font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;}" +
+  "#opus-reset-layout:hover{color:var(--opus-gold);border-color:rgba(232,201,106,.55);}" +
+  "#opus-reset-layout.opus-visible{display:block;}" +
+  "#opus-sidebar.opus-collapsed #opus-reset-layout{display:none!important;}" +
   "#opus-collapse-toggle{position:absolute;top:16px;right:10px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:6px;border:none;background:transparent;color:rgba(232,201,106,.65);cursor:pointer;font-family:inherit;flex-shrink:0;}" +
   "#opus-collapse-toggle:hover{background:rgba(255,255,255,.08);color:var(--opus-gold);}" +
   "#opus-collapse-toggle svg{width:15px;height:15px;flex-shrink:0;transition:transform .2s ease;}" +
@@ -134,7 +174,64 @@
     sidebar.appendChild(collapseBtn);
 
     var nav = el("nav");
-    MENU_GROUPS.forEach(function (group) {
+    var dragSrc = null;
+
+    function clearDragOverStyles() {
+      var marked = nav.querySelectorAll(".opus-drag-over-before,.opus-drag-over-after");
+      for (var i = 0; i < marked.length; i++) marked[i].classList.remove("opus-drag-over-before", "opus-drag-over-after");
+    }
+
+    function persistLayout() {
+      var layout = {};
+      var current = null;
+      Array.prototype.forEach.call(nav.children, function (child) {
+        if (child.classList.contains("opus-group-title")) {
+          current = child.textContent;
+          if (!layout[current]) layout[current] = [];
+        } else if (current && child.classList.contains("opus-link")) {
+          layout[current].push(child.dataset.href);
+        }
+      });
+      try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {}
+      resetBtn.classList.add("opus-visible");
+    }
+
+    function attachDrag(a) {
+      a.addEventListener("dragstart", function (e) {
+        dragSrc = a;
+        a.classList.add("opus-dragging");
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text/plain", a.dataset.href); } catch (e2) {}
+      });
+      a.addEventListener("dragend", function () {
+        a.classList.remove("opus-dragging");
+        clearDragOverStyles();
+        dragSrc = null;
+      });
+      a.addEventListener("dragover", function (e) {
+        if (!dragSrc || dragSrc === a) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        var rect = a.getBoundingClientRect();
+        var before = (e.clientY - rect.top) < rect.height / 2;
+        a.classList.toggle("opus-drag-over-before", before);
+        a.classList.toggle("opus-drag-over-after", !before);
+      });
+      a.addEventListener("dragleave", function () {
+        a.classList.remove("opus-drag-over-before", "opus-drag-over-after");
+      });
+      a.addEventListener("drop", function (e) {
+        e.preventDefault();
+        a.classList.remove("opus-drag-over-before", "opus-drag-over-after");
+        if (!dragSrc || dragSrc === a) return;
+        var rect = a.getBoundingClientRect();
+        var before = (e.clientY - rect.top) < rect.height / 2;
+        a.parentNode.insertBefore(dragSrc, before ? a : a.nextSibling);
+        persistLayout();
+      });
+    }
+
+    computeGroups().forEach(function (group) {
       var title = el("div", { class: "opus-group-title" }, group.titulo);
       nav.appendChild(title);
       group.itens.forEach(function (item) {
@@ -142,13 +239,26 @@
         var a = el("a", {
           class: "opus-link" + (isActive ? " active" : ""),
           href: item.href,
-          title: item.label
+          title: item.label,
+          draggable: "true"
         }, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + item.icon + '</svg><span>' + item.label + '</span>');
+        a.dataset.href = item.href;
         if (isActive) a.setAttribute("aria-current", "page");
+        attachDrag(a);
         nav.appendChild(a);
       });
     });
     sidebar.appendChild(nav);
+
+    var resetBtn = el("button", { id: "opus-reset-layout", type: "button" }, "Restaurar menu padrão");
+    if (getSavedLayout()) resetBtn.classList.add("opus-visible");
+    resetBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!confirm("Restaurar a ordem e categorias padrão do menu?")) return;
+      try { localStorage.removeItem(LAYOUT_KEY); } catch (e2) {}
+      location.reload();
+    });
+    sidebar.appendChild(resetBtn);
 
     document.body.classList.add("opus-has-sidebar");
     document.body.appendChild(overlay);

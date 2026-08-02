@@ -113,8 +113,14 @@ async function buscar(){
 
     ultimaResposta = res;
     const lista = extrairLista(res);
-    if(!lista.length){
+    if(lista === null){
       setStatus('Nada reconhecido como lista de anexos — veja o JSON bruto abaixo.', '#b42318');
+      mostrarJson();
+      return;
+    }
+    if(!lista.length){
+      setStatus('Nenhum anexo cadastrado para o pedido ' + numero + ' ainda.', '#6b7280');
+      document.getElementById('result').innerHTML = '';
       mostrarJson();
       return;
     }
@@ -130,21 +136,29 @@ async function buscar(){
 }
 
 // Acha o array de anexos independente do nome do campo na resposta.
+// Retorna null quando não achou nenhum campo que pareça ser a lista (erro de
+// verdade); retorna [] quando achou o campo mas ele veio vazio (0 anexos,
+// resposta válida — não é erro).
 function extrairLista(obj){
-  if(Array.isArray(obj)) return obj.filter(x => x && typeof x === 'object');
-  if(!obj || typeof obj !== 'object') return [];
+  if(Array.isArray(obj)) return obj;
+  if(!obj || typeof obj !== 'object') return null;
+  // 1) prioridade: campo cujo nome contenha "anexo" e seja um array (mesmo vazio)
+  for(const k of Object.keys(obj)){
+    if(Array.isArray(obj[k]) && k.toLowerCase().includes('anexo')) return obj[k];
+  }
+  // 2) qualquer array com itens-objeto
   for(const k of Object.keys(obj)){
     const v = obj[k];
     if(Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
   }
-  // desce um nível (às vezes vem aninhado em cabecalho/registros)
+  // 3) desce um nível (às vezes vem aninhado em cabecalho/registros)
   for(const k of Object.keys(obj)){
     if(obj[k] && typeof obj[k] === 'object'){
       const r = extrairLista(obj[k]);
-      if(r.length) return r;
+      if(r && r.length) return r;
     }
   }
-  return [];
+  return null;
 }
 
 // Pega o primeiro campo cujo nome bate com algum dos padrões.
@@ -230,7 +244,7 @@ async function diagnostico(){
         const r = await omie(EP_ANEXO, 'ListarAnexo', {
           nPagina: 1, nRegPorPagina: 50, cTabela: C_TABELA, nId: Number(id)
         });
-        n = r.nTotRegistros != null ? r.nTotRegistros : extrairLista(r).length;
+        n = r.nTotRegistros != null ? r.nTotRegistros : (extrairLista(r) || []).length;
       }catch(e){ n = 'erro: ' + e.message.slice(0, 40); }
       const ok = (n !== 0 && n !== '—' && String(n).indexOf('erro') !== 0);
       html += `<tr${ok ? ' style="background:#e8f7ee;font-weight:600"' : ''}>
@@ -253,6 +267,6 @@ document.getElementById('raw').onclick = mostrarJson;
 document.getElementById('sweep').onclick = diagnostico;
 document.getElementById('num').addEventListener('keydown', e => { if(e.key === 'Enter') buscar(); });
 </script>
-<script src="js/sidebar.js?v=2" defer></script>
+<script src="js/sidebar.js?v=3" defer></script>
 </body>
 </html>
