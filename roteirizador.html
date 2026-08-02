@@ -2369,7 +2369,7 @@ function adRota(i){
     if(d>400){alert('Dist maxima: '+Math.round(d)+' km (max 400)');return;}
   }
   r.cl.push(i);r.cc=null;
-  if(map)markers[i].closePopup();
+  if(_gpPop)_gpPop.remove();
   upAll();
   if(md==='correios')calcCor(r).then(function(){upAll();});
   else calcOSRM(r).then(function(){upAll();}).catch(function(){});
@@ -2377,7 +2377,7 @@ function adRota(i){
 
 function rmRota(i){
   rotas.forEach(function(r){var x=r.cl.indexOf(i);if(x>=0){r.cl.splice(x,1);r.cc=null;}});
-  if(map)markers[i].closePopup();upAll();
+  if(_gpPop)_gpPop.remove();upAll();
 }
 
 // Blindado: uma rota restaurada de sessão/Firebase corrompida ou com formato
@@ -2889,7 +2889,7 @@ function buildGrupoHTML(indices){
     h+='<div style="font-size:10px;color:'+cor+';">'+st+'</div>';
     h+='</div>'+btn+'</div>';
   });
-  h+='</div><button onclick="map.closePopup()" style="width:100%;margin-top:8px;background:#f7fafc;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Fechar</button>';
+  h+='</div><button onclick="if(_gpPop)_gpPop.remove();" style="width:100%;margin-top:8px;background:#f7fafc;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Fechar</button>';
   return h;
 }
 
