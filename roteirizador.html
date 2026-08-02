@@ -5733,7 +5733,7 @@ function limparFormMotorista(){
   toggleVeiculoTerceiro();
   toggleTransportadoraPJ();
   ['mot-upload-cnh','mot-upload-crlv'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  ['mot-upload-cnh-status','mot-upload-crlv-status'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.textContent=''; } });
+  ['mot-upload-cnh-status','mot-upload-crlv-status','mot-cpf-status'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.textContent=''; } });
   removerFotoMotorista();
   var t = document.querySelector('#m-motoristas .mt2'); if(t) t.textContent='🚗 Cadastrar Motorista';
 }
@@ -6243,6 +6243,53 @@ async function omieCallRot(ep, call, empresaCod, _secretIgnorado, param, _retry)
     throw new Error(data.faultstring);
   }
   return data;
+}
+
+// Busca um CPF já cadastrado como cliente/fornecedor no OMIE (nas 3
+// empresas) pra pré-preencher nome/telefone/endereço no cadastro de
+// motorista. O OMIE só conhece quem já foi cadastrado como cliente ou
+// fornecedor em alguma das empresas — não é uma consulta de CPF na
+// Receita, então nem todo motorista vai ser encontrado (segue liberado
+// pra digitar tudo manualmente quando não achar).
+async function consultarCpfOmie(cpfLimpo){
+  for (var i=0; i<OMIE_EMPRESAS.length; i++){
+    var emp = OMIE_EMPRESAS[i];
+    try{
+      var data = await omieCallRot(EP_CLI_ROT, 'ConsultarCliente', emp.empresa, null, [{ cnpj_cpf: cpfLimpo }]);
+      if (data && (data.codigo_cliente_omie || data.razao_social)) return { empresa: emp.nome, dados: data };
+    }catch(e){ /* não encontrado nessa empresa (ou erro) — tenta a próxima */ }
+  }
+  return null;
+}
+
+async function buscarCpfOmie(){
+  var cpfEl = document.getElementById('mot-cpf');
+  var statusEl = document.getElementById('mot-cpf-status');
+  if (!cpfEl) return;
+  var cpfLimpo = (cpfEl.value||'').replace(/\D/g,'');
+  if (cpfLimpo.length !== 11) { if(statusEl) statusEl.textContent=''; return; }
+  if (statusEl){ statusEl.textContent='🔎 Consultando cadastro no OMIE…'; statusEl.style.color='#2563eb'; }
+  try{
+    var achou = await consultarCpfOmie(cpfLimpo);
+    if (achou){
+      var d = achou.dados;
+      var nomeEl = document.getElementById('mot-nome');
+      if (nomeEl && !nomeEl.value) nomeEl.value = d.razao_social || d.nome_fantasia || '';
+      var telEl = document.getElementById('mot-tel');
+      if (telEl && !telEl.value && (d.telefone1_ddd || d.telefone1_numero)) telEl.value = String(d.telefone1_ddd||'')+String(d.telefone1_numero||'');
+      var endEl = document.getElementById('mot-endereco');
+      if (endEl && !endEl.value){
+        var partes = [d.endereco, d.endereco_numero, d.bairro, d.cidade, d.estado].filter(function(v){ return v; });
+        if (partes.length) endEl.value = partes.join(', ');
+      }
+      if (statusEl){ statusEl.textContent='✅ Encontrado em '+achou.empresa+' — dados preenchidos (confira).'; statusEl.style.color='#16a34a'; }
+    } else if (statusEl){
+      statusEl.textContent='ℹ CPF não encontrado como cliente/fornecedor no OMIE — preencha manualmente.'; statusEl.style.color='#6b7280';
+    }
+  }catch(e){
+    if (statusEl) statusEl.textContent='';
+    console.error('Erro ao consultar CPF no OMIE:', e);
+  }
 }
 
 // 3) DATAS
@@ -7599,7 +7646,9 @@ function copiarTextoGerado(){
             <div class="fl" style="grid-column:1/-1;"><label>Nome completo *</label><input type="text" id="mot-nome" placeholder="João da Silva"/></div>
           </div>
           <div class="g2">
-            <div class="fl"><label>CPF</label><input type="text" id="mot-cpf" placeholder="000.000.000-00" maxlength="14"/></div>
+            <div class="fl"><label>CPF</label><input type="text" id="mot-cpf" placeholder="000.000.000-00" maxlength="14" onblur="buscarCpfOmie()"/>
+              <div id="mot-cpf-status" style="font-size:10.5px;margin-top:3px;min-height:13px;"></div>
+            </div>
             <div class="fl"><label>Data de nascimento</label><input type="date" id="mot-nascimento"/></div>
           </div>
           <div class="g2">
