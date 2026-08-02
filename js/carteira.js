@@ -33,6 +33,7 @@ let estLicit   = {}; // { SKU: qtd_disponivel } — aba LICITAÇÃO
 let selecionados = new Set();
 let pedidoAtual  = null;
 let deptoCache   = {};
+let vendedorCache = {};
 let sortCol = 'data_inclusao';
 let sortDir = -1;
 
@@ -241,6 +242,17 @@ async function carregarDepartamentos(emp) {
   } catch(e) { console.warn('Depto', emp.nome, e.message); }
 }
 
+async function carregarVendedores(emp) {
+  try {
+    const d = await omieCall(emp, 'https://app.omie.com.br/api/v1/geral/vendedores/', 'ListarVendedores', [{pagina:1,registros_por_pagina:200}]);
+    (d.cadastros||d.vendedor_cadastro||[]).forEach(v => {
+      const cod = v.codigo || v.nCodVend;
+      const nome = v.nome || v.cNome;
+      if (cod && nome) vendedorCache[cod] = nome;
+    });
+  } catch(e) { console.warn('Vendedores', emp.nome, e.message); }
+}
+
 // ── CARREGAR PEDIDOS ──────────────────────────────────────────────────────────
 
 async function carregarPedidos() {
@@ -250,7 +262,7 @@ async function carregarPedidos() {
   pedidos = [];
   selecionados.clear();
 
-  for (const emp of EMPRESAS) await carregarDepartamentos(emp);
+  for (const emp of EMPRESAS) { await carregarDepartamentos(emp); await carregarVendedores(emp); }
   carregarEstoque();
 
   const dtCorte = new Date();
@@ -301,6 +313,8 @@ const resumoProdutosExibicao = itens.map(it =>
               codigo_pedido:  p.cabecalho?.codigo_pedido,
               numero_pedido:  p.cabecalho?.numero_pedido,
               codigo_cliente: p.cabecalho?.codigo_cliente,
+              codigo_vendedor: p.cabecalho?.codigo_vendedor,
+              vendedor_nome:  vendedorCache[p.cabecalho?.codigo_vendedor] || (p.cabecalho?.codigo_vendedor ? String(p.cabecalho.codigo_vendedor) : ''),
               cliente_nome:   p.informacoes_adicionais?.contato || '',
               cliente_cidade: '',
               cliente_uf:     '',
@@ -403,7 +417,7 @@ function pedidosFiltrados() {
     if (enviado === 'enviado'     && !jaEnviado(p)) return false;
     if (enviado === 'nao_enviado' &&  jaEnviado(p)) return false;
     if (busca) {
-      const h = [p.numero_pedido, p.cliente_nome, p.cliente_cidade].join(' ').toLowerCase();
+      const h = [p.numero_pedido, p.cliente_nome, p.cliente_cidade, p.vendedor_nome].join(' ').toLowerCase();
       if (!h.includes(busca)) return false;
     }
     return true;
@@ -528,6 +542,7 @@ return `<tr class="${sel?'selecionado':''} ${!pode&&!sel?'bloqueado':''}" style=
         <div style="font-weight:600;font-size:12px;color:var(--ink2);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.cliente_nome||'...'}</div>
         <div style="font-size:10px;color:var(--ink4)">${p.cliente_cidade||''}${p.cliente_uf?' / '+p.cliente_uf:''}</div>
       </td>
+      <td style="padding:4px 8px;font-size:11.5px;color:var(--ink3);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.vendedor_nome||''}">${p.vendedor_nome||'—'}</td>
       <td style="padding:4px 8px;font-size:11px;color:var(--ink3);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help" title="${p.resumoProdutos||''}">${p.resumoProdutosExibicao||'—'}</td>
       <td style="padding:4px 8px;font-size:11.5px;white-space:nowrap">${fmtData(p.data_inclusao)}</td>
       <td style="padding:4px 8px"><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--cream2);color:var(--ink2);border:1px solid var(--border)">${p.frete==='FOB'?'📦':'🚚'} ${p.frete}</span></td>
@@ -788,6 +803,7 @@ function renderDrawer() {
     <div class="kv"><b>Empresa</b><span>${p._empresa.nome}</span></div>
     <div class="kv"><b>Nº Pedido</b><span>${p.numero_pedido}</span></div>
     <div class="kv"><b>Cliente</b><span>${p.cliente_nome||'—'}</span></div>
+    <div class="kv"><b>Vendedor</b><span>${p.vendedor_nome||'—'}</span></div>
     <div class="kv"><b>Cidade</b><span>${p.cliente_cidade||'—'}${p.cliente_uf?' / '+p.cliente_uf:''}</span></div>
     <div class="kv"><b>Inclusão</b><span>${fmtData(p.data_inclusao)}</span></div>
     <div class="kv"><b>Frete</b><span>${p.frete}</span></div>
@@ -909,7 +925,7 @@ document.getElementById('btn-atualizar')?.addEventListener('click', carregarPedi
   const lista = ordenarPedidos(pedidosFiltrados());
 
   const linhas = [
-    ['Empresa','Pedido','Cliente','Cidade','UF','Inclusão','Frete','Departamento','Etapa','Peso (kg)','Valor Total','Estoque','Produtos','Status Roteiro']
+    ['Empresa','Pedido','Cliente','Vendedor','Cidade','UF','Inclusão','Frete','Departamento','Etapa','Peso (kg)','Valor Total','Estoque','Produtos','Status Roteiro']
   ];
 
   lista.forEach(p => {
@@ -920,6 +936,7 @@ document.getElementById('btn-atualizar')?.addEventListener('click', carregarPedi
       p._empresa.nome,
       p.numero_pedido,
       p.cliente_nome || '—',
+      p.vendedor_nome || '—',
       p.cliente_cidade || '—',
       p.cliente_uf || '—',
       p.data_inclusao || '—',
