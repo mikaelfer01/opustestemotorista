@@ -464,6 +464,28 @@ window.atualizarNFsRota = async function(t){
   alert(achadas ? ('✅ ' + achadas + ' NF(s) encontrada(s).') : '⏳ Nenhuma NF nova ainda — pedido(s) provavelmente ainda não faturado(s).');
 };
 
+// Corrige rota fechada cedo demais (concluido:true com paradas ainda sem
+// confirmação) — volta a aparecer em "Em rota" e no mapa, e o app do
+// motorista volta a considerá-la ativa (verificarConcluido roda de novo
+// a cada nova confirmação, então fecha sozinha quando as pendências acabarem).
+window.reabrirRota = async function(t){
+  var d = despachos[t];
+  if (!d) return;
+  var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+  if (!confirm('Reabrir a rota de ' + (d.motoristaNome||'?') + '?\n\n' + (nP-nC) + ' parada(s) ainda sem confirmação vão voltar a aparecer como pendentes em "Em rota".')) return;
+  try {
+    var resp = await fetch('/api/firebase-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'despachos/' + t, data: { concluido: false, tsConclusao: null }, method: 'update' })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    alert('🔓 Rota reaberta.');
+  } catch (e) {
+    alert('Erro ao reabrir a rota: ' + e.message);
+  }
+};
+
 // Atualiza TODAS as NFs pendentes de TODAS as rotas (útil pra colocar em dia
 // pedidos antigos já na base). Roda devagar de propósito (uma chamada por
 // vez, com pausa entre elas) pra não estourar o limite de requisições
@@ -640,9 +662,15 @@ window.renderPainel = function() {
     var telFmt = d.motoristaTel||'';
     var telWapp = '55'+tel;
 
+    // Rota marcada como concluída mas com paradas sem confirmação — sinal de
+    // que verificarConcluido() fechou a rota cedo demais (ou algum outro
+    // problema). Sem isso ela some da aba "Em rota" mesmo faltando entrega.
+    var concluidaComPendencia = !!d.concluido && nC < nP;
+
     var statusClasse = !d.iniciou ? 'st-aguardando' : (d.concluido ? 'st-concluido' : 'st-emrota');
     var statusLabel = !d.iniciou ? 'Aguardando' : (d.concluido ? '✅ Concluído' : '🚗 Em rota');
     if (emRotaAtiva && (gpsStale || nFora>0)) statusClasse = 'st-alerta';
+    if (concluidaComPendencia) { statusClasse = 'st-alerta'; statusLabel = '⚠️ Concluída c/ pendência'; }
 
     var html = '<div class="mot-card '+statusClasse+(sel?' sel':'')+'" id="mc-'+t+'" onclick="selecionarMot(\''+t+'\')">';
     html += '<div class="mot-top"><div class="mot-dot'+(online?' online':'')+'" style="background:'+cor+'"></div>';
@@ -671,6 +699,10 @@ window.renderPainel = function() {
     }
     if (nFora>0) html += '<div class="mot-fora">⚠️ '+nFora+' confirmação(ões) fora do raio</div>';
     if (gpsStale) html += '<div class="mot-gps-alerta">📡 GPS parado'+(d.gps?' há '+tempoRel(d.gps.ts):' — nunca recebido')+' · ligar pra confirmar</div>';
+    if (concluidaComPendencia) {
+      html += '<div class="mot-gps-alerta">⚠️ Marcada como concluída mas '+(nP-nC)+' parada(s) sem confirmação. Some da aba "Em rota".</div>';
+      html += '<button onclick="event.stopPropagation();reabrirRota(\''+t+'\')" style="width:100%;margin-top:6px;padding:7px;border:1.5px solid var(--vm);border-radius:8px;background:rgba(220,38,38,.08);color:var(--vm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">🔓 Reabrir rota</button>';
+    }
     html += '<div class="mot-compact"><div class="mot-compact-txt">'+nC+'/'+nP+'</div>';
     html += '<div class="mot-bar"><div class="mot-bar-fill" style="width:'+pct+'%;background:'+cor+'"></div></div></div>';
     if (nD>0 || nA>0) {
