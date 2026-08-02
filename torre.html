@@ -110,6 +110,9 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
 #map{width:100%;height:100%}
 
 .resumo{position:absolute;top:12px;right:12px;z-index:500;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);border-top:3px solid var(--azul);border-radius:var(--rl);padding:11px 14px;min-width:210px;box-shadow:0 12px 32px rgba(31,38,135,.15)}
+.rota-info{display:none;position:absolute;top:12px;left:12px;z-index:500;background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);border-left:3px solid var(--azul);border-radius:var(--rl);padding:9px 14px;font-size:12px;font-weight:700;color:var(--azul-d);box-shadow:0 8px 24px rgba(31,38,135,.15);max-width:min(70vw,320px)}
+.rota-info.on{display:block}
+.rota-info .ri-l{font-size:9px;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:2px}
 .res-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
 .res-k{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center}
 .res-l{font-size:8px;color:var(--txts);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:2px}
@@ -237,6 +240,10 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
       <button type="button" class="btn-map-estilo" data-style="satellite-streets-v12" title="Satélite">🛰️</button>
       <button type="button" class="btn-map-estilo" data-style="outdoors-v12" title="Relevo">🏔️</button>
       <button type="button" class="btn-map-estilo" data-style="dark-v11" title="Escuro">🌙</button>
+    </div>
+    <div class="rota-info" id="rota-info">
+      <div class="ri-l">🧭 Rota sugerida</div>
+      <div id="ri-txt"></div>
     </div>
     <div class="resumo">
       <div class="res-title">Resumo do dia</div>
@@ -523,6 +530,16 @@ window.atualizarTodasNFsPendentes = async function(){
   new mapboxgl.Marker({element:cdEl}).setLngLat([-44.025736,-19.921307])
     .setPopup(new mapboxgl.Popup().setHTML('<b>CD MFParis — Contagem/MG</b>')).addTo(map);
 
+  // Linha da rota (o caminho que o motorista selecionado ainda precisa
+  // seguir, calculado por estrada via OSRM — igual ao que apareceria no GPS).
+  map.on('load', function(){
+    map.addSource('rota-caminho-src', {type:'geojson', data:{type:'Feature', geometry:{type:'LineString', coordinates:[]}}});
+    map.addLayer({id:'rota-caminho-casing', type:'line', source:'rota-caminho-src',
+      layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#0a1f6b','line-width':7,'line-opacity':.3}});
+    map.addLayer({id:'rota-caminho-line', type:'line', source:'rota-caminho-src',
+      layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#2563eb','line-width':4,'line-opacity':.95,'line-dasharray':[1,0]}});
+  });
+
   // ── FIREBASE — aguarda auth do checar-login.js ────────────────────────────────
   onAuthStateChanged(auth, function(user) {
     if (!user) return; // checar-login.js já redireciona se não logado
@@ -699,7 +716,11 @@ function atualizarMarcadores() {
     var pop = marcadores[t].getPopup();
     if (pop && pop.isOpen()) pop.setHTML(buildPopup(t,d));
   });
-  if (motoristaSel && despachos[motoristaSel]) desenharParadas(motoristaSel, despachos[motoristaSel]);
+  if (motoristaSel && despachos[motoristaSel]) {
+    desenharParadas(motoristaSel, despachos[motoristaSel]);
+    var ultimoCalc = _rotaCaminhoTs[motoristaSel] || 0;
+    if (Date.now() - ultimoCalc > 45000) calcularRotaCaminho(motoristaSel, despachos[motoristaSel]);
+  }
 }
 
 function mkMotIco(cor,nome,nC,nP,stale) {
@@ -749,10 +770,53 @@ window.selecionarMot = function(t) {
   paradaLy.forEach(function(l){l.remove();}); paradaLy=[];
   if (motoristaSel && despachos[t]) {
     desenharParadas(t, despachos[t]);
+    calcularRotaCaminho(t, despachos[t]);
     if (marcadores[t]) map.flyTo({center: marcadores[t].getLngLat(), zoom:10});
+  } else {
+    limparRotaCaminho();
   }
   renderPainel();
 };
+
+// ── ROTA A SEGUIR (o que apareceria no GPS do motorista) ────────────────────
+// Traça, por estrada (OSRM), o caminho da posição atual do motorista (ou do
+// CD, se ainda sem GPS) até as paradas ainda pendentes, na ordem da rota —
+// é a "melhor rota" que ele deveria seguir dali em diante.
+var CD_LATLNG = {lat:-19.921307, lng:-44.025736};
+var _rotaCaminhoTs = {};
+function limparRotaCaminho() {
+  if (map && map.getSource('rota-caminho-src')) {
+    map.getSource('rota-caminho-src').setData({type:'Feature', geometry:{type:'LineString', coordinates:[]}});
+  }
+  var info = document.getElementById('rota-info');
+  if (info) info.classList.remove('on');
+}
+function calcularRotaCaminho(t, d) {
+  if (!map || !map.getSource('rota-caminho-src')) return;
+  if (!d || !d.iniciou || d.concluido) { limparRotaCaminho(); return; }
+  var pendentes = (d.paradas||[]).filter(function(p, idx){
+    return p.lat && p.lng && !(d.confirmacoes && d.confirmacoes[idx]);
+  });
+  if (!pendentes.length) { limparRotaCaminho(); return; }
+  var origem = (d.gps && d.gps.lat) ? {lat:d.gps.lat, lng:d.gps.lng} : CD_LATLNG;
+  var pontos = [origem].concat(pendentes.map(function(p){ return {lat:p.lat, lng:p.lng}; }));
+  var coordsStr = pontos.map(function(p){ return p.lng+','+p.lat; }).join(';');
+  _rotaCaminhoTs[t] = Date.now();
+  fetch('https://router.project-osrm.org/route/v1/driving/'+coordsStr+'?overview=full&geometries=geojson')
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (motoristaSel !== t) return; // trocou de motorista enquanto calculava
+      if (res.code !== 'Ok' || !res.routes || !res.routes[0]) { limparRotaCaminho(); return; }
+      map.getSource('rota-caminho-src').setData({type:'Feature', geometry: res.routes[0].geometry});
+      var km = (res.routes[0].distance/1000).toFixed(1);
+      var min = Math.round(res.routes[0].duration/60);
+      var txt = document.getElementById('ri-txt');
+      if (txt) txt.textContent = (d.motoristaNome||'Motorista') + ' · ' + pendentes.length + ' parada(s) · ' + km + ' km · ' + min + ' min';
+      var info = document.getElementById('rota-info');
+      if (info) info.classList.add('on');
+    })
+    .catch(function(){});
+}
 
 // ── FILTROS ───────────────────────────────────────────────────────────────────
 window.setFiltro = function(f,btn) {

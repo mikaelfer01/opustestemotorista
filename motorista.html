@@ -900,7 +900,11 @@ function notificarConclusaoWhatsapp(){
     var nomeRota = (rotaData.nomeRota || 'Rota');
     var msg = '\u2705 Rota finalizada\nMotorista: ' + nomeMot + '\nRota: ' + nomeRota;
     var url = 'https://wa.me/5531992233646?text=' + encodeURIComponent(msg);
-    setTimeout(function(){ window.open(url, '_blank'); }, 600);
+    // Navegacao direta (location.href), nao window.open: em iOS/Android o
+    // wa.me e interceptado pelo SO e abre o app do WhatsApp. window.open()
+    // dentro de setTimeout/promise perde a "user activation" do toque e o
+    // Safari/Chrome mobile bloqueiam a aba como popup silenciosamente.
+    window.location.href = url;
   }catch(e){}
 }
 function atualizarProgresso(){
