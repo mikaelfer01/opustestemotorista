@@ -730,17 +730,38 @@ function buildPopup(t,d) {
   var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
   var tel = (d.motoristaTel||'').replace(/\D/g,'');
   var telWapp = '55'+tel;
-  return '<div style="font-family:Inter,sans-serif;min-width:180px">'
+  var html = '<div style="font-family:Inter,sans-serif;min-width:220px;max-width:260px">'
     +'<div style="font-size:13px;font-weight:700;margin-bottom:3px">🚗 '+(d.motoristaNome||'—')+'</div>'
     +'<div style="font-size:11px;color:#666;margin-bottom:2px">'+(d.nomeRota||'—')+'</div>'
     +'<div style="font-size:11px;color:#666;margin-bottom:2px">📦 '+nC+'/'+nP+' entregas</div>'
-    +'<div style="font-size:11px;color:#666;margin-bottom:8px">🕐 '+(d.gps?tempoRel(d.gps.ts):'sem GPS')+'</div>'
-    +(tel?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">'
+    +'<div style="font-size:11px;color:#666;margin-bottom:8px">🕐 '+(d.gps?tempoRel(d.gps.ts):'sem GPS')+'</div>';
+
+  // Destinos que ele deve parar — direto no popup do mapa, sem precisar abrir
+  // o painel lateral (que pode estar oculto pra focar no mapa).
+  var paradas = d.paradas || [];
+  if (paradas.length) {
+    html += '<div style="font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin:6px 0 4px;border-top:1px solid #eee;padding-top:6px">📍 Destinos ('+nC+'/'+nP+')</div>';
+    html += '<div style="max-height:180px;overflow-y:auto;margin-bottom:8px">';
+    paradas.forEach(function(p, idx){
+      var c = d.confirmacoes && d.confirmacoes[idx];
+      var ico = c ? (c.tipo==='entregue'?'✅':c.tipo==='entregue-avaria'?'⚠️':c.tipo==='entregue-parcial'?'📦':c.tipo==='devolucao'?'↩':'✅') : '⏳';
+      html += '<div style="display:flex;gap:6px;padding:3px 0;border-bottom:1px solid #f4f4f4;font-size:11px">'
+        +'<div style="flex-shrink:0">'+ico+'</div>'
+        +'<div style="min-width:0;flex:1">'
+        +'<div style="font-weight:600;color:#1a202c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(idx+1)+'. '+(p.cliente||'—')+'</div>'
+        +'<div style="color:#94a3b8;font-size:10px">'+(p.cidade||'')+(p.estado?'/'+p.estado:'')+(p.pedido?' · Ped. '+p.pedido:'')+'</div>'
+        +'</div></div>';
+    });
+    html += '</div>';
+  }
+
+  html += (tel?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">'
       +'<a href="tel:+'+telWapp+'" style="padding:6px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;text-align:center;font-size:11px;font-weight:700;color:#166534;text-decoration:none">📞 Ligar</a>'
       +'<a href="https://wa.me/'+telWapp+'" target="_blank" style="padding:6px;background:#f0fff4;border:1px solid #bbf7d0;border-radius:7px;text-align:center;font-size:11px;font-weight:700;color:#128c7e;text-decoration:none">💬 WhatsApp</a>'
       +'</div>':'')
-    +'<button onclick="selecionarMot(\''+t+'\')" style="width:100%;padding:6px;border:none;border-radius:6px;background:#1e40af;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Ver detalhes</button>'
+    +'<button onclick="selecionarMot(\''+t+'\')" style="width:100%;padding:6px;border:none;border-radius:6px;background:#1e40af;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Ver rota no mapa</button>'
     +'</div>';
+  return html;
 }
 
 function desenharParadas(t,d) {
