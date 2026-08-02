@@ -37,7 +37,10 @@ export const PERMISSOES = {
 
   // Estoque / comercial
   'estoque.html':             ['admin', 'logistica', 'comercial'],
+  'estoque-omie.html':        ['admin', 'logistica', 'comercial'],
   'comercial.html':           ['admin', 'logistica', 'comercial'],
+  'anexos.html':               ['admin', 'logistica', 'comercial'],
+  'anexo-ar.html':             ['admin', 'logistica'],
 
   // Producao
   'programacao.html':         ['admin', 'logistica'],
@@ -59,14 +62,16 @@ export const PERMISSOES = {
 
   // Tela de troca de senha - obrigatoria no 1o login
   'trocar-senha.html':        ['admin', 'logistica', 'comercial', 'operacao'],
+
+  // Ferramentas de diagnostico/debug (chamam a Omie direto) - so admin
+  'diagnostico.html':         ['admin'],
+  'teste-proxy.html':         ['admin'],
 };
 
 // Paginas publicas (sem login)
 export const PAGINAS_PUBLICAS = new Set([
   'login.html',
   'motorista.html',
-  'diagnostico.html',
-  'teste-proxy.html',
 ]);
 
 /**

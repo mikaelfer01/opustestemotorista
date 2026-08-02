@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Farol de Entregas — Grupo MF Paris</title>
+<script type="module">
+document.documentElement.style.visibility = 'hidden';
+try {
+  const m = await import('/js/auth.js');
+  m.exigirPerfis(['admin', 'logistica', 'comercial']);
+} catch (e) { document.documentElement.style.visibility = 'visible'; }
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
 <style>
 :root{

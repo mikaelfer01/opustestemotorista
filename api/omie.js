@@ -13,6 +13,11 @@ module.exports = async function handler(req, res) {
     if (!endpoint || !payload) {
       return res.status(400).json({ error: 'endpoint e payload são obrigatórios' });
     }
+    // Trava de SSRF: este proxy só pode ser usado para chamar a API da Omie,
+    // nunca uma URL arbitrária escolhida pelo cliente.
+    if (!/^https:\/\/app\.omie\.com\.br\//.test(endpoint)) {
+      return res.status(400).json({ error: 'endpoint não permitido' });
+    }
 
     const omieResp = await fetch(endpoint, {
       method: 'POST',

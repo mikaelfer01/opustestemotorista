@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OPUS — Grupo MF Paris</title>
+<script type="module">
+document.documentElement.style.visibility = 'hidden';
+try {
+  const m = await import('/js/auth.js');
+  m.exigirPerfis(['admin', 'logistica', 'comercial', 'operacao']);
+} catch (e) { document.documentElement.style.visibility = 'visible'; }
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}

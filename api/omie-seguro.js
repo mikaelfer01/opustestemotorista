@@ -25,6 +25,11 @@ module.exports = async function handler(req, res) {
     if (!endpoint || !call || !param) {
       return res.status(400).json({ error: 'endpoint, call e param são obrigatórios' });
     }
+    // Trava de SSRF: este proxy só pode ser usado para chamar a API da Omie,
+    // nunca uma URL arbitrária escolhida pelo cliente.
+    if (!/^https:\/\/app\.omie\.com\.br\//.test(endpoint)) {
+      return res.status(400).json({ error: 'endpoint não permitido' });
+    }
     const cred = CREDENCIAIS[String(empresa || '').toUpperCase()];
     if (!cred) return res.status(400).json({ error: 'empresa não reconhecida: ' + empresa });
 
