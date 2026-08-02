@@ -556,11 +556,13 @@ setInterval(function(){document.getElementById('badge-hora').textContent = new D
 function iniciarListener() {
   onValue(ref(_db, 'despachos'), function(snap) {
     despachos = snap.val() || {};
-    renderPainel();
-    atualizarMarcadores();
-    atualizarResumo();
-    atualizarSelects();
-    atualizarSelectsPainel();
+    // Um registro isolado quebrado (ex: chave existente mas valor null por
+    // uma escrita parcial) não pode travar as outras etapas — cada uma roda
+    // isolada, senão uma exceção na primeira impede as próximas de rodar a
+    // cada atualização do Firebase, silenciosamente.
+    [renderPainel, atualizarMarcadores, atualizarResumo, atualizarSelects, atualizarSelectsPainel].forEach(function(fn){
+      try { fn(); } catch (e) { console.error('[Torre] Falha em '+fn.name+'():', e); }
+    });
     document.getElementById('badge-mots').textContent = Object.keys(despachos).length + ' motoristas';
     if (abaAtual === 'hist') renderHistorico();
   }, function(err) {
@@ -570,31 +572,49 @@ function iniciarListener() {
 
 // ── PAINEL ────────────────────────────────────────────────────────────────────
 window.renderPainel = function() {
+  // Um registro individual corrompido (campo com formato inesperado etc) NÃO
+  // pode derrubar o filtro/render de TODOS os outros motoristas — sem essa
+  // proteção, um .filter()/.map() que lança exceção deixa o painel inteiro
+  // travado no estado antigo, silenciosamente escondendo rotas novas/válidas
+  // que nunca mais aparecem até a página ser recarregada.
+  var tokensQuebrados = [];
   var tokens = Object.keys(despachos).filter(function(t) {
-    var d = despachos[t];
-    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
-    if (filtroAtual==='emrota' && (!d.iniciou||d.concluido)) return false;
-    if (filtroAtual==='pendente' && nC>=nP) return false;
-    if (filtroAtual==='concluido' && !d.concluido) return false;
-    if (filtroMotPlaca && t !== filtroMotPlaca) return false;
-    if (filtroRegiao) {
-      var temNaRegiao = (d.paradas||[]).some(function(p){ return (p.estado||'').toUpperCase() === filtroRegiao; });
-      if (!temNaRegiao) return false;
+    try {
+      var d = despachos[t];
+      var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+      if (filtroAtual==='emrota' && (!d.iniciou||d.concluido)) return false;
+      if (filtroAtual==='pendente' && nC>=nP) return false;
+      if (filtroAtual==='concluido' && !d.concluido) return false;
+      if (filtroMotPlaca && t !== filtroMotPlaca) return false;
+      if (filtroRegiao) {
+        var temNaRegiao = (d.paradas||[]).some(function(p){ return (p.estado||'').toUpperCase() === filtroRegiao; });
+        if (!temNaRegiao) return false;
+      }
+      if (buscaAtual) {
+        var q = normTxt(buscaAtual);
+        var baterota = (d.motoristaNome||'').toLowerCase().includes(q) || (d.nomeRota||'').toLowerCase().includes(q) || (d.idRota||'').toLowerCase().includes(q);
+        if (!baterota && !paradasQueBatem(d, buscaAtual).length) return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('[Torre] Registro quebrado em despachos/'+t+' — excluído do filtro pra não travar o painel:', e);
+      tokensQuebrados.push(t);
+      return false;
     }
-    if (buscaAtual) {
-      var q = normTxt(buscaAtual);
-      var baterota = (d.motoristaNome||'').toLowerCase().includes(q) || (d.nomeRota||'').toLowerCase().includes(q) || (d.idRota||'').toLowerCase().includes(q);
-      if (!baterota && !paradasQueBatem(d, buscaAtual).length) return false;
-    }
-    return true;
   });
 
-  if (!tokens.length) {
+  if (!tokens.length && !tokensQuebrados.length) {
     document.getElementById('painel-lista').innerHTML = '<div class="empty"><div class="empty-icon">📡</div><div>Nenhum motorista encontrado</div></div>';
     return;
   }
 
-  document.getElementById('painel-lista').innerHTML = tokens.map(function(t) {
+  var htmlQuebrados = tokensQuebrados.map(function(t){
+    return '<div class="mot-card st-alerta" style="cursor:default"><div class="mot-nome">⚠️ Registro com erro</div>'
+      + '<div class="mot-rota-info">Token: '+t+' — não foi possível exibir (veja o console). Avise o suporte.</div></div>';
+  }).join('');
+
+  document.getElementById('painel-lista').innerHTML = htmlQuebrados + tokens.map(function(t) {
+    try {
     var d = despachos[t];
     var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
     var pct = nP>0?(nC/nP*100):0;
@@ -682,6 +702,11 @@ window.renderPainel = function() {
     }
     html += '</div>';
     return html;
+    } catch (e) {
+      console.error('[Torre] Erro ao renderizar despachos/'+t+' — pulado pra não travar o painel:', e);
+      return '<div class="mot-card st-alerta" style="cursor:default"><div class="mot-nome">⚠️ Erro ao exibir esta rota</div>'
+        + '<div class="mot-rota-info">Token: '+t+' — veja o console. Avise o suporte.</div></div>';
+    }
   }).join('');
 };
 
@@ -689,6 +714,7 @@ window.renderPainel = function() {
 function atualizarMarcadores() {
   var GPS_STALE_MS = 15*60*1000;
   Object.keys(despachos).forEach(function(t) {
+    try {
     var d = despachos[t];
     if (d.concluido) {
       if (marcadores[t]) { marcadores[t].remove(); delete marcadores[t]; }
@@ -711,6 +737,9 @@ function atualizarMarcadores() {
     }
     var pop = marcadores[t].getPopup();
     if (pop && pop.isOpen()) pop.setHTML(buildPopup(t,d));
+    } catch (e) {
+      console.error('[Torre] Erro ao atualizar marcador de despachos/'+t+':', e);
+    }
   });
   if (motoristaSel && despachos[motoristaSel]) {
     desenharParadas(motoristaSel, despachos[motoristaSel]);
