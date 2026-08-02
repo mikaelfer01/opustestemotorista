@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OPUS — Configurar Rastreio</title>
+<meta name="theme-color" content="#0a1f6b">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --azul:#1e40af;--azul-d:#0a1f6b;--verde:#16a34a;--gold:#d4af37;
+  --txt:#0b1437;--txts:#6b7691;--r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#0a1f6b;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+.hdr{background:rgba(10,15,40,0.97);padding:18px 18px 14px;border-bottom:1px solid rgba(212,175,55,0.3);text-align:center}
+.hdr-brand{font-size:10px;font-weight:800;color:#d4af37;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.hdr-title{font-size:18px;font-weight:800}
+.hdr-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px}
+.wrap{max-width:480px;margin:0 auto;padding:18px 16px 40px}
+.aviso{background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.35);border-radius:var(--r);padding:12px 14px;font-size:12.5px;line-height:1.6;color:#f3e6c5;margin-bottom:18px}
+.step{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px;margin-bottom:14px}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#0a1728;font-size:12px;font-weight:800;margin-right:8px}
+.step-title{font-size:14px;font-weight:800;display:flex;align-items:center;margin-bottom:10px}
+.step-txt{font-size:12.5px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:10px}
+.stores{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.store-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;border-radius:12px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#fff;text-decoration:none;font-size:11.5px;font-weight:700;transition:all .15s}
+.store-btn:active{transform:scale(.96)}
+.store-btn.destaque{border-color:var(--gold);background:rgba(212,175,55,.12)}
+.store-ico{font-size:22px}
+.campo{margin-bottom:10px}
+.campo-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.campo-row{display:flex;gap:8px}
+.campo-val{flex:1;background:rgba(0,0,0,.3);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 12px;font-family:'SF Mono',Consolas,monospace;font-size:13px;color:#fff;word-break:break-all}
+.btn-copiar{flex-shrink:0;padding:0 16px;border-radius:10px;border:none;background:var(--gold);color:#0a1728;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-copiar.ok{background:var(--verde);color:#fff}
+.lista{font-size:12.5px;color:rgba(255,255,255,.75);line-height:2;padding-left:4px}
+.lista b{color:#fff}
+.rodape{text-align:center;margin-top:20px}
+.link-voltar{display:inline-block;padding:12px 24px;border-radius:12px;background:rgba(255,255,255,.08);color:#fff;text-decoration:none;font-size:13px;font-weight:700}
+.carregando{text-align:center;padding:60px 20px;color:rgba(255,255,255,.6);font-size:13px}
+.spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">OPUS · Grupo MF Paris</div>
+  <div class="hdr-title">📡 Rastreio em Segundo Plano</div>
+  <div class="hdr-sub" id="hdr-sub">Carregando dados da rota...</div>
+</div>
+
+<div class="wrap" id="wrap">
+  <div class="carregando" id="carregando"><div class="spinner"></div>Buscando dados da rota...</div>
+</div>
+
+<script>
+var FB_CFG = {
+  apiKey:"AIzaSyAch7_Sn4jq1cuTGV1ijGsDGUXC9dyilOs",
+  authDomain:"mfparis-bd054.firebaseapp.com",
+  databaseURL:"https://mfparis-bd054-default-rtdb.firebaseio.com",
+  projectId:"mfparis-bd054",
+  storageBucket:"mfparis-bd054.firebasestorage.app",
+  messagingSenderId:"106506342977",
+  appId:"1:106506342977:web:cda4d2d0f3296c4284ecc0"
+};
+firebase.initializeApp(FB_CFG);
+var db = firebase.database();
+var token = new URLSearchParams(location.search).get('token');
+
+function normalizarPlaca(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+function montarTela(placa, nomeRota, motoristaNome){
+  var serverUrl = location.origin + '/api/rastreio';
+  document.getElementById('hdr-sub').textContent = (motoristaNome ? motoristaNome+' · ' : '') + (nomeRota||'');
+
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/.test(ua);
+  var isAndroid = /Android/.test(ua);
+
+  var html = '';
+  html += '<div class="aviso">⚠ Isso é opcional, mas resolve o problema do GPS parar quando você tranca a tela ou abre outro app (Waze, WhatsApp). Instala uma vez e deixa ligado — o rastreio continua até você finalizar a rota, e o app avisa sozinho quando parar.</div>';
+
+  html += '<div class="step"><div class="step-title"><span class="step-num">1</span>Instale o Traccar Client (grátis)</div>';
+  html += '<div class="stores">';
+  html += '<a class="store-btn'+(isAndroid?' destaque':'')+'" href="https://play.google.com/store/apps/details?id=org.traccar.client" target="_blank"><span class="store-ico">🤖</span>Android<br>Play Store</a>';
+  html += '<a class="store-btn'+(isIOS?' destaque':'')+'" href="https://apps.apple.com/us/app/traccar-client/id843156974" target="_blank"><span class="store-ico">🍎</span>iPhone<br>App Store</a>';
+  html += '</div></div>';
+
+  html += '<div class="step"><div class="step-title"><span class="step-num">2</span>Copie os 2 dados abaixo</div>';
+  html += '<div class="campo"><div class="campo-label">ID do dispositivo (placa)</div><div class="campo-row">';
+  html += '<div class="campo-val" id="val-id">'+(placa||'—')+'</div>';
+  html += '<button class="btn-copiar" onclick="copiar(\'val-id\',this)">Copiar</button></div></div>';
+  html += '<div class="campo"><div class="campo-label">URL do servidor</div><div class="campo-row">';
+  html += '<div class="campo-val" id="val-url">'+serverUrl+'</div>';
+  html += '<button class="btn-copiar" onclick="copiar(\'val-url\',this)">Copiar</button></div></div>';
+  html += '</div>';
+
+  html += '<div class="step"><div class="step-title"><span class="step-num">3</span>Configure no app</div>';
+  html += '<div class="step-txt">Abra o Traccar Client, toque no ⚙️ (Configurações) e preencha:</div>';
+  html += '<div class="lista">';
+  html += '• <b>Identificador do dispositivo</b> → cole o ID copiado acima<br>';
+  html += '• <b>URL do servidor</b> → cole a URL copiada acima<br>';
+  html += '• <b>Frequência</b> → 30 segundos<br>';
+  html += '• No iPhone: Ajustes → Traccar Client → Localização → <b>"Sempre"</b>';
+  html += '</div></div>';
+
+  html += '<div class="step"><div class="step-title"><span class="step-num">4</span>Ative</div>';
+  html += '<div class="step-txt">Volte pra tela inicial do app e ligue a chavinha no topo (<b>Enabled</b>). Pronto — pode fechar o navegador, o rastreio continua sozinho até a rota ser finalizada.</div></div>';
+
+  html += '<div class="rodape"><a class="link-voltar" href="motorista.html?token='+encodeURIComponent(token||'')+'">← Voltar pra rota</a></div>';
+
+  document.getElementById('wrap').innerHTML = html;
+}
+
+function copiar(id, btn){
+  var txt = document.getElementById(id).textContent;
+  var ok = function(){
+    var orig = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('ok');
+    setTimeout(function(){ btn.textContent = orig; btn.classList.remove('ok'); }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok).catch(function(){ copiarFallback(txt, ok); });
+  } else {
+    copiarFallback(txt, ok);
+  }
+}
+function copiarFallback(txt, cb){
+  var ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+if (!token) {
+  document.getElementById('carregando').innerHTML = '⚠ Link sem identificação da rota. Volte pelo link que você recebeu no WhatsApp.';
+} else {
+  db.ref('despachos/'+token).once('value').then(function(snap){
+    var d = snap.val();
+    if (!d) {
+      document.getElementById('carregando').innerHTML = '⚠ Rota não encontrada.';
+      return;
+    }
+    montarTela(normalizarPlaca(d.motoristaPlaca), d.nomeRota, d.motoristaNome);
+  }).catch(function(){
+    document.getElementById('carregando').innerHTML = '⚠ Erro ao buscar dados da rota. Tente de novo.';
+  });
+}
+</script>
+</body>
+</html>

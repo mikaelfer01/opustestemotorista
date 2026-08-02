@@ -79,17 +79,10 @@
   }
 
   function explicarRastreio() {
-    var placa = (window.rotaData && window.rotaData.motoristaPlaca) || '—';
-    alert(
-      'RASTREIO EM SEGUNDO PLANO\n\n' +
-      'Esta tela só envia sua posição enquanto está aberta na frente. Se você ' +
-      'travar o celular ou abrir o Waze, a torre perde seu sinal.\n\n' +
-      'Para a torre te acompanhar o dia inteiro, instale o app "Traccar Client" ' +
-      '(Play Store ou App Store), configure conforme o guia que o despachante ' +
-      'enviou e deixe ligado.\n\n' +
-      'O identificador do dispositivo no app tem que ser exatamente: ' + placa + '\n\n' +
-      'No iPhone, a permissão de localização precisa estar em "Sempre".'
-    );
+    // Leva pra tela de configuração guiada (traccar-setup.html) — já traz o
+    // ID do dispositivo (placa) e a URL do servidor prontos pra copiar, em
+    // vez de só explicar em texto num alert().
+    window.open('traccar-setup.html?token=' + encodeURIComponent(window.token || ''), '_blank');
   }
 
   // ── Índice placa → token ───────────────────────────────────────────────────

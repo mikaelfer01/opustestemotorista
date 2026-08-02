@@ -72,6 +72,7 @@ export const PERMISSOES = {
 export const PAGINAS_PUBLICAS = new Set([
   'login.html',
   'motorista.html',
+  'traccar-setup.html', // guia de configuracao do rastreio, acessado pelo motorista
 ]);
 
 /**
