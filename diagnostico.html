@@ -20,12 +20,78 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 .err{color:#f87171;font-weight:bold;}
 </style></head>
 <body>
+<h2>Diagnóstico — Rotas órfãs (histórico sem despacho ativo na Torre)</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Toda rota despachada fica registrada em <code>historico_roteirizados</code> pra sempre,
+  mesmo que o registro "vivo" em <code>despachos/{token}</code> (o que a Torre lê) tenha
+  sumido, sido apagado ou nunca gravado direito. Esta busca cruza os dois e mostra
+  quem está no histórico mas não tem despacho ativo correspondente.
+</p>
+<input id="filtro-motorista" placeholder="Filtrar por nome do motorista (opcional)"/>
+<input id="filtro-dias" type="number" value="30" style="width:80px" title="Últimos N dias"/>
+<button onclick="buscarOrfas()">Buscar rotas órfãs</button>
+<div id="res-orfas"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
 <button onclick="testar()">Testar Todos</button>
 <div id="res"></div>
 <script>
+async function firebaseRead(path) {
+  const r = await fetch('/api/firebase-read', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ path })
+  });
+  return r.json();
+}
+
+async function buscarOrfas() {
+  const div = document.getElementById('res-orfas');
+  div.innerHTML = '<pre>Buscando...</pre>';
+  const filtroNome = document.getElementById('filtro-motorista').value.trim().toLowerCase();
+  const dias = parseInt(document.getElementById('filtro-dias').value) || 30;
+  const desde = Date.now() - dias * 24 * 60 * 60 * 1000;
+
+  try {
+    const [historico, despachos] = await Promise.all([
+      firebaseRead('historico_roteirizados'),
+      firebaseRead('despachos')
+    ]);
+
+    var linhas = [];
+    Object.keys(historico || {}).forEach(function(dataKey){
+      var doDia = historico[dataKey] || {};
+      Object.keys(doDia).forEach(function(tok){
+        var h = doDia[tok];
+        if (!h || !h.tsDespacho || h.tsDespacho < desde) return;
+        if (filtroNome && !(h.motoristaNome||'').toLowerCase().includes(filtroNome)) return;
+        var existe = despachos && Object.prototype.hasOwnProperty.call(despachos, tok);
+        var d = existe ? despachos[tok] : null;
+        var statusVivo = !existe ? '❌ NÃO EXISTE em despachos/' :
+          (d === null ? '⚠️ existe mas valor é null (corrompido)' :
+          (d.concluido ? '✅ concluído' : (d.iniciou ? '🚗 em rota' : '⏳ aguardando início')));
+        linhas.push({
+          data: dataKey, token: tok, motorista: h.motoristaNome || '—', rota: h.rotaNome || '—',
+          nParadas: (h.paradas||[]).length, existe: existe, statusVivo: statusVivo
+        });
+      });
+    });
+
+    var soOrfas = linhas.filter(function(l){ return !l.existe; });
+    var html = '<p style="font-size:12px;color:#555">'+linhas.length+' rota(s) no histórico'
+      + (filtroNome ? ' (filtrado por "'+filtroNome+'")' : '') + ' nos últimos '+dias+' dias — '
+      + '<b style="color:'+(soOrfas.length?'#f87171':'#4ade80')+'">'+soOrfas.length+' órfã(s)</b></p>';
+    html += '<pre>' + linhas.map(function(l){
+      return (l.existe ? '  ' : '❌') + ' [' + l.data + '] ' + l.motorista + ' — ' + l.rota
+        + ' (' + l.nParadas + ' paradas) — token: ' + l.token + '\n     status: ' + l.statusVivo;
+    }).join('\n\n') + '</pre>';
+    div.innerHTML = html;
+  } catch (e) {
+    div.innerHTML = '<pre class="err">Erro: ' + e.message + '</pre>';
+  }
+}
+
 async function omie(ep, call, param, empresa) {
   const r = await fetch('/api/omie-seguro', {
     method:'POST', headers:{'Content-Type':'application/json'},
