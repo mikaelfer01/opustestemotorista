@@ -390,10 +390,11 @@ function extrairRealDoCObs(cObs) {
   setTimeout(next,400);
 })();
 // ── OMIE CALL ─────────────────────────────────────────────────────────────────
-// O 3º parâmetro (antes "key") agora é o código da empresa: 'MFP' ou 'DMS'.
-// O 4º parâmetro (antes "secret") não é mais usado — chaves ficam só no servidor.
+// O 3º parâmetro (antes "key") é o código da empresa: 'MFP' ou 'DMS'.
+// O 4º parâmetro (antes "secret") não é mais usado — chaves ficam só no servidor
+// (resolvidas por /api/omie-seguro a partir do código da empresa).
 async function omieCall(ep, call, empresaCod, _secretIgnorado, param, _retry) {
-  var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep, payload:{call:call, app_key:empresaCod==='DMS'?'1340821992510':'952260381072', app_secret:empresaCod==='DMS'?'dac287f9b3ec422dc93da6cdbcc3e0b2':'8300b385eeec583c71439709ab866fc7', param:param}})});
+  var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep, call:call, param:param, empresa:empresaCod==='DMS'?'DMS':'MFP'})});
   if (!resp.ok) {
     var erroBody = await resp.json().catch(function(){return {};});
     throw new Error(erroBody.error || ('HTTP '+resp.status));

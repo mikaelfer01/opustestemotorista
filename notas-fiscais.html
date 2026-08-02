@@ -203,13 +203,12 @@ details.diag pre{margin-top:10px;background:var(--navy-d);color:#a0c0e0;padding:
    1. CONFIGURAÇÃO
    ══════════════════════════════════════════════════════════════════════════ */
 
-// Mesmas credenciais já usadas em carteira.js / torre.html / estoque-omie.html.
-// >>> Se você migrar para o proxy /api/omie-seguro (chaves no servidor), troque
-//     apenas a função omieCall() abaixo — nada mais nesta página muda.
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa.
 const EMPRESAS = {
-  MFP:   { nome:'MF Paris', key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7' },
-  DMS:   { nome:'DMS',      key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  PROFI: { nome:'Profi',    key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df' },
+  MFP:   { nome:'MF Paris' },
+  DMS:   { nome:'DMS' },
+  PROFI: { nome:'Profi' },
 };
 const ORDEM_BUSCA = ['MFP', 'DMS', 'PROFI'];
 
@@ -292,14 +291,10 @@ function parseEntrada(txt) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 async function omieCall(endpoint, call, empCod, param, tentativa) {
-  const cred = EMPRESAS[empCod];
-  const resp = await fetch('/api/omie', {
+  const resp = await fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      endpoint,
-      payload: { call, app_key: String(cred.key), app_secret: String(cred.secret), param }
-    })
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
   });
 
   const data = await resp.json().catch(() => ({}));

@@ -362,28 +362,21 @@ function paradasQueBatem(d, q){
 // (produtos/pedido/, chamada StatusPedido), de-para de apelido de empresa
 // (PRF -> PROFI) e uso direto do codigo_pedido quando já salvo na parada
 // (evita a chamada extra de ListarPedidos pra descobrir o codigo_pedido).
-var OMIE_CREDS_GT = {
-  MFP:  { key: '952260381072',   secret: '8300b385eeec583c71439709ab866fc7' },
-  DMS:  { key: '1340821992510',  secret: 'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  PROFI:{ key: '6625695374298',  secret: '588e34aa9429edcae86f5e87c47a65df' }
-};
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa.
 var ALIAS_EMPRESA_GT = { PRF: 'PROFI' };
 function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
-  var empKey = ALIAS_EMPRESA_GT[empresa] || empresa;
-  var creds = OMIE_CREDS_GT[empKey] || OMIE_CREDS_GT['MFP'];
+  var empKey = ALIAS_EMPRESA_GT[empresa] || empresa || 'MFP';
 
   function statusPorCodigo(codPed){
-    return fetch('/api/omie', {
+    return fetch('/api/omie-seguro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
-        payload: {
-          call: 'StatusPedido',
-          app_key: creds.key,
-          app_secret: creds.secret,
-          param: [{ codigo_pedido: parseInt(codPed, 10) || codPed }]
-        }
+        call: 'StatusPedido',
+        param: [{ codigo_pedido: parseInt(codPed, 10) || codPed }],
+        empresa: empKey
       })
     })
     .then(function(r){ return r.json(); })
@@ -403,17 +396,14 @@ function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
 
   if (!numeroPedido) return Promise.resolve('');
   var numPed = parseInt(numeroPedido, 10) || 0;
-  return fetch('/api/omie', {
+  return fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
-      payload: {
-        call: 'ListarPedidos',
-        app_key: creds.key,
-        app_secret: creds.secret,
-        param: [{ pagina: 1, registros_por_pagina: 10, numero_pedido_de: numPed, numero_pedido_ate: numPed }]
-      }
+      call: 'ListarPedidos',
+      param: [{ pagina: 1, registros_por_pagina: 10, numero_pedido_de: numPed, numero_pedido_ate: numPed }],
+      empresa: empKey
     })
   })
   .then(function(r){ return r.json(); })
@@ -428,7 +418,7 @@ function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
   .catch(function(){ return ''; });
 }
 function buscarNFEmQualquerEmpresa(numeroPedido, codigoPedido){
-  var empresas = Object.keys(OMIE_CREDS_GT);
+  var empresas = ['MFP', 'DMS', 'PROFI'];
   return empresas.reduce(function(cadeia, emp){
     return cadeia.then(function(achada){
       if (achada) return achada;

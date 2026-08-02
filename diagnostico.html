@@ -26,13 +26,10 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="testar()">Testar Todos</button>
 <div id="res"></div>
 <script>
-const KEY = '952260381072', SECRET = '8300b385eeec583c71439709ab866fc7';
-const KEY2 = '1340821992510', SECRET2 = 'dac287f9b3ec422dc93da6cdbcc3e0b2';
-
-async function omie(ep, call, param, k, s) {
-  const r = await fetch('/api/omie', {
+async function omie(ep, call, param, empresa) {
+  const r = await fetch('/api/omie-seguro', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({endpoint:ep, payload:{call, app_key:k||KEY, app_secret:s||SECRET, param}})
+    body: JSON.stringify({endpoint:ep, call, param, empresa: empresa || 'MFP'})
   });
   return r.json();
 }
@@ -64,7 +61,7 @@ async function testar() {
     // DMS — mesmo teste
     {label:'DMS — geral/produtos ConsultarEstrutura',
      ep:'https://app.omie.com.br/api/v1/geral/produtos/', call:'ConsultarEstrutura',
-     param:[{nCodProduto: omieId}], k:KEY2, s:SECRET2},
+     param:[{nCodProduto: omieId}], empresa:'DMS'},
 
     // Endpoint produto — estrutura
     {label:'produto/produto — ConsultarEstrutura',
@@ -81,7 +78,7 @@ async function testar() {
     pre.textContent = '...';
     div.appendChild(pre);
     try {
-      const data = await omie(t.ep, t.call, t.param, t.k, t.s);
+      const data = await omie(t.ep, t.call, t.param, t.empresa);
       if (data.faultstring || (data.error && data.error.status_code)) {
         pre.innerHTML = '<span class="err">ERRO: ' + (data.faultstring || JSON.stringify(data.error)) + '</span>';
       } else {

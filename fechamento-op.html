@@ -428,11 +428,8 @@ table.thora td.dur.zero{color:var(--ink4);background:transparent;font-weight:400
 // ═══════════════════════════════════════════════
 // CONFIGURAÇÃO
 // ═══════════════════════════════════════════════
-var OMIE_KEY    = '952260381072';
-var OMIE_SECRET = '8300b385eeec583c71439709ab866fc7';
-var OMIE_KEY_DMS    = '1340821992510';
-var OMIE_SECRET_DMS = 'dac287f9b3ec422dc93da6cdbcc3e0b2';
-var USE_PROXY   = !(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '');
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa ('MFP'/'DMS').
 
 // ═══════════════════════════════════════════════
 // FIREBASE — persistência do apontamento hora a hora
@@ -556,13 +553,7 @@ var _modalCallback = null;
 // ═══════════════════════════════════════════════
 async function omieCall(call, param, ep, _retry) {
   ep = ep || 'https://app.omie.com.br/api/v1/produtos/op/';
-  var payload = { call:call, app_key:String(OMIE_KEY), app_secret:String(OMIE_SECRET), param:param };
-  var resp;
-  if (USE_PROXY) {
-    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
-  } else {
-    resp = await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }
+  var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,call:call,param:param,empresa:'MFP'})});
   if (!resp.ok) throw new Error('HTTP '+resp.status);
   var data = await resp.json();
   if (data.faultstring) {
@@ -578,13 +569,7 @@ async function omieCall(call, param, ep, _retry) {
 }
 async function omieCallDMS(call, param, ep, _retry) {
   ep = ep || 'https://app.omie.com.br/api/v1/produtos/op/';
-  var payload = { call:call, app_key:String(OMIE_KEY_DMS), app_secret:String(OMIE_SECRET_DMS), param:param };
-  var resp;
-  if (USE_PROXY) {
-    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
-  } else {
-    resp = await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }
+  var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,call:call,param:param,empresa:'DMS'})});
   if (!resp.ok) throw new Error('HTTP '+resp.status);
   var data = await resp.json();
   if (data.faultstring) throw new Error(data.faultstring);
@@ -693,12 +678,10 @@ async function abrirListaOPs() {
       try {
         var ep = 'https://app.omie.com.br/api/v1/geral/produtos/';
         var isCafe = op.empresa === 'CAFE';
-        var key    = isCafe ? OMIE_KEY     : OMIE_KEY_DMS;
-        var secret = isCafe ? OMIE_SECRET  : OMIE_SECRET_DMS;
+        var empresaOmie = isCafe ? 'MFP' : 'DMS';
         var codProd = parseInt(op.nCodProd) || 0;
 if (!codProd) { op.descProd = op.numOP || 'OP '+op.nCodOP; return; }
-var payload = { call:'ConsultarProduto', app_key:String(key), app_secret:String(secret), param:[{ codigo_produto: codProd }] };
-        var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+        var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,call:'ConsultarProduto',param:[{ codigo_produto: codProd }],empresa:empresaOmie})});
         var data = await resp.json();
        op.descProd = data.descricao || data.nome || 'OP '+op.numOP;
 var codCandidatos = [data.codigo, String(op.nCodProd)];
@@ -1235,11 +1218,9 @@ async function carregarMateriaisOP(op) {
   MATERIAIS_ATUAIS = [];
   try {
     var isCafe = op.empresa === 'CAFE';
-    var key    = isCafe ? OMIE_KEY    : OMIE_KEY_DMS;
-    var secret = isCafe ? OMIE_SECRET : OMIE_SECRET_DMS;
+    var empresaOmie = isCafe ? 'MFP' : 'DMS';
     var ep = 'https://app.omie.com.br/api/v1/geral/malha/';
-    var payload = { call:'ConsultarEstrutura', app_key:String(key), app_secret:String(secret), param:[{idProduto:0,intProduto:'',codProduto:String(op.cCodProd)}] };
-    var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+    var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,call:'ConsultarEstrutura',param:[{idProduto:0,intProduto:'',codProduto:String(op.cCodProd)}],empresa:empresaOmie})});
     var data = await resp.json();
     if (data.faultstring) throw new Error(data.faultstring);
     var itens = data.itens || data.itensEstrutura || [];
@@ -1862,11 +1843,9 @@ async function carregarOPsRelatorio() {
   await Promise.all(REL_OPS.map(async function(op){
     try {
       var isCafe = op.empresa === 'CAFE';
-      var key    = isCafe ? OMIE_KEY    : OMIE_KEY_DMS;
-      var secret = isCafe ? OMIE_SECRET : OMIE_SECRET_DMS;
+      var empresaOmie = isCafe ? 'MFP' : 'DMS';
       var ep = 'https://app.omie.com.br/api/v1/geral/produtos/';
-      var payload = { call:'ConsultarProduto', app_key:String(key), app_secret:String(secret), param:[{ codigo_produto: parseInt(op.nCodProd)||0 }] };
-      var resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,payload:payload})});
+      var resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:ep,call:'ConsultarProduto',param:[{ codigo_produto: parseInt(op.nCodProd)||0 }],empresa:empresaOmie})});
       var data = await resp.json();
       op.descProd = data.descricao || data.nome || ('OP '+op.numOP);
     } catch(e) { op.descProd = 'OP '+op.numOP; }

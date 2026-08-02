@@ -39,12 +39,12 @@ exigirPerfis(['admin', 'logistica']);
 
 // ── CONFIGURAÇÃO ───────────────────────────────────────────────────────────
 
-// Mesmas credenciais do carteira.js (uma "fonte de verdade" única seria
-// melhor, mas por enquanto duplicado aqui pra manter este arquivo independente).
+// As credenciais (key/secret) NÃO ficam mais aqui — /api/omie-seguro resolve
+// no servidor a partir do código da empresa (cod).
 const EMPRESAS = {
-  MFP:   { nome: 'MF Paris', cod: 'MFP', key: '952260381072',  secret: '8300b385eeec583c71439709ab866fc7' },
-  DMS:   { nome: 'DMS',      cod: 'DMS', key: '1340821992510', secret: 'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  PROFI: { nome: 'Profi',    cod: 'PRF', key: '6625695374298', secret: '588e34aa9429edcae86f5e87c47a65df' },
+  MFP:   { nome: 'MF Paris', cod: 'MFP' },
+  DMS:   { nome: 'DMS',      cod: 'DMS' },
+  PROFI: { nome: 'Profi',    cod: 'PRF' },
 };
 
 // Tags aceitas no nome do arquivo, e pra qual empresa cada uma aponta.
@@ -167,10 +167,10 @@ function atualizarLabelPasta(precisaConfirmar) {
 // ── OMIE (mesmo padrão de chamada do carteira.js) ───────────────────────────
 
 async function omieCall(empresa, endpoint, call, param, retry = false) {
-  const resp = await fetch('/api/omie', {
+  const resp = await fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ endpoint, payload: { call, app_key: empresa.key, app_secret: empresa.secret, param } })
+    body: JSON.stringify({ endpoint, call, param, empresa: empresa.cod })
   });
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const data = await resp.json();

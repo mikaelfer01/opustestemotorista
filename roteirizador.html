@@ -881,45 +881,37 @@ window.devolverCarteira = async function(idx){
 
   // 1) Remove marcação do OMIE (se for pedido com origem OMIE)
   if (c._codigo_pedido && c._emp_key) {
-    var CREDS_OMIE = {
-      MFP: { key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7' },
-      DMS: { key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-      PRF: { key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df' },
-    };
-    var cred = CREDS_OMIE[c._emp_key];
-    if (cred) {
-      try {
-        var omieDevolver = async function(call, param){
-          var resp = await fetch('/api/omie', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              endpoint:'https://app.omie.com.br/api/v1/produtos/pedido/',
-              payload:{ call:call, app_key:cred.key, app_secret:cred.secret, param:param }
-            })
-          });
-          if (!resp.ok) throw new Error('HTTP '+resp.status);
-          var data = await resp.json();
-          if (data.faultstring) throw new Error(data.faultstring);
-          return data;
-        };
-        var consulta = await omieDevolver('ConsultarPedido', [{ codigo_pedido: parseInt(c._codigo_pedido) }]);
-        var obsOriginal = (consulta && consulta.pedido_venda_produto && consulta.pedido_venda_produto.observacoes && consulta.pedido_venda_produto.observacoes.obs_venda) || '';
-        var obsLimpa = obsOriginal
-          .replace(/\[ROTEIRIZADOR\][^\n]*/g, '')
-          .replace(/\[OPUS[^\]]*\][^\n]*/g, '')  // remove marcas do OPUS também
-          .replace(/\n{2,}/g, '\n')
-          .trim();
-        await omieDevolver('AlterarPedidoVenda', [{
-          cabecalho:{ codigo_pedido: parseInt(c._codigo_pedido) },
-          observacoes:{ obs_venda: obsLimpa }
-        }]);
-        toastRot('✅ Marcação removida do OMIE', 'ok');
-      } catch(e) {
-        console.warn('[Devolver] Erro OMIE:', e.message);
-        toastRot('⚠️ OMIE não atualizado: ' + e.message, 'err');
-        // Não bloqueia — continua devolvendo à Carteira mesmo se OMIE falhar
-      }
+    try {
+      var omieDevolver = async function(call, param){
+        var resp = await fetch('/api/omie-seguro', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            endpoint:'https://app.omie.com.br/api/v1/produtos/pedido/',
+            call: call, param: param, empresa: c._emp_key
+          })
+        });
+        if (!resp.ok) throw new Error('HTTP '+resp.status);
+        var data = await resp.json();
+        if (data.faultstring) throw new Error(data.faultstring);
+        return data;
+      };
+      var consulta = await omieDevolver('ConsultarPedido', [{ codigo_pedido: parseInt(c._codigo_pedido) }]);
+      var obsOriginal = (consulta && consulta.pedido_venda_produto && consulta.pedido_venda_produto.observacoes && consulta.pedido_venda_produto.observacoes.obs_venda) || '';
+      var obsLimpa = obsOriginal
+        .replace(/\[ROTEIRIZADOR\][^\n]*/g, '')
+        .replace(/\[OPUS[^\]]*\][^\n]*/g, '')  // remove marcas do OPUS também
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+      await omieDevolver('AlterarPedidoVenda', [{
+        cabecalho:{ codigo_pedido: parseInt(c._codigo_pedido) },
+        observacoes:{ obs_venda: obsLimpa }
+      }]);
+      toastRot('✅ Marcação removida do OMIE', 'ok');
+    } catch(e) {
+      console.warn('[Devolver] Erro OMIE:', e.message);
+      toastRot('⚠️ OMIE não atualizado: ' + e.message, 'err');
+      // Não bloqueia — continua devolvendo à Carteira mesmo se OMIE falhar
     }
   }
 
@@ -7389,11 +7381,8 @@ function toggleRotSel(el, tok){
   else { delete _rotSelecionados[tok]; }
 }
 
-var OMIE_CREDS_GT = {
-  MFP:  { key: '952260381072',   secret: '8300b385eeec583c71439709ab866fc7' },
-  DMS:  { key: '1340821992510',  secret: 'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  PROFI:{ key: '6625695374298',  secret: '588e34aa9429edcae86f5e87c47a65df' }
-};
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa.
 
 // A API do Omie NÃO tem como filtrar a listagem de Notas Fiscais
 // (produtos/nfconsultar, chamada ListarNF) por número de pedido — esse
@@ -7412,21 +7401,17 @@ var OMIE_CREDS_GT = {
 // da MFP pra pedidos da PROFI marcados como "PRF", e a NF nunca era achada.
 var ALIAS_EMPRESA_GT = { PRF: 'PROFI' };
 function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
-  var empKey = ALIAS_EMPRESA_GT[empresa] || empresa;
-  var creds = OMIE_CREDS_GT[empKey] || OMIE_CREDS_GT['MFP'];
+  var empKey = ALIAS_EMPRESA_GT[empresa] || empresa || 'MFP';
 
   function statusPorCodigo(codPed){
-    return fetch('/api/omie', {
+    return fetch('/api/omie-seguro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
-        payload: {
-          call: 'StatusPedido',
-          app_key: creds.key,
-          app_secret: creds.secret,
-          param: [{ codigo_pedido: parseInt(codPed, 10) || codPed }]
-        }
+        call: 'StatusPedido',
+        param: [{ codigo_pedido: parseInt(codPed, 10) || codPed }],
+        empresa: empKey
       })
     })
     .then(function(r){ return r.json(); })
@@ -7452,17 +7437,14 @@ function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
   // pro início e fim = busca exata) e então consulta o StatusPedido.
   if (!numeroPedido) return Promise.resolve('');
   var numPed = parseInt(numeroPedido, 10) || 0;
-  return fetch('/api/omie', {
+  return fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       endpoint: 'https://app.omie.com.br/api/v1/produtos/pedido/',
-      payload: {
-        call: 'ListarPedidos',
-        app_key: creds.key,
-        app_secret: creds.secret,
-        param: [{ pagina: 1, registros_por_pagina: 10, numero_pedido_de: numPed, numero_pedido_ate: numPed }]
-      }
+      call: 'ListarPedidos',
+      param: [{ pagina: 1, registros_por_pagina: 10, numero_pedido_de: numPed, numero_pedido_ate: numPed }],
+      empresa: empKey
     })
   })
   .then(function(r){ return r.json(); })
@@ -7483,7 +7465,7 @@ function buscarNFPorPedido(numeroPedido, empresa, codigoPedido){
 // em sequência, até achar a NF — assim o "Gerar Texto" volta a funcionar pra
 // rotas antigas também, sem precisar migrar nada no Firebase.
 function buscarNFEmQualquerEmpresa(numeroPedido, codigoPedido){
-  var empresas = Object.keys(OMIE_CREDS_GT);
+  var empresas = ['MFP', 'DMS', 'PROFI'];
   return empresas.reduce(function(cadeia, emp){
     return cadeia.then(function(achada){
       if (achada) return achada;

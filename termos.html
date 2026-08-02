@@ -187,13 +187,13 @@ tr:hover td{background:rgba(184,134,74,.04);}
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   1. CONFIG — mesmas credenciais Omie usadas em carteira.js / roteirizador.html.
-   Chaves de empresa seguem o padrão do roteirizador: MFP, DMS, PRF.
+   1. CONFIG — key/secret NÃO ficam mais aqui — /api/omie-seguro resolve
+   no servidor a partir do código da empresa: MFP, DMS, PRF.
    ══════════════════════════════════════════════════════════════════════════ */
 const EMPRESAS = {
-  MFP: { nome:'MF Paris',  razaoDoc:'MFParis Indústria de Alimentos', key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7' },
-  DMS: { nome:'DMS',       razaoDoc:'DMS Alimentos',                  key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  PRF: { nome:'Profi',     razaoDoc:'Profi Comércio de Alimentos',    key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df' },
+  MFP: { nome:'MF Paris',  razaoDoc:'MFParis Indústria de Alimentos' },
+  DMS: { nome:'DMS',       razaoDoc:'DMS Alimentos' },
+  PRF: { nome:'Profi',     razaoDoc:'Profi Comércio de Alimentos' },
 };
 const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
 
@@ -240,10 +240,10 @@ function normEmpCod(txt) {
 async function omieCall(endpoint, call, empCod, param, tentativa) {
   const cred = EMPRESAS[empCod];
   if (!cred) throw new Error('Empresa não reconhecida: ' + empCod);
-  const resp = await fetch('/api/omie', {
+  const resp = await fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ endpoint, payload: { call, app_key: String(cred.key), app_secret: String(cred.secret), param } })
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
   });
   const data = await resp.json().catch(() => ({}));
   if (data && data.faultstring) {

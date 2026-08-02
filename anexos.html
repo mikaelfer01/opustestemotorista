@@ -52,12 +52,9 @@ try {
 </div>
 
 <script>
-// ── Credenciais (mesmas usadas nas outras telas do projeto) ────────────────
-const OMIE_KEY    = '952260381072';
-const OMIE_SECRET = '8300b385eeec583c71439709ab866fc7';
-
-// Local chama a Omie direto; em produção passa pelo proxy da Netlify/Vercel.
-const USE_PROXY = !['localhost','127.0.0.1',''].includes(location.hostname);
+// Credenciais da Omie NÃO ficam mais aqui — /api/omie-seguro resolve
+// app_key/app_secret no servidor a partir do código da empresa.
+const EMPRESA = 'MFP';
 const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
 const EP_ANEXO  = 'https://app.omie.com.br/api/v1/geral/anexo/';
 
@@ -71,18 +68,11 @@ const C_TABELA = 'pedido-venda';
 let ultimaResposta = null;
 
 async function omie(endpoint, call, param){
-  const payload = { call, app_key: OMIE_KEY, app_secret: OMIE_SECRET, param: [param] };
-  const resp = USE_PROXY
-    ? await fetch('/api/omie', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ endpoint, payload })
-      })
-    : await fetch(endpoint, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
+  const resp = await fetch('/api/omie-seguro', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ endpoint, call, param: [param], empresa: EMPRESA })
+  });
   const data = await resp.json();
   if (data.faultstring) throw new Error(data.faultstring);
   return data;

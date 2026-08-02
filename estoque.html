@@ -190,20 +190,22 @@ td.desc{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowra
 <script>
 'use strict';
 
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa.
 const EMPRESAS = [
-  { nome:'MF Paris', key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7', cls:'mfp',
+  { nome:'MF Paris', empresa:'MFP', cls:'mfp',
     locais: [
       { id: 3701081863, label: 'Fábrica' },
       { id: 4976544083, label: 'CD' },
     ]
   },
-  { nome:'DMS', key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2', cls:'dms',
+  { nome:'DMS', empresa:'DMS', cls:'dms',
     locais: [
       { id: 9325633240, label: 'Fábrica' },
       { id: 9325632785, label: 'CD' },
     ]
   },
-  { nome:'Profi', key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df', cls:'profi',
+  { nome:'Profi', empresa:'PROFI', cls:'profi',
     locais: [
       { id: 10973189010, label: 'CD' },
     ]
@@ -219,12 +221,8 @@ let sortCol = '';
 let sortDir = 1;
 let filtroFam = '';
 
-async function omieCall(endpoint, call, key, secret, param) {
-  const payload = { call, app_key: String(key), app_secret: String(secret), param };
-  const isProxy = !['localhost','127.0.0.1',''].includes(window.location.hostname);
-  const resp = isProxy
-    ? await fetch('/api/omie', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({endpoint, payload}) })
-    : await fetch(endpoint,   { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+async function omieCall(endpoint, call, empresa, param) {
+  const resp = await fetch('/api/omie-seguro', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({endpoint, call, param, empresa}) });
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const data = await resp.json();
   if (data.faultstring) throw new Error(data.faultstring);
@@ -258,7 +256,7 @@ async function buscarMapaProdutos(emp) {
   let pag = 1, totPag = 1;
   do {
     try {
-      const data = await omieCall(PROD_ENDPOINT, 'ListarProdutos', emp.key, emp.secret,
+      const data = await omieCall(PROD_ENDPOINT, 'ListarProdutos', emp.empresa,
         [{ pagina: pag, registros_por_pagina: 500, apenas_importado_api: 'N', filtrar_apenas_omiepdv: 'N' }]);
       totPag = parseInt(data.total_de_paginas || 1);
       (data.produto_servico_cadastro || []).forEach(p => {
@@ -283,7 +281,7 @@ async function buscarEmpresa(emp) {
   for (const local of emp.locais) {
     let pag = 1, totPag = 1;
     do {
-      const data = await omieCall(EST_ENDPOINT, 'ListarPosEstoque', emp.key, emp.secret,
+      const data = await omieCall(EST_ENDPOINT, 'ListarPosEstoque', emp.empresa,
         [{ nPagina: pag, nRegPorPagina: 500, dDataPosicao: new Date().toLocaleDateString('pt-BR'), cExibeTodos: 'S', codigo_local_estoque: local.id }]);
       totPag = parseInt(data.nTotPaginas || 1);
       (data.produtos || []).forEach(it => {

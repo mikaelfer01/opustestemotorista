@@ -23,17 +23,14 @@ async function testar() {
   const el = document.getElementById('resultado');
   el.textContent = 'Testando...';
   try {
-    const resp = await fetch('/api/omie', {
+    const resp = await fetch('/api/omie-seguro', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         endpoint: 'https://app.omie.com.br/api/v1/produtos/produto/',
-        payload: {
-          call: 'ListarProdutos',
-          app_key: '952260381072',
-          app_secret: '8300b385eeec583c71439709ab866fc7',
-          param: [{ pagina:1, registros_por_pagina:3, apenas_importado_api:'N' }]
-        }
+        call: 'ListarProdutos',
+        param: [{ pagina:1, registros_por_pagina:3, apenas_importado_api:'N' }],
+        empresa: 'MFP'
       })
     });
     const data = await resp.json();

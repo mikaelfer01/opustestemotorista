@@ -10,10 +10,12 @@ exigirPerfis(['admin', 'logistica', 'comercial']);
 
 // ── CONFIGURAÇÃO ──────────────────────────────────────────────────────────────
 
+// key/secret NÃO ficam mais aqui — /api/omie-seguro resolve no servidor
+// a partir do código da empresa (cod).
 const EMPRESAS = [
-  { nome:'MF Paris', cod:'MFP', key:'952260381072',  secret:'8300b385eeec583c71439709ab866fc7' },
-  { nome:'DMS',      cod:'DMS', key:'1340821992510', secret:'dac287f9b3ec422dc93da6cdbcc3e0b2' },
-  { nome:'Profi',    cod:'PRF', key:'6625695374298', secret:'588e34aa9429edcae86f5e87c47a65df' },
+  { nome:'MF Paris', cod:'MFP' },
+  { nome:'DMS',      cod:'DMS' },
+  { nome:'Profi',    cod:'PRF' },
 ];
 
 const DEP_LICITACAO = new Set([
@@ -217,10 +219,10 @@ function jaEnviado(pedido) {
 // ── OMIE ──────────────────────────────────────────────────────────────────────
 
 async function omieCall(empresa, endpoint, call, param, retry=false) {
-  const resp = await fetch('/api/omie', {
+  const resp = await fetch('/api/omie-seguro', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ endpoint, payload:{ call, app_key:empresa.key, app_secret:empresa.secret, param }})
+    body: JSON.stringify({ endpoint, call, param, empresa: empresa.cod })
   });
   if (!resp.ok) throw new Error('HTTP '+resp.status);
   const data = await resp.json();
@@ -372,11 +374,11 @@ async function buscarNomesClientes() {
   for (let i=0; i<unicos.length; i+=5) {
     await Promise.all(unicos.slice(i, i+5).map(async p => {
       try {
-        const r = await fetch('/api/omie', {
+        const r = await fetch('/api/omie-seguro', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ endpoint:'https://app.omie.com.br/api/v1/geral/clientes/',
-            payload:{ call:'ConsultarCliente', app_key:p._empresa.key, app_secret:p._empresa.secret,
-              param:[{codigo_cliente_omie:p.codigo_cliente}] }})
+            call:'ConsultarCliente', param:[{codigo_cliente_omie:p.codigo_cliente}],
+            empresa: p._empresa.cod })
         });
         const d = await r.json();
         const nome   = d.razao_social||d.nome_fantasia||'';
@@ -623,11 +625,11 @@ document.getElementById('btn-enviar')?.addEventListener('click', async () => {
   for (const p of sels) {
     if (p.cliente_cep) continue;
     try {
-      const r = await fetch('/api/omie', {
+      const r = await fetch('/api/omie-seguro', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ endpoint:'https://app.omie.com.br/api/v1/geral/clientes/',
-          payload:{ call:'ConsultarCliente', app_key:p._empresa.key, app_secret:p._empresa.secret,
-            param:[{codigo_cliente_omie:p.codigo_cliente}] }})
+          call:'ConsultarCliente', param:[{codigo_cliente_omie:p.codigo_cliente}],
+          empresa: p._empresa.cod })
       });
       const d = await r.json();
       p.cliente_cep    = (d.cep||'').replace(/\D/g,'');

@@ -547,11 +547,15 @@ nav{background:var(--navy-d);border-bottom:2px solid var(--gold);padding:0 24px;
 'use strict';
 
 const LS_CFG = 'opus_omie_config_v1';
+// As credenciais reais NÃO ficam mais no cliente — /api/omie-seguro resolve
+// no servidor a partir do código da empresa. Estes valores são só
+// placeholders pra manter a lógica de "já configurado" (evita reabrir o
+// modal de config à toa); omieCall() ignora key/secret e usa só o código.
 function getConfig() {
   const DEFAULTS = {
-    mfp_key:'952260381072', mfp_secret:'8300b385eeec583c71439709ab866fc7',
-    dms_key:'1340821992510', dms_secret:'dac287f9b3ec422dc93da6cdbcc3e0b2',
-    profi_key:'6625695374298', profi_secret:'588e34aa9429edcae86f5e87c47a65df',
+    mfp_key:'configurado', mfp_secret:'configurado',
+    dms_key:'configurado', dms_secret:'configurado',
+    profi_key:'configurado', profi_secret:'configurado',
   };
   try {
     const s = JSON.parse(localStorage.getItem(LS_CFG)) || {};
@@ -591,7 +595,7 @@ async function testarConexao(cfg) {
   if (!cfg.mfp_key) { setOmieStatus('idle', 'Chaves não configuradas'); return; }
   setOmieStatus('idle', 'Conectando...');
   try {
-    const r = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/', 'ListarProdutos', cfg.mfp_key, cfg.mfp_secret, [{pagina:1,registros_por_pagina:1,apenas_importado_api:'N'}]);
+    const r = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/', 'ListarProdutos', 'MFP', null, [{pagina:1,registros_por_pagina:1,apenas_importado_api:'N'}]);
     const total = r.total_de_registros ?? r.total ?? '?';
     setOmieStatus('ok', 'OMIE conectado · ' + total + ' produtos');
     toast('OMIE conectado!', 'ok');
@@ -604,15 +608,8 @@ function setOmieStatus(state, txt) {
   document.getElementById('omie-dot').className = 'nav-dot '+state;
   document.getElementById('omie-status').textContent = txt;
 }
-async function omieCall(endpoint, call, key, secret, param) {
-  const payload = { call, app_key:String(key), app_secret:String(secret), param };
-  const isProxy = !['localhost','127.0.0.1',''].includes(window.location.hostname);
-  let resp;
-  if (isProxy) {
-    resp = await fetch('/api/omie',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,payload})});
-  } else {
-    resp = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }
+async function omieCall(endpoint, call, empresa, _secretIgnorado, param) {
+  const resp = await fetch('/api/omie-seguro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,call,param,empresa})});
   if (!resp.ok) throw new Error('HTTP '+resp.status);
   const data = await resp.json();
   if (data.faultstring) throw new Error(data.faultstring);
@@ -753,7 +750,7 @@ async function buscarProdutoSku(id) {
   const el = document.getElementById('prod-'+id);
   if (el) el.value = 'Buscando...';
   try {
-    const data = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',cfg.mfp_key,cfg.mfp_secret,[{codigo:String(r.sku).trim()}]);
+    const data = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto','MFP',null,[{codigo:String(r.sku).trim()}]);
     const desc = data.descricao || data.nome || '';
     if (!desc) throw new Error('Produto não encontrado');
     r.produto = desc;
@@ -761,13 +758,11 @@ async function buscarProdutoSku(id) {
     r.embalagem = detectarEmbalagem(desc);
     r.maquina = r.linha==='LACTEO' ? 'IND' : '';
     const isCAFE = r.linha === 'CAFE';
-    const k = isCAFE ? cfg.mfp_key : cfg.dms_key;
-    const s = isCAFE ? cfg.mfp_secret : cfg.dms_secret;
     if (isCAFE) {
       r.omie_id = data.codigo_produto;
     } else {
       try {
-        const dataDms = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',k,s,[{codigo:String(r.sku).trim()}]);
+        const dataDms = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto','DMS',null,[{codigo:String(r.sku).trim()}]);
         r.omie_id = dataDms.codigo_produto;
       } catch(e) {
         r.omie_id = data.codigo_produto;
@@ -794,9 +789,7 @@ async function buscarListaTecnica() {
     try {
       const row = rows.find(r=>r.sku===sku) || {};
       const isCAFE = row.linha === 'CAFE';
-      const k = isCAFE ? cfg.mfp_key : cfg.dms_key;
-      const s = isCAFE ? cfg.mfp_secret : cfg.dms_secret;
-      const data = await omieCall('https://app.omie.com.br/api/v1/geral/malha/','ConsultarEstrutura',k,s,[{idProduto:0,intProduto:'',codProduto:String(sku)}]);
+      const data = await omieCall('https://app.omie.com.br/api/v1/geral/malha/','ConsultarEstrutura',isCAFE?'MFP':'DMS',null,[{idProduto:0,intProduto:'',codProduto:String(sku)}]);
       const itens = data.itens || data.itensEstrutura || [];
       if (itens.length) {
         listaTecnica[sku] = itens.map(it=>({
@@ -823,7 +816,7 @@ async function buscarEstoque() {
   try {
     let pag=1, total=0;
     do {
-      const data = await omieCall('https://app.omie.com.br/api/v1/estoque/consultar/','ListarPosicaoEstoque',cfg.mfp_key,cfg.mfp_secret,[{pagina:pag,registros_por_pagina:500}]);
+      const data = await omieCall('https://app.omie.com.br/api/v1/estoque/consultar/','ListarPosicaoEstoque','MFP',null,[{pagina:pag,registros_por_pagina:500}]);
       const itens = data.posicaoEstoque||data.lista_posicao||[];
       itens.forEach(it=>{
         const cod = String(it.codigo_produto||it.codigo||'');
@@ -1282,10 +1275,8 @@ async function enviarOPs() {
       renderOPLista(); continue;
     }
     const isCAFE = op.linha==='CAFE';
-    const key = isCAFE?cfg.mfp_key:cfg.dms_key;
-    const secret = isCAFE?cfg.mfp_secret:cfg.dms_secret;
     try {
-      await omieCall('https://app.omie.com.br/api/v1/produtos/op/','IncluirOrdemProducao',key,secret,[{
+      await omieCall('https://app.omie.com.br/api/v1/produtos/op/','IncluirOrdemProducao',isCAFE?'MFP':'DMS',null,[{
         identificacao:{cCodIntOP:('OP'+op.sku+Date.now()).slice(0,20),dDtPrevisao:op.dataStr,nCodProduto:parseInt(op.omie_id)||0,nQtde:op.qtd}
       }]);
       op.status='ok';
@@ -1396,7 +1387,7 @@ async function testarSKU() {
   const box = document.getElementById('diag-box');
   box.style.display='block'; box.textContent='Buscando SKU '+sku+'...\n';
   try {
-    const d = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto',cfg.mfp_key,cfg.mfp_secret,[{codigo:String(sku)}]);
+    const d = await omieCall('https://app.omie.com.br/api/v1/geral/produtos/','ConsultarProduto','MFP',null,[{codigo:String(sku)}]);
     box.textContent += '\nResultado:\n'+JSON.stringify(d,null,2).slice(0,1200);
   } catch(e) { box.textContent += '\nErro: '+e.message; }
 }
