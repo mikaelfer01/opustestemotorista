@@ -52,7 +52,9 @@ import crypto from 'crypto';
 const DB_URL    = (process.env.FIREBASE_DB_URL || 'https://mfparis-bd054-default-rtdb.firebaseio.com').replace(/\/+$/, '');
 const SA_EMAIL  = process.env.FIREBASE_SA_EMAIL || '';
 const SA_KEY    = (process.env.FIREBASE_SA_KEY || '').replace(/\\n/g, '\n');
-const DB_SECRET = process.env.FIREBASE_DB_SECRET || '';
+// Mesmo segredo legado já usado em api/firebase-write.js — evita depender de
+// configurar FIREBASE_DB_SECRET na Vercel pra o rastreio funcionar.
+const DB_SECRET = process.env.FIREBASE_DB_SECRET || 'XCLrY4sIS8xul6sIgYAro1UpfnuXPFCJvXsQ4Cum';
 const CHAVE     = process.env.RASTREIO_KEY || '';
 
 // Trava de segurança: se o índice daquela placa está parado há muito tempo,
