@@ -85,6 +85,9 @@ async function buscarOrfas() {
     var html = '<p style="font-size:12px;color:#555">'+linhas.length+' rota(s) no histórico'
       + (filtroNome ? ' (filtrado por "'+filtroNome+'")' : '') + ' nos últimos '+dias+' dias — '
       + '<b style="color:'+(soOrfas.length?'#f87171':'#4ade80')+'">'+soOrfas.length+' órfã(s)</b></p>';
+    if (soOrfas.length) {
+      html += '<button onclick="reconstruirTodasOrfas()" style="background:#166534;margin-bottom:10px">🔧 Reconstruir TODAS as '+soOrfas.length+' órfã(s) (pendente + histórico de separação)</button>';
+    }
     html += linhas.map(function(l){
       var linha = '<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:12px">'
         + (l.existe && !l.corrompido ? '' : '❌ ') + '[' + l.data + '] <b>' + l.motorista + '</b> — ' + l.rota
@@ -112,21 +115,19 @@ async function buscarOrfas() {
 // isso NÃO recupera fotos antigas (não existem pra recuperar), mas volta a
 // deixar a rota rastreável e o motorista consegue confirmar as entregas
 // dali pra frente normalmente.
-window.reconstruirDespacho = async function(token){
+//
+// Volta como PENDENTE (iniciou:false — não presume que o motorista já
+// começou) e já com a separação marcada como concluída no histórico
+// (statusFluxo:'separado' + separacao.finalizada_em), já que separação é
+// sempre anterior ao despacho no fluxo normal — se a rota chegou a gerar
+// token, os itens já foram separados de verdade, só não ficou registrado.
+async function _reconstruirUm(token){
   var h = _histEntries[token];
-  if (!h) { alert('Registro do histórico não encontrado em memória — clique em "Buscar rotas órfãs" de novo.'); return; }
-  var statusEl = document.getElementById('rec-status-'+token);
-  var nParadas = (h.paradas||[]).length;
-  if (!confirm(
-    'Reconstruir despachos/'+token+' ('+h.motoristaNome+' — '+nParadas+' paradas)?\n\n' +
-    'Isso NÃO recupera fotos/canhotos antigos (eles nunca existiram, porque esse despacho nunca ' +
-    'chegou a ser criado). A rota volta a ficar rastreável na Torre e o motorista passa a conseguir ' +
-    'confirmar as entregas normalmente a partir de agora, pelo MESMO link que ele já tem.\n\n' +
-    'Marca como já iniciada (o motorista já está entregando de verdade).'
-  )) return;
+  if (!h) return { ok:false, erro:'Registro do histórico não encontrado em memória.' };
 
   var totalPeso = (h.paradas||[]).reduce(function(s,p){ return s + (parseFloat(p.peso)||0); }, 0);
   var totalKm = (h.paradas||[]).reduce(function(s,p){ return s + (parseFloat(p.km)||0); }, 0);
+  var tsBase = h.tsDespacho || Date.now();
 
   var payload = {
     token: token,
@@ -142,16 +143,18 @@ window.reconstruirDespacho = async function(token){
     totalKm: totalKm,
     frete: h.freteTotal || 0,
     emb: h.emb || '',
-    tsDespacho: h.tsDespacho || Date.now(),
-    statusFluxo: 'em_transito',
-    iniciou: true,
+    tsDespacho: tsBase,
+    statusFluxo: 'separado',
+    iniciou: false,
     concluido: false,
     confirmacoes: {},
-    separacao: {},
+    separacao: {
+      finalizada_em: tsBase,
+      finalizada_por: { nome: 'Recuperação automática (despacho original falhou ao gravar)' }
+    },
     _reconstruido: { em: Date.now(), obs: 'Recriado a partir de historico_roteirizados — despacho original falhou silenciosamente ao gravar.' }
   };
 
-  if (statusEl) statusEl.textContent = '⏳ Gravando...';
   try {
     var resp = await fetch('/api/firebase-write', {
       method: 'POST',
@@ -159,10 +162,58 @@ window.reconstruirDespacho = async function(token){
       body: JSON.stringify({ path: 'despachos/' + token, data: payload })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' — ' + await resp.text());
-    if (statusEl) statusEl.innerHTML = '<span class="ok">✓ Reconstruído! Link: motorista.html?token=' + token + '</span>';
+    return { ok:true };
   } catch (e) {
-    if (statusEl) statusEl.innerHTML = '<span class="err">Erro: ' + e.message + '</span>';
+    return { ok:false, erro: e.message };
   }
+}
+
+window.reconstruirDespacho = async function(token){
+  var h = _histEntries[token];
+  if (!h) { alert('Registro do histórico não encontrado em memória — clique em "Buscar rotas órfãs" de novo.'); return; }
+  var statusEl = document.getElementById('rec-status-'+token);
+  var nParadas = (h.paradas||[]).length;
+  if (!confirm(
+    'Reconstruir despachos/'+token+' ('+h.motoristaNome+' — '+nParadas+' paradas)?\n\n' +
+    'Isso NÃO recupera fotos/canhotos antigos (eles nunca existiram, porque esse despacho nunca ' +
+    'chegou a ser criado). Volta como PENDENTE na Torre (não presume que o motorista já iniciou) ' +
+    'e já marca a separação como concluída no histórico de separação.'
+  )) return;
+  if (statusEl) statusEl.textContent = '⏳ Gravando...';
+  var r = await _reconstruirUm(token);
+  if (statusEl) statusEl.innerHTML = r.ok
+    ? '<span class="ok">✓ Reconstruído! Link: motorista.html?token=' + token + '</span>'
+    : '<span class="err">Erro: ' + r.erro + '</span>';
+};
+
+// Reconstrói TODAS as órfãs encontradas na última busca de uma vez.
+window.reconstruirTodasOrfas = async function(){
+  var tokens = Object.keys(_histEntries).filter(function(t){
+    var el = document.getElementById('rec-status-'+t);
+    return !!el; // só os que a busca marcou como órfãos (tem botão renderizado)
+  });
+  if (!tokens.length) { alert('Nenhuma rota órfã na lista atual. Clique em "Buscar rotas órfãs" primeiro.'); return; }
+  if (!confirm(
+    'Reconstruir TODAS as ' + tokens.length + ' rota(s) órfã(s) listada(s)?\n\n' +
+    'Cada uma volta como PENDENTE na Torre e com a separação marcada como concluída no histórico. ' +
+    'Não recupera fotos/canhotos antigos (nenhuma existe pra recuperar nesses casos).'
+  )) return;
+
+  var okCount = 0, erros = [];
+  for (var i = 0; i < tokens.length; i++) {
+    var tk = tokens[i];
+    var statusEl = document.getElementById('rec-status-'+tk);
+    if (statusEl) statusEl.textContent = '⏳ Gravando...';
+    var r = await _reconstruirUm(tk);
+    if (r.ok) {
+      okCount++;
+      if (statusEl) statusEl.innerHTML = '<span class="ok">✓ Reconstruído!</span>';
+    } else {
+      erros.push(tk + ': ' + r.erro);
+      if (statusEl) statusEl.innerHTML = '<span class="err">Erro: ' + r.erro + '</span>';
+    }
+  }
+  alert(okCount + ' de ' + tokens.length + ' rota(s) reconstruída(s) com sucesso.' + (erros.length ? '\n\nFalhas:\n' + erros.join('\n') : ''));
 };
 
 async function omie(ep, call, param, empresa) {
