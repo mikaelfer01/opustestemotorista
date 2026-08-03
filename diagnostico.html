@@ -200,39 +200,71 @@ function _csvEscape(v){
 window.exportarCsvOrfas = function(){
   if (!_orfasAtuais.length) { alert('Nenhuma rota órfã na lista atual. Clique em "Buscar rotas órfãs" primeiro.'); return; }
 
-  var colunas = [
-    'data_roteirizacao', 'token', 'id_rota', 'nome_rota', 'motorista', 'placa', 'telefone_motorista',
-    'cliente', 'pedido', 'codigo_pedido_omie', 'empresa', 'cidade', 'estado', 'peso_kg', 'produto', 'sku',
-    'km', 'frete_rateio', 'previsao_entrega', 'frete_total_rota', 'qtd_paradas_rota'
-  ];
-  var linhasCsv = [colunas.join(';')];
+  try {
+    var colunas = [
+      'data_roteirizacao', 'token', 'id_rota', 'nome_rota', 'motorista', 'placa', 'telefone_motorista',
+      'cliente', 'pedido', 'codigo_pedido_omie', 'empresa', 'cidade', 'estado', 'peso_kg', 'produto', 'sku',
+      'km', 'frete_rateio', 'previsao_entrega', 'frete_total_rota', 'qtd_paradas_rota'
+    ];
+    var linhasCsv = [colunas.join(';')];
 
-  _orfasAtuais.forEach(function(token){
-    var h = _histEntries[token];
-    if (!h) return;
-    var dataRot = h.tsDespacho ? new Date(h.tsDespacho).toLocaleDateString('pt-BR') : '';
-    var paradas = h.paradas && h.paradas.length ? h.paradas : [{}]; // pelo menos 1 linha mesmo sem paradas
-    paradas.forEach(function(p){
-      linhasCsv.push([
-        dataRot, token, h.idRota||'', h.rotaNome||'', h.motoristaNome||'', h.motoristaPlaca||'', h.motoristaTel||'',
-        p.cliente||'', p.pedido||'', p._codigo_pedido||'', p.empresa||p._emp_key||'', p.cidade||'', p.estado||'',
-        p.peso||'', p.produto||'', p.sku||'', p.km||'', p.freteRateio||'', p.prevEntrega||'',
-        h.freteTotal||'', (h.paradas||[]).length
-      ].map(_csvEscape).join(';'));
+    _orfasAtuais.forEach(function(token){
+      var h = _histEntries[token];
+      if (!h) return;
+      var dataRot = h.tsDespacho ? new Date(h.tsDespacho).toLocaleDateString('pt-BR') : '';
+      var paradas = h.paradas && h.paradas.length ? h.paradas : [{}]; // pelo menos 1 linha mesmo sem paradas
+      paradas.forEach(function(p){
+        linhasCsv.push([
+          dataRot, token, h.idRota||'', h.rotaNome||'', h.motoristaNome||'', h.motoristaPlaca||'', h.motoristaTel||'',
+          p.cliente||'', p.pedido||'', p._codigo_pedido||'', p.empresa||p._emp_key||'', p.cidade||'', p.estado||'',
+          p.peso||'', p.produto||'', p.sku||'', p.km||'', p.freteRateio||'', p.prevEntrega||'',
+          h.freteTotal||'', (h.paradas||[]).length
+        ].map(_csvEscape).join(';'));
+      });
     });
-  });
 
-  var csv = '﻿' + linhasCsv.join('\r\n'); // BOM pra acentuação abrir certo no Excel
-  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'rotas_orfas_' + new Date().toISOString().slice(0,10) + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    if (linhasCsv.length <= 1) { alert('Nada pra exportar — nenhuma parada encontrada nas rotas órfãs.'); return; }
+
+    var csv = '﻿' + linhasCsv.join('\r\n'); // BOM pra acentuação abrir certo no Excel
+    var nomeArquivo = 'rotas_orfas_' + new Date().toISOString().slice(0,10) + '.csv';
+
+    if (typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
+      _abrirCsvComoTexto(csv, nomeArquivo);
+      return;
+    }
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  } catch (e) {
+    console.error('[exportarCsvOrfas]', e);
+    alert('Erro ao gerar o CSV: ' + e.message + '\n\nVou abrir o conteúdo numa aba nova pra você copiar manualmente.');
+    try { _abrirCsvComoTexto(csv, nomeArquivo); } catch (e2) { alert('Também não consegui abrir como texto: ' + e2.message); }
+  }
 };
+// Alternativa pra quando o download automático não funciona (alguns
+// navegadores mobile/corporativos bloqueiam blob: silenciosamente, sem
+// erro nenhum aparecer) — abre o CSV puro numa aba nova pra copiar e colar
+// num arquivo .csv manualmente.
+function _abrirCsvComoTexto(csv, nomeArquivo){
+  var win = window.open('', '_blank');
+  if (!win) { alert('O navegador bloqueou a aba nova. Permita pop-ups pra este site e tente de novo.'); return; }
+  win.document.title = nomeArquivo;
+  var pre = win.document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;word-break:break-all;font-family:monospace;font-size:12px;padding:16px';
+  pre.textContent = csv.replace(/^﻿/, '');
+  var aviso = win.document.createElement('p');
+  aviso.style.cssText = 'font-family:sans-serif;color:#555;padding:0 16px';
+  aviso.textContent = 'Download automático não funcionou — selecione tudo (Ctrl/Cmd+A), copie e cole num arquivo ' + nomeArquivo + '.';
+  win.document.body.appendChild(aviso);
+  win.document.body.appendChild(pre);
+}
 
 // Reconstrói TODAS as órfãs encontradas na última busca de uma vez.
 window.reconstruirTodasOrfas = async function(){
