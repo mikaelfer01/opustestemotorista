@@ -482,7 +482,7 @@ async function buscarNotasDaRota(rota) {
       empCod, pedido: p.pedido, cliente: p.cliente, produto: p.produto,
       pesoRoteirizador: Number(p.peso) || 0,
       nf: '', serie: '', chave: '', pesoBruto: 0, pesoLiquido: 0, volumes: 1, valor: null,
-      status: 'erro', obs: 'Sem código de pedido/empresa para buscar'
+      status: 'sem', obs: 'Empresa/código do pedido não veio gravado nesta parada (dado faltando desde a roteirização) — não dá pra buscar a NF automaticamente. Confira manualmente no Omie pelo número do pedido.'
     };
     if (empCod && p._codigo_pedido) {
       try {
@@ -559,6 +559,18 @@ function renderPedidos() {
    ══════════════════════════════════════════════════════════════════════════ */
 function gerarTermoPDF() {
   if (!rotaAtual || !pedidosAtual.length) return;
+  try {
+    _gerarTermoPDFInterno();
+  } catch (e) {
+    // Sem isso, qualquer erro inesperado na montagem do PDF falha em
+    // silêncio — parece "não acontece nada" ao clicar, sem nenhuma pista
+    // do que deu errado.
+    console.error('[gerarTermoPDF]', e);
+    toast('Erro ao gerar o termo: ' + e.message, 'err');
+    alert('Não foi possível gerar o PDF do termo.\n\nErro: ' + e.message + '\n\nSe o erro persistir, avise o suporte com essa mensagem.');
+  }
+}
+function _gerarTermoPDFInterno() {
   const r = rotaAtual.reg;
   const m = motoristaAtual;
   const { jsPDF } = window.jspdf;
