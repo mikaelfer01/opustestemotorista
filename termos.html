@@ -845,10 +845,15 @@ async function marcarTermoEmitido(rota) {
 /* ══════════════════════════════════════════════════════════════════════════
    7. BOOT
    ══════════════════════════════════════════════════════════════════════════ */
+// Período padrão: últimos 30 dias — antes ficava só no dia de hoje, então
+// qualquer rota despachada em dia anterior ficava invisível na lista por
+// padrão (parecia "não tem termo pra emitir" quando na verdade era só o
+// filtro de data escondendo tudo, sem nenhum aviso disso na tela).
 (function initDatas() {
   const hoje = new Date();
+  const d30 = new Date(); d30.setDate(d30.getDate() - 29);
   const fmt = d => d.toISOString().slice(0, 10);
-  $('f-de').value = fmt(hoje);
+  $('f-de').value = fmt(d30);
   $('f-ate').value = fmt(hoje);
 })();
 
