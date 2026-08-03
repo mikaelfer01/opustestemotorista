@@ -265,6 +265,43 @@ async function statusPedido(codigoPedido, empCod) {
   return omieCall(EP_PEDIDO, 'StatusPedido', empCod, [{ codigo_pedido: parseInt(codigoPedido, 10) || codigoPedido }]);
 }
 
+/* Localiza um pedido pelo número (numero_pedido) dentro de UMA empresa específica.
+   Usado quando a parada não veio com _codigo_pedido/_emp_key gravados (dado
+   faltando desde a roteirização) — mesmo padrão já usado em notas-fiscais.html. */
+async function acharPedidoPorNumero(numeroPedido, empCod) {
+  const n = parseInt(numeroPedido, 10) || 0;
+  if (!n) return null;
+  const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+    pagina: 1, registros_por_pagina: 20,
+    numero_pedido_de: n, numero_pedido_ate: n,
+    apenas_importado_api: 'N'
+  }]);
+  const lista = (data && data.pedido_venda_produto) || [];
+  const achado = lista.find(p =>
+    String((p.cabecalho || {}).numero_pedido || '').trim() === String(numeroPedido).trim()
+  );
+  if (!achado) return null;
+  return achado.cabecalho.codigo_pedido;
+}
+
+/* Quando a empresa/código do pedido não veio gravado na parada, tenta achar
+   o pedido pelo número em cada uma das 3 empresas do grupo, nessa ordem,
+   até encontrar. Retorna { empCod, codigoPedido } ou null se não achar em
+   nenhuma. */
+async function acharPedidoEmQualquerEmpresa(numeroPedido, empCodConhecido) {
+  const candidatas = empCodConhecido ? [empCodConhecido] : Object.keys(EMPRESAS);
+  for (const cod of candidatas) {
+    try {
+      const codigoPedido = await acharPedidoPorNumero(numeroPedido, cod);
+      await sleep(400);
+      if (codigoPedido) return { empCod: cod, codigoPedido };
+    } catch (e) {
+      log('Busca do pedido ' + numeroPedido + ' em ' + cod + ': ' + (e.message || e));
+    }
+  }
+  return null;
+}
+
 /* Extrai NF + peso/volume/valor do retorno de StatusPedido, tentando os nomes
    de campo mais comuns do Omie. Quando o Omie não devolve peso/volume na NF,
    cai pro peso já calculado pelo roteirizador (fica marcado como estimado).
@@ -476,7 +513,8 @@ async function buscarNotasDaRota(rota) {
   let achadas = 0, semNota = 0, comErro = 0, pesoAlerta = 0;
 
   for (const p of rota.paradas) {
-    const empCod = normEmpCod(p._emp_key || p.empresa || p._empresa);
+    let empCod = normEmpCod(p._emp_key || p.empresa || p._empresa);
+    let codigoPedido = p._codigo_pedido;
     const item = {
       empresa: empCod ? EMPRESAS[empCod].nome : (p.empresa || p._emp_key || '—'),
       empCod, pedido: p.pedido, cliente: p.cliente, produto: p.produto,
@@ -484,9 +522,27 @@ async function buscarNotasDaRota(rota) {
       nf: '', serie: '', chave: '', pesoBruto: 0, pesoLiquido: 0, volumes: 1, valor: null,
       status: 'sem', obs: 'Empresa/código do pedido não veio gravado nesta parada (dado faltando desde a roteirização) — não dá pra buscar a NF automaticamente. Confira manualmente no Omie pelo número do pedido.'
     };
-    if (empCod && p._codigo_pedido) {
+
+    // Dado faltando (empresa e/ou código do pedido não gravados na parada):
+    // tenta achar o pedido pelo NÚMERO em cada uma das 3 empresas do grupo
+    // antes de desistir — resolve o caso mais comum de "NF não encontrada".
+    if ((!empCod || !codigoPedido) && p.pedido) {
       try {
-        const st = await statusPedido(p._codigo_pedido, empCod);
+        const achado = await acharPedidoEmQualquerEmpresa(p.pedido, empCod);
+        if (achado) {
+          empCod = achado.empCod;
+          codigoPedido = achado.codigoPedido;
+          item.empresa = EMPRESAS[empCod].nome;
+          item.empCod = empCod;
+        }
+      } catch (e) {
+        log('Erro buscando pedido ' + p.pedido + ' pelas 3 empresas: ' + (e.message || e));
+      }
+    }
+
+    if (empCod && codigoPedido) {
+      try {
+        const st = await statusPedido(codigoPedido, empCod);
         await sleep(500);
         const nf = extrairNF(st, p.peso);
         Object.assign(item, nf);
@@ -504,6 +560,9 @@ async function buscarNotasDaRota(rota) {
         item.obs = e.message || String(e);
         log('Pedido ' + p.pedido + ' (' + empCod + '): ' + item.obs);
       }
+    } else if (p.pedido) {
+      semNota++;
+      item.obs = 'Pedido nº ' + p.pedido + ' não foi encontrado em nenhuma das 3 empresas (MF Paris, DMS, Profi) — confira manualmente no Omie.';
     } else {
       semNota++;
     }
