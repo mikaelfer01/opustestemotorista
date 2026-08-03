@@ -47,6 +47,7 @@ async function firebaseRead(path) {
 }
 
 var _histEntries = {}; // token -> registro do historico_roteirizados, pra reconstruir sem reler
+var _orfasAtuais = []; // tokens órfãos da última busca, na ordem exibida — pra exportar CSV
 
 async function buscarOrfas() {
   const div = document.getElementById('res-orfas');
@@ -82,11 +83,13 @@ async function buscarOrfas() {
     });
 
     var soOrfas = linhas.filter(function(l){ return !l.existe || l.corrompido; });
+    _orfasAtuais = soOrfas.map(function(l){ return l.token; });
     var html = '<p style="font-size:12px;color:#555">'+linhas.length+' rota(s) no histórico'
       + (filtroNome ? ' (filtrado por "'+filtroNome+'")' : '') + ' nos últimos '+dias+' dias — '
       + '<b style="color:'+(soOrfas.length?'#f87171':'#4ade80')+'">'+soOrfas.length+' órfã(s)</b></p>';
     if (soOrfas.length) {
-      html += '<button onclick="reconstruirTodasOrfas()" style="background:#166534;margin-bottom:10px">🔧 Reconstruir TODAS as '+soOrfas.length+' órfã(s) (pendente + histórico de separação)</button>';
+      html += '<button onclick="reconstruirTodasOrfas()" style="background:#166534;margin-bottom:10px">🔧 Reconstruir TODAS as '+soOrfas.length+' órfã(s) (pendente + histórico de separação)</button> ';
+      html += '<button onclick="exportarCsvOrfas()" style="background:#1A2B4A;margin-bottom:10px">📥 Exportar CSV das '+soOrfas.length+' órfã(s)</button>';
     }
     html += linhas.map(function(l){
       var linha = '<div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:12px">'
@@ -184,6 +187,51 @@ window.reconstruirDespacho = async function(token){
   if (statusEl) statusEl.innerHTML = r.ok
     ? '<span class="ok">✓ Reconstruído! Link: motorista.html?token=' + token + '</span>'
     : '<span class="err">Erro: ' + r.erro + '</span>';
+};
+
+// Exporta um CSV com uma linha por PARADA (pedido) de cada rota órfã da
+// última busca — assim dá pra reconciliar pedido a pedido, não só rota a
+// rota. Colunas repetem os dados da rota em cada linha de parada.
+function _csvEscape(v){
+  var s = v === null || v === undefined ? '' : String(v);
+  if (/[",;\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+window.exportarCsvOrfas = function(){
+  if (!_orfasAtuais.length) { alert('Nenhuma rota órfã na lista atual. Clique em "Buscar rotas órfãs" primeiro.'); return; }
+
+  var colunas = [
+    'data_roteirizacao', 'token', 'id_rota', 'nome_rota', 'motorista', 'placa', 'telefone_motorista',
+    'cliente', 'pedido', 'codigo_pedido_omie', 'empresa', 'cidade', 'estado', 'peso_kg', 'produto', 'sku',
+    'km', 'frete_rateio', 'previsao_entrega', 'frete_total_rota', 'qtd_paradas_rota'
+  ];
+  var linhasCsv = [colunas.join(';')];
+
+  _orfasAtuais.forEach(function(token){
+    var h = _histEntries[token];
+    if (!h) return;
+    var dataRot = h.tsDespacho ? new Date(h.tsDespacho).toLocaleDateString('pt-BR') : '';
+    var paradas = h.paradas && h.paradas.length ? h.paradas : [{}]; // pelo menos 1 linha mesmo sem paradas
+    paradas.forEach(function(p){
+      linhasCsv.push([
+        dataRot, token, h.idRota||'', h.rotaNome||'', h.motoristaNome||'', h.motoristaPlaca||'', h.motoristaTel||'',
+        p.cliente||'', p.pedido||'', p._codigo_pedido||'', p.empresa||p._emp_key||'', p.cidade||'', p.estado||'',
+        p.peso||'', p.produto||'', p.sku||'', p.km||'', p.freteRateio||'', p.prevEntrega||'',
+        h.freteTotal||'', (h.paradas||[]).length
+      ].map(_csvEscape).join(';'));
+    });
+  });
+
+  var csv = '﻿' + linhasCsv.join('\r\n'); // BOM pra acentuação abrir certo no Excel
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'rotas_orfas_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
 };
 
 // Reconstrói TODAS as órfãs encontradas na última busca de uma vez.
