@@ -300,6 +300,11 @@ async function carregarPedidos() {
 
             const dep   = infoDepartamento(p.departamentos||[]);
             const frete = modalidadeParaFrete(p.frete?.modalidade);
+            // Antes exigia que o SKU começasse com '1' — convenção que só vale
+            // pra parte do catálogo da MF Paris. DMS (ex.: 4501/4502) e Profi
+            // (ex.: 5001/5002) usam outras faixas de código, então TODOS os
+            // itens desses pedidos caíam fora e o pedido inteiro sumia da
+            // carteira (ver "if (!itens.length) return" logo abaixo).
             const itens = (p.det||[]).map(d => ({
   codigo_item:    d.ide?.codigo_item,
   sku:            d.produto?.codigo,
@@ -308,7 +313,7 @@ async function carregarPedidos() {
   valor_unitario: d.produto?.valor_unitario||0,
   valor_total:    d.produto?.valor_total||0,
   peso_liquido:   d.inf_adic?.peso_liquido||0,
-})).filter(it => it.sku && String(it.sku).startsWith('1'));
+})).filter(it => it.sku);
             if (!itens.length) return;
 
             const resumoProdutos = itens.map(it => it.descricao||'').join(' · ');
