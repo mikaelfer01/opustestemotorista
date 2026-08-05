@@ -60,8 +60,14 @@ function infoDepartamento(departamentos) {
   return { tipo:'comercial', label:'Comercial' };
 }
 
+// Omie segue a tabela padrão de modFrete da NF-e:
+// 0 = Emitente/CIF, 1 = Destinatário/FOB, 2 = Terceiros,
+// 3 = Próprio remetente (CIF), 4 = Próprio destinatário (FOB), 9 = Sem frete.
+// Antes só o código '2' virava FOB — o código real de FOB (1) caía no
+// "senão" e saía como CIF, então todo pedido FOB aparecia errado.
 function modalidadeParaFrete(m) {
-  return String(m||'') === '2' ? 'FOB' : 'CIF';
+  const cod = String(m == null ? '' : m).trim();
+  return (cod === '1' || cod === '4') ? 'FOB' : 'CIF';
 }
 
 // Peso do PEDIDO. No segmento Comercial os itens sao vendidos "a peso" -
