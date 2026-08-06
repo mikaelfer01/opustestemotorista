@@ -467,17 +467,44 @@ async function testarEndpointsCte() {
     }
     if (!achado) {
       pre0.innerHTML = '<span class="err">Nenhum CT-e (cModeloNFe=57) nas últimas 8 páginas dessa empresa. Tenta outra empresa no seletor acima, ou aumenta o alcance da busca (me avisa).</span>';
+      return;
+    }
+
+    // O resumo da listagem NÃO tem peso nem os pedidos/NFs que o CT-e está
+    // transportando — só valor e quem emitiu. Usa o nIdReceb desse exemplo
+    // pra consultar o documento completo, que deve ter a estrutura real do
+    // CT-e (peso da carga, NF-e's vinculadas).
+    const nIdReceb = achado.cabec && achado.cabec.nIdReceb;
+    if (!nIdReceb) return;
+    const h1 = document.createElement('h3');
+    h1.textContent = 'Detalhe completo desse CT-e (ConsultarRecebimento, nIdReceb=' + nIdReceb + ')';
+    div.appendChild(h1);
+    const pre1 = document.createElement('pre');
+    pre1.textContent = 'Buscando...';
+    div.appendChild(pre1);
+    try {
+      const detalhe = await omie(EP_RECEB, 'ConsultarRecebimento', [{ nIdReceb }], empresa);
+      const erroMsg = (detalhe && detalhe.faultstring) || (detalhe && detalhe.status === 'error' && detalhe.message);
+      pre1.innerHTML = erroMsg
+        ? '<span class="err">ERRO: ' + erroMsg + '</span>'
+        : '<span class="ok">✓ RESPOSTA:</span>\n' + JSON.stringify(detalhe, null, 2);
+    } catch (e2) {
+      pre1.innerHTML = '<span class="err">' + e2.message + '</span>';
     }
   } catch (e) {
     pre0.innerHTML = '<span class="err">' + e.message + '</span>';
   }
 }
 
-// PesquisarTitulos/ObterBoleto (usados em termos.html pra anexar o boleto
-// no termo) nunca foram confirmados contra o Omie de verdade — vieram só
-// de uma busca na web. Testa vários formatos, incluindo objeto vazio (pra
-// Omie apontar os campos obrigatórios reais, igual funcionou pro CT-e) e
-// um endpoint alternativo (financas/contareceber / ListarContasReceber).
+// CONFIRMADO contra o Omie de verdade: financas/contareceber /
+// ListarContasReceber com {pagina, registros_por_pagina} (mesma convenção
+// snake_case de ListarPedidos) funciona e cada título já vem com
+// chave_nfe, numero_documento_fiscal e codigo_lancamento_omie — os campos
+// que preciso pra achar o boleto certo. PesquisarTitulos/ObterBoleto
+// (usados em termos.html hoje) nunca foram confirmados. Falta só achar um
+// filtro de request pra não ter que paginar 824 páginas / 16477 títulos —
+// testando nomes de filtro que batem com os campos de resposta já
+// confirmados (padrão Omie: nome do filtro = nome do campo de resposta).
 async function testarEndpointsBoleto() {
   const empresa = document.getElementById('bol-empresa').value;
   const nf = document.getElementById('bol-nf').value.trim();
@@ -486,23 +513,20 @@ async function testarEndpointsBoleto() {
   div.innerHTML = '';
 
   const CANDIDATOS = [
-    { label: 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios)',
+    { label: 'financas/contareceber — ListarContasReceber (filtro numero_documento_fiscal = NF)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
+      param: [{ pagina: 1, registros_por_pagina: 5, numero_documento_fiscal: nf }] },
+
+    { label: 'financas/contareceber — ListarContasReceber (filtro chave_nfe = NF — só funciona se você souber a chave)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
+      param: [{ pagina: 1, registros_por_pagina: 5, chave_nfe: nf }] },
+
+    { label: 'financas/contareceber — ListarContasReceber (filtro codigo_cliente_fornecedor — deixa passar se não souber)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
+      param: [{ pagina: 1, registros_por_pagina: 5, filtrar_por_data_de: '01/01/2026', filtrar_por_data_ate: '31/12/2026' }] },
+
+    { label: 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios, se existir)',
       ep: 'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', call: 'PesquisarTitulos', param: [{}] },
-
-    { label: 'financas/pesquisartitulos — PesquisarTitulos (cNumDocFiscal = NF, palpite original)',
-      ep: 'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', call: 'PesquisarTitulos',
-      param: [{ pagina: 1, registros_por_pagina: 5, cNumDocFiscal: nf }] },
-
-    { label: 'financas/contareceber — ListarContasReceber ({} vazio — aponta campos obrigatórios)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber', param: [{}] },
-
-    { label: 'financas/contareceber — ListarContasReceber (pagina/registros_por_pagina)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
-      param: [{ pagina: 1, registros_por_pagina: 20 }] },
-
-    { label: 'financas/contareceber — ListarContasReceber (nPagina/nRegPorPagina, estilo Húngaro)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
-      param: [{ nPagina: 1, nRegPorPagina: 20 }] },
   ];
 
   for (const t of CANDIDATOS) {
