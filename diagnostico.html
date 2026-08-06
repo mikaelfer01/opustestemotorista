@@ -442,54 +442,69 @@ async function testarEndpointsCte() {
   div.innerHTML = '';
 
   const h0 = document.createElement('h3');
-  h0.textContent = 'Achar exemplo de CT-e (paginando de trás pra frente a partir da última página)';
+  h0.textContent = 'Coletando CT-e\'s (paginando de trás pra frente a partir da última página)';
   div.appendChild(h0);
   const pre0 = document.createElement('pre');
   pre0.textContent = 'Buscando...';
   div.appendChild(pre0);
 
   const EP_RECEB = 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/';
+  const TRANSPORTADORAS_CONOSCO = /TG\b|CAMILO|BHT|EUREKA/i;
   try {
     const primeira = await omie(EP_RECEB, 'ListarRecebimentos', [{ nPagina: 1 }], empresa);
     const totalPaginas = primeira.nTotalPaginas || 1;
-    let achado = null;
-    // Vai da última página pra trás até achar um cModeloNFe==="57" (CT-e),
-    // olhando no máximo 8 páginas (~800 registros) pra não estourar de
-    // chamadas — os recebimentos mais recentes ficam nas últimas páginas.
-    for (let p = totalPaginas; p >= Math.max(1, totalPaginas - 7) && !achado; p--) {
+    const ctes = [];
+    // Vai da última página pra trás coletando TODOS os CT-e's (cModeloNFe
+    // ==="57"), até juntar 5 ou esgotar 12 páginas (~1200 registros) — os
+    // recebimentos mais recentes ficam nas últimas páginas. Prioriza os que
+    // batem com uma transportadora contratada conhecida (TG/Camilo/BHT/
+    // Eureka), já que são os relevantes pras rotas do sistema.
+    for (let p = totalPaginas; p >= Math.max(1, totalPaginas - 11) && ctes.length < 5; p--) {
       await new Promise(r => setTimeout(r, 500));
       const dados = (p === 1) ? primeira : await omie(EP_RECEB, 'ListarRecebimentos', [{ nPagina: p }], empresa);
       const lista = dados.recebimentos || [];
-      achado = lista.find(rec => rec.cabec && String(rec.cabec.cModeloNFe) === '57');
-      if (achado) {
-        pre0.innerHTML = '<span class="ok">✓ CT-e encontrado na página ' + p + ' de ' + totalPaginas + ':</span>\n' + JSON.stringify(achado, null, 2);
-      }
+      lista.forEach(rec => { if (rec.cabec && String(rec.cabec.cModeloNFe) === '57') ctes.push(rec); });
+      pre0.textContent = 'Página ' + p + '/' + totalPaginas + ' — ' + ctes.length + ' CT-e(s) achado(s) até agora...';
     }
-    if (!achado) {
-      pre0.innerHTML = '<span class="err">Nenhum CT-e (cModeloNFe=57) nas últimas 8 páginas dessa empresa. Tenta outra empresa no seletor acima, ou aumenta o alcance da busca (me avisa).</span>';
+    ctes.sort((a, b) => {
+      const aConhecida = TRANSPORTADORAS_CONOSCO.test((a.transporte || {}).cNomeTransp || '') ? 0 : 1;
+      const bConhecida = TRANSPORTADORAS_CONOSCO.test((b.transporte || {}).cNomeTransp || '') ? 0 : 1;
+      return aConhecida - bConhecida;
+    });
+    pre0.innerHTML = '<span class="ok">✓ ' + ctes.length + ' CT-e(s) achado(s):</span>\n' + ctes.map(c =>
+      '- NF ' + (c.cabec && c.cabec.cNumeroNFe) + ' · ' + ((c.transporte || {}).cNomeTransp || '—') + ' · R$ ' + (c.cabec && c.cabec.nValorNFe)
+    ).join('\n');
+
+    if (!ctes.length) {
+      pre0.innerHTML += '\n\n<span class="err">Nenhum CT-e nas últimas 12 páginas dessa empresa. Tenta outra empresa.</span>';
       return;
     }
 
-    // O resumo da listagem NÃO tem peso nem os pedidos/NFs que o CT-e está
-    // transportando — só valor e quem emitiu. Usa o nIdReceb desse exemplo
-    // pra consultar o documento completo, que deve ter a estrutura real do
-    // CT-e (peso da carga, NF-e's vinculadas).
-    const nIdReceb = achado.cabec && achado.cabec.nIdReceb;
-    if (!nIdReceb) return;
-    const h1 = document.createElement('h3');
-    h1.textContent = 'Detalhe completo desse CT-e (ConsultarRecebimento, nIdReceb=' + nIdReceb + ')';
-    div.appendChild(h1);
-    const pre1 = document.createElement('pre');
-    pre1.textContent = 'Buscando...';
-    div.appendChild(pre1);
-    try {
-      const detalhe = await omie(EP_RECEB, 'ConsultarRecebimento', [{ nIdReceb }], empresa);
-      const erroMsg = (detalhe && detalhe.faultstring) || (detalhe && detalhe.status === 'error' && detalhe.message);
-      pre1.innerHTML = erroMsg
-        ? '<span class="err">ERRO: ' + erroMsg + '</span>'
-        : '<span class="ok">✓ RESPOSTA:</span>\n' + JSON.stringify(detalhe, null, 2);
-    } catch (e2) {
-      pre1.innerHTML = '<span class="err">' + e2.message + '</span>';
+    // Consulta o detalhe completo de cada um (até 5) e mostra se
+    // itensRecebimento veio preenchido — testando a afirmação de que o CT-e
+    // vem com o pedido associado dentro do Omie.
+    for (const cte of ctes.slice(0, 5)) {
+      const nIdReceb = cte.cabec && cte.cabec.nIdReceb;
+      if (!nIdReceb) continue;
+      await new Promise(r => setTimeout(r, 500));
+      const h1 = document.createElement('h3');
+      h1.textContent = 'Detalhe do CT-e NF ' + cte.cabec.cNumeroNFe + ' (' + ((cte.transporte || {}).cNomeTransp || '—') + ', nIdReceb=' + nIdReceb + ')';
+      div.appendChild(h1);
+      const pre1 = document.createElement('pre');
+      pre1.textContent = 'Buscando...';
+      div.appendChild(pre1);
+      try {
+        const detalhe = await omie(EP_RECEB, 'ConsultarRecebimento', [{ nIdReceb }], empresa);
+        const erroMsg = (detalhe && detalhe.faultstring) || (detalhe && detalhe.status === 'error' && detalhe.message);
+        if (erroMsg) {
+          pre1.innerHTML = '<span class="err">ERRO: ' + erroMsg + '</span>';
+        } else {
+          const temItens = detalhe.itensRecebimento !== null && detalhe.itensRecebimento !== undefined;
+          pre1.innerHTML = '<span class="' + (temItens ? 'ok' : 'err') + '">itensRecebimento: ' + (temItens ? 'PREENCHIDO!' : 'null (sem detalhe de pedido/peso nesse CT-e)') + '</span>\n' + JSON.stringify(detalhe, null, 2);
+        }
+      } catch (e2) {
+        pre1.innerHTML = '<span class="err">' + e2.message + '</span>';
+      }
     }
   } catch (e) {
     pre0.innerHTML = '<span class="err">' + e.message + '</span>';
@@ -501,59 +516,73 @@ async function testarEndpointsCte() {
 // snake_case de ListarPedidos) funciona e cada título já vem com
 // chave_nfe, numero_documento_fiscal e codigo_lancamento_omie — os campos
 // que preciso pra achar o boleto certo. PesquisarTitulos/ObterBoleto
-// (usados em termos.html hoje) nunca foram confirmados. Falta só achar um
-// filtro de request pra não ter que paginar 824 páginas / 16477 títulos —
-// testando nomes de filtro que batem com os campos de resposta já
-// confirmados (padrão Omie: nome do filtro = nome do campo de resposta).
+// (usados em termos.html hoje) nunca foram confirmados.
+// Os 3 filtros de request testados (numero_documento_fiscal, chave_nfe,
+// filtrar_por_data_de/ate) não deram erro, MAS o total_de_registros
+// continuou 16477 — sinal de que a Omie aceita a tag mas ignora ela
+// silenciosamente (ao contrário do endpoint de CT-e, que rejeita tag
+// desconhecida com erro). Sem um jeito confiável de filtrar por request,
+// aplica a mesma solução que funcionou pro CT-e: confirma a ordem
+// cronológica pegando a última página, e se for recente, dá pra paginar
+// de trás pra frente igual fiz lá.
 async function testarEndpointsBoleto() {
   const empresa = document.getElementById('bol-empresa').value;
   const nf = document.getElementById('bol-nf').value.trim();
-  const pedido = document.getElementById('bol-pedido').value.trim();
   const div = document.getElementById('res-boleto');
   div.innerHTML = '';
 
-  const CANDIDATOS = [
-    { label: 'financas/contareceber — ListarContasReceber (filtro numero_documento_fiscal = NF)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
-      param: [{ pagina: 1, registros_por_pagina: 5, numero_documento_fiscal: nf }] },
+  const EP_CR = 'https://app.omie.com.br/api/v1/financas/contareceber/';
 
-    { label: 'financas/contareceber — ListarContasReceber (filtro chave_nfe = NF — só funciona se você souber a chave)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
-      param: [{ pagina: 1, registros_por_pagina: 5, chave_nfe: nf }] },
+  const h1 = document.createElement('h3');
+  h1.textContent = 'ListarContasReceber — última página (testa ordem cronológica)';
+  div.appendChild(h1);
+  const pre1 = document.createElement('pre');
+  pre1.textContent = 'Buscando...';
+  div.appendChild(pre1);
+  try {
+    const primeira = await omie(EP_CR, 'ListarContasReceber', [{ pagina: 1, registros_por_pagina: 20 }], empresa);
+    const totalPaginas = primeira.total_de_paginas || 1;
+    const ultima = await omie(EP_CR, 'ListarContasReceber', [{ pagina: totalPaginas, registros_por_pagina: 20 }], empresa);
+    pre1.innerHTML = '<span class="ok">✓ Página ' + totalPaginas + ' de ' + totalPaginas + ':</span>\n' + JSON.stringify(ultima, null, 2).slice(0, 1500);
+  } catch (e) {
+    pre1.innerHTML = '<span class="err">' + e.message + '</span>';
+  }
 
-    { label: 'financas/contareceber — ListarContasReceber (filtro codigo_cliente_fornecedor — deixa passar se não souber)',
-      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
-      param: [{ pagina: 1, registros_por_pagina: 5, filtrar_por_data_de: '01/01/2026', filtrar_por_data_ate: '31/12/2026' }] },
-
-    { label: 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios, se existir)',
-      ep: 'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', call: 'PesquisarTitulos', param: [{}] },
-  ];
-
-  for (const t of CANDIDATOS) {
+  if (nf) {
+    const h2 = document.createElement('h3');
+    h2.textContent = 'ListarContasReceber (filtro numero_documento_fiscal = ' + nf + ') — checa se total_de_registros mudou';
+    div.appendChild(h2);
+    const pre2 = document.createElement('pre');
+    pre2.textContent = 'Buscando...';
+    div.appendChild(pre2);
     await new Promise(r => setTimeout(r, 700));
-    const h = document.createElement('h3');
-    h.textContent = t.label;
-    div.appendChild(h);
-    const pre = document.createElement('pre');
-    pre.textContent = '...';
-    div.appendChild(pre);
     try {
-      const data = await omie(t.ep, t.call, t.param, empresa);
+      const data = await omie(EP_CR, 'ListarContasReceber', [{ pagina: 1, registros_por_pagina: 5, numero_documento_fiscal: nf }], empresa);
       const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
-      if (erroMsg) {
-        pre.innerHTML = '<span class="err">ERRO: ' + erroMsg + '</span>';
-      } else {
-        pre.innerHTML = '<span class="ok">✓ RESPOSTA (pode ou não ser o certo — confira o conteúdo):</span>\n' + JSON.stringify(data, null, 2).slice(0, 1500);
-      }
+      pre2.innerHTML = erroMsg
+        ? '<span class="err">ERRO: ' + erroMsg + '</span>'
+        : '<span class="' + (data.total_de_registros < 16000 ? 'ok' : 'err') + '">total_de_registros: ' + data.total_de_registros + (data.total_de_registros < 16000 ? ' — FILTRO FUNCIONOU!' : ' — igual ao total geral, filtro foi ignorado') + '</span>\n' + JSON.stringify(data, null, 2).slice(0, 1200);
     } catch (e) {
-      pre.innerHTML = '<span class="err">' + e.message + '</span>';
+      pre2.innerHTML = '<span class="err">' + e.message + '</span>';
     }
   }
 
-  const aviso = document.createElement('p');
-  aviso.style.cssText = 'font-size:12px;color:#555;max-width:640px;margin-top:10px';
-  aviso.textContent = 'Me manda o resultado de todos — principalmente as mensagens "Tag [X] não faz parte da estrutura", que apontam os nomes certos de campo (foi assim que resolvi o CT-e). Se um endpoint aceitar {} sem erro de campo, também me avisa.' + (nf || pedido ? '' : ' (Preencheu NF ou pedido? Sem isso alguns candidatos não têm o que buscar.)');
-  div.appendChild(aviso);
+  await new Promise(r => setTimeout(r, 700));
+  const h3 = document.createElement('h3');
+  h3.textContent = 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios, se existir)';
+  div.appendChild(h3);
+  const pre3 = document.createElement('pre');
+  pre3.textContent = 'Buscando...';
+  div.appendChild(pre3);
+  try {
+    const data = await omie('https://app.omie.com.br/api/v1/financas/pesquisartitulos/', 'PesquisarTitulos', [{}], empresa);
+    const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
+    pre3.innerHTML = erroMsg
+      ? '<span class="err">ERRO: ' + erroMsg + '</span>'
+      : '<span class="ok">✓ RESPOSTA:</span>\n' + JSON.stringify(data, null, 2).slice(0, 1200);
+  } catch (e) {
+    pre3.innerHTML = '<span class="err">' + e.message + '</span>';
+  }
 }
 
 async function testar() {
