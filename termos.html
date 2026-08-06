@@ -177,6 +177,7 @@ tr:hover td{background:rgba(184,134,74,.04);}
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 
 <script type="module">
   try {
@@ -329,6 +330,7 @@ function extrairNF(st, pesoRoteirizador) {
     }
   }
 
+  const links = extrairLinks(nfRaw);
   return {
     status: 'ok', nf, serie, chave,
     pesoBruto: pesoBrutoOmie !== undefined ? Number(pesoBrutoOmie) : Number(pesoRoteirizador) || 0,
@@ -336,8 +338,108 @@ function extrairNF(st, pesoRoteirizador) {
     volumes: volumesOmie !== undefined ? Number(volumesOmie) : 1,
     valor: valorOmie !== undefined ? Number(valorOmie) : null,
     valorEstimado,
-    pesoEstimado
+    pesoEstimado,
+    nIdNF: nfRaw.nIdNF || nfRaw.n_id_nf || 0,
+    urlPdf: links.pdf,
+    urlXml: links.xml
   };
+}
+
+/* Varre qualquer objeto em busca de campos que sejam URL de PDF/XML — mesmo
+   padrão usado em notas-fiscais.html. Alguns retornos do StatusPedido já
+   trazem o link do DANFE embutido; quando não trazem, buscarDocsPorNF()
+   tenta os endpoints alternativos abaixo. */
+function extrairLinks(obj) {
+  const out = { pdf: null, xml: null };
+  const visitar = o => {
+    if (!o || typeof o !== 'object') return;
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+        const alvo = (k + ' ' + v).toLowerCase();
+        if (!out.pdf && /(danfe|boleto|\.pdf|impress|pdf)/.test(alvo)) out.pdf = v;
+        else if (!out.xml && /xml/.test(alvo)) out.xml = v;
+      } else if (v && typeof v === 'object') visitar(v);
+    }
+  };
+  visitar(obj);
+  return out;
+}
+
+const CANDIDATOS_DOC = [
+  { id: 'util-ObterNFe',      endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterNFe' },
+  { id: 'util-ObterDanfe',    endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterDanfe' },
+  { id: 'dfe-ObterDocs',      endpoint: 'https://app.omie.com.br/api/v1/produtos/dfedocs/',        call: 'ObterDocumentos' },
+  { id: 'dfe-ObterDocumento', endpoint: 'https://app.omie.com.br/api/v1/produtos/dfedocs/',        call: 'ObterDocumento' },
+];
+const LS_METODO_DOC = 'opus_nf_metodo_doc';
+
+/* Quando o link do DANFE não veio embutido no StatusPedido, tenta os
+   métodos candidatos, nessa ordem, até um responder com um link. O que
+   funcionar fica lembrado no navegador e passa a ser tentado primeiro. */
+async function buscarDocsPorNF(nf, empCod) {
+  const fixado = localStorage.getItem(LS_METODO_DOC);
+  const fila = fixado
+    ? [].concat(CANDIDATOS_DOC.filter(c => c.id === fixado), CANDIDATOS_DOC.filter(c => c.id !== fixado))
+    : CANDIDATOS_DOC.slice();
+  const param = [{ nIdNF: nf.nIdNF || 0, cChaveNFe: nf.chave || '', cModelo: '55', nCodNF: nf.nIdNF || 0 }];
+  for (const cand of fila) {
+    try {
+      const d = await omieCall(cand.endpoint, cand.call, empCod, param);
+      const links = extrairLinks(d);
+      if (links.pdf || links.xml) {
+        localStorage.setItem(LS_METODO_DOC, cand.id);
+        return links;
+      }
+    } catch (e) { /* método não existe nesta conta: tenta o próximo */ }
+  }
+  return { pdf: null, xml: null };
+}
+
+/* Boleto (contas a receber) vinculado à NF do pedido — melhor esforço:
+   1) PesquisarTitulos pelo número do documento fiscal (a NF) pra achar o
+      título financeiro gerado a partir dela (nCodTitulo);
+   2) ObterBoleto com esse código, devolvendo o link do PDF do boleto.
+   Nem todo pedido tem boleto (pode ser outra forma de pagamento) — quando
+   não acha, simplesmente não anexa nada, sem travar o termo por causa
+   disso. */
+async function buscarBoletoPorNF(numeroNF, empCod) {
+  if (!numeroNF) return null;
+  try {
+    const busca = await omieCall(
+      'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', 'PesquisarTitulos', empCod,
+      [{ pagina: 1, registros_por_pagina: 5, cNumDocFiscal: String(numeroNF) }]
+    );
+    const titulos = busca.titulosEncontrados || busca.titulos || [];
+    const titulo = titulos[0];
+    const nCodTitulo = titulo && (titulo.nCodTitulo || titulo.codigo_lancamento_omie);
+    if (!nCodTitulo) return null;
+    await sleep(300);
+    const boleto = await omieCall(
+      'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
+      [{ nCodTitulo }]
+    );
+    const links = extrairLinks(boleto);
+    return links.pdf || null;
+  } catch (e) {
+    log('Boleto da NF ' + numeroNF + ': ' + (e.message || e));
+    return null;
+  }
+}
+
+/* Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie). */
+async function baixarArquivo(url) {
+  const resp = await fetch('/api/omie-arquivo', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const d = await resp.json();
+  if (d.error) throw new Error(d.error);
+  const bin = atob(d.base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -548,6 +650,21 @@ async function buscarNotasDaRota(rota) {
         Object.assign(item, nf);
         if (nf.status === 'ok') {
           achadas++;
+          // O DANFE às vezes não vem embutido no StatusPedido — tenta os
+          // endpoints alternativos antes de desistir do PDF real da NF
+          // (usado pra anexar o DANFE de verdade junto do termo).
+          if (!item.urlPdf) {
+            try {
+              const links = await buscarDocsPorNF({ nIdNF: nf.nIdNF, chave: nf.chave }, empCod);
+              await sleep(300);
+              if (links.pdf) item.urlPdf = links.pdf;
+              if (links.xml && !item.urlXml) item.urlXml = links.xml;
+            } catch (e) { /* segue sem o PDF anexado — o termo ainda sai, só sem essa NF anexa */ }
+          }
+          // Boleto (contas a receber) vinculado a essa NF, se existir —
+          // melhor esforço, nem todo pedido tem boleto (pode ser outra
+          // forma de pagamento combinada).
+          item.urlBoleto = await buscarBoletoPorNF(nf.nf, empCod);
           if (nf.pesoEstimado) item.obs = 'NF sem peso/volume declarado — usando peso do roteirizador (conferir antes de assinar)';
           // Alerta de peso fora do padrão: bruto igual ao líquido pra carga com volumes, ou 0
           if (nf.pesoBruto <= 0 || (nf.pesoBruto === nf.pesoLiquido && nf.volumes > 1)) pesoAlerta++;
@@ -612,14 +729,17 @@ function renderPedidos() {
 /* ══════════════════════════════════════════════════════════════════════════
    6. GERAÇÃO DO TERMO (PDF) — formulário corporativo em preto e branco
    (sem preenchimentos coloridos — só linhas e caixas pretas, pra imprimir
-   bem em impressora P&B), com 2 vias por NF (peso + valor) e, quando o
+   bem em impressora P&B), compacto pra caber em 1 página, e quando o
    motorista é uma transportadora (PJ), sem os campos de motorista/veículo
    preenchidos automaticamente — ficam em branco pra preencher à mão.
+   Depois de montado, o DANFE real de cada NF localizada é anexado como
+   páginas extras no mesmo PDF (não é mais gerado canhoto de assinatura —
+   quem recebe a carga assina a via impressa da própria NF).
    ══════════════════════════════════════════════════════════════════════════ */
-function gerarTermoPDF() {
+async function gerarTermoPDF() {
   if (!rotaAtual || !pedidosAtual.length) return;
   try {
-    _gerarTermoPDFInterno();
+    await _gerarTermoPDFInterno();
   } catch (e) {
     // Sem isso, qualquer erro inesperado na montagem do PDF falha em
     // silêncio — parece "não acontece nada" ao clicar, sem nenhuma pista
@@ -629,7 +749,7 @@ function gerarTermoPDF() {
     alert('Não foi possível gerar o PDF do termo.\n\nErro: ' + e.message + '\n\nSe o erro persistir, avise o suporte com essa mensagem.');
   }
 }
-function _gerarTermoPDFInterno() {
+async function _gerarTermoPDFInterno() {
   const r = rotaAtual.reg;
   const m = motoristaAtual;
   const { jsPDF } = window.jspdf;
@@ -642,13 +762,13 @@ function _gerarTermoPDFInterno() {
     if (y + altura > 283) { doc.addPage(); y = 20; }
   }
   function tituloSec(txt) {
-    checarQuebra(15.5);
-    y += 4.5;
+    checarQuebra(12);
+    y += 3.5;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
     doc.text(txt.toUpperCase(), ml, y);
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6);
-    doc.line(ml, y + 1.8, W - mr, y + 1.8);
-    y += 7.5;
+    doc.line(ml, y + 1.5, W - mr, y + 1.5);
+    y += 6;
   }
   function campoBox(label, valor, x, y0, largura, altura) {
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2);
@@ -659,11 +779,11 @@ function _gerarTermoPDFInterno() {
     doc.text(String(valor == null || valor === '' ? '' : valor), x + 2, y0 + altura - 2.4, { maxWidth: largura - 4 });
   }
   function linhaBox(campos, altura) {
-    altura = altura || 12;
-    checarQuebra(altura + 1.5);
+    altura = altura || 10;
+    checarQuebra(altura + 1.2);
     const largura = tableW / campos.length;
     campos.forEach((c, i) => campoBox(c[0], c[1], ml + i * largura, y, largura, altura));
-    y += altura + 1.5;
+    y += altura + 1.2;
   }
   function caixaAlerta(txt) {
     checarQuebra(10);
@@ -691,10 +811,10 @@ function _gerarTermoPDFInterno() {
   doc.text('Rota: ' + (r.rotaNome || '—'), W - mr, y, { align: 'right' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(60, 60, 60);
   doc.text('Emitido em ' + new Date().toLocaleString('pt-BR'), W - mr, y + 5.5, { align: 'right' });
-  y += 9;
+  y += 6;
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(1);
   doc.line(ml, y, W - mr, y);
-  y += 8;
+  y += 5;
 
   const ehPJ = !!(m && m.ehTransportadora);
 
@@ -750,19 +870,25 @@ function _gerarTermoPDFInterno() {
   tituloSec('5. Dados para Pagamento (PIX)');
   linhaBox([['Chave PIX', (m && m.pix) || r.motoristaPix], ['Beneficiário', (m && m.pixNome) || r.motoristaPixNome]]);
 
-  // 6. Remetente(s)
+  // 6. Remetente(s) — resumo numa linha só (compacto); a relação completa
+  // por pedido/cliente já está na tabela da seção 8, então aqui não repete
+  // um item por linha.
   const empresasEnvolvidas = [...new Set(pedidosAtual.map(p => p.empresa))];
   tituloSec('6. Remetente(s)');
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-  empresasEnvolvidas.forEach(nome => { checarQuebra(5.5); doc.text('• ' + nome, ml, y); y += 5.5; });
-  y += 2;
+  const linhasRem = doc.splitTextToSize(empresasEnvolvidas.join('   •   ') || '—', tableW);
+  checarQuebra(linhasRem.length * 5);
+  doc.text(linhasRem, ml, y);
+  y += linhasRem.length * 5 + 2;
 
-  // 7. Destinatário(s)
-  const clientesUnicos = [...new Map(pedidosAtual.map(p => [p.cliente, p])).values()];
-  tituloSec('7. Destinatário(s)');
+  // 7. Destinatário(s) — idem, resumo compacto (detalhe completo na tabela abaixo)
+  const clientesUnicos = [...new Map(pedidosAtual.map(p => [p.cliente, p])).values()].map(c => c.cliente || '—');
+  tituloSec('7. Destinatário(s) (' + clientesUnicos.length + ')');
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-  clientesUnicos.forEach(c => { checarQuebra(5); doc.text('• ' + (c.cliente || '—'), ml, y); y += 5; });
-  y += 2;
+  const linhasDest = doc.splitTextToSize(clientesUnicos.join('   •   ') || '—', tableW);
+  checarQuebra(linhasDest.length * 4.6);
+  doc.text(linhasDest, ml, y);
+  y += linhasDest.length * 4.6 + 2;
 
   // 8. Relação de notas fiscais, pesos e valores
   tituloSec('8. Relação de Notas Fiscais, Pesos e Valores');
@@ -811,70 +937,27 @@ function _gerarTermoPDFInterno() {
   doc.text(totPeso.toFixed(1) + ' kg', colX[4] + 1.5, y + 4.8);
   doc.text(String(totVol) + ' vol.', colX[5] + 1.5, y + 4.8);
   doc.text(fmtMoeda(totValor), colX[6] + 1.5, y + 4.8);
-  y += 11;
+  y += 9;
 
   if (temPendencia) caixaAlerta('Este termo contém pedido(s) sem NF-e localizada no momento da emissão — confira antes de assinar.');
   if (temAlertaPeso) caixaAlerta('Peso bruto/líquido de uma ou mais notas está fora do padrão ou foi estimado — confira antes de assinar.');
   if (temValorFaltando) caixaAlerta('Valor de uma ou mais notas não foi localizado no Omie — confira antes de assinar.');
 
-  // 9. Vias da nota fiscal (canhoto de entrega) — 2 vias por NF, com peso e valor
-  const notasOk = pedidosAtual.filter(it => it.status === 'ok');
-  if (notasOk.length) {
-    checarQuebra(15.5 + 5.5 + 33 + 2);
-    tituloSec('9. Vias da Nota Fiscal (Canhoto de Entrega)');
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(70, 70, 70);
-    doc.text('1ª via fica com o transportador, 2ª via fica com o destinatário (recorte na linha pontilhada).', ml, y);
-    y += 5.5;
-
-    const gap = 4, boxW = (tableW - gap) / 2, boxH = 33;
-    function viaBox(x, y0, w, h, rotulo, it) {
-      doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
-      doc.rect(x, y0, w, h, 'S');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(0, 0, 0);
-      doc.text(rotulo, x + 3, y0 + 4.8);
-      doc.setLineWidth(0.15);
-      doc.line(x, y0 + 6.8, x + w, y0 + 6.8);
-      let ly = y0 + 10.5;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
-      doc.text('NF nº ' + (it.nf || '—') + '   Série ' + (it.serie || '—'), x + 3, ly); ly += 4;
-      doc.setFontSize(5.8);
-      doc.text('Chave: ' + (it.chave || '—'), x + 3, ly, { maxWidth: w - 6 }); ly += 5;
-      doc.setFontSize(7);
-      doc.text('Emitente: ' + (it.empresa || '—'), x + 3, ly, { maxWidth: w - 6 }); ly += 4;
-      doc.text('Destinatário: ' + (it.cliente || '—'), x + 3, ly, { maxWidth: w - 6 }); ly += 4;
-      const peso = it.pesoBruto || it.pesoRoteirizador || 0;
-      doc.text('Peso bruto: ' + peso.toFixed(1) + ' kg   Volumes: ' + (it.volumes || 1), x + 3, ly); ly += 4;
-      doc.text('Valor da NF: ' + fmtMoeda(it.valor), x + 3, ly);
-      doc.setLineWidth(0.2);
-      doc.line(x + 3, y0 + h - 5.5, x + w - 3, y0 + h - 5.5);
-      doc.setFont('helvetica', 'italic'); doc.setFontSize(5.8);
-      doc.text('Assinatura / Data', x + 3, y0 + h - 2);
-    }
-    notasOk.forEach(it => {
-      checarQuebra(boxH + 2);
-      viaBox(ml, y, boxW, boxH, '1ª VIA — TRANSPORTADOR', it);
-      doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2); doc.setLineDashPattern([1, 1], 0);
-      doc.line(ml + boxW + gap / 2, y, ml + boxW + gap / 2, y + boxH);
-      doc.setLineDashPattern([], 0);
-      viaBox(ml + boxW + gap, y, boxW, boxH, '2ª VIA — DESTINATÁRIO', it);
-      y += boxH + 4;
-    });
-  }
-
-  // 10. Declaração de recebimento
-  checarQuebra(15.5 + 20);
-  tituloSec('10. Declaração de Recebimento da Carga');
+  // 9. Declaração de recebimento (sem canhoto de assinatura por NF — quem
+  // recebe a carga assina a via impressa da própria NF, anexada a seguir)
+  checarQuebra(12 + 14);
+  tituloSec('9. Declaração de Recebimento da Carga');
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
   const declTexto = 'Declaro, para os devidos fins, que recebi a carga discriminada acima em perfeitas condições, ' +
     'nas quantidades, pesos e valores indicados, comprometendo-me a transportá-la e entregá-la aos respectivos ' +
     'destinatários, respondendo por quaisquer avarias, extravios ou atrasos que der causa durante o transporte.';
   doc.text(doc.splitTextToSize(declTexto, tableW), ml, y);
-  y += 22;
-
-  // 11. Assinaturas
-  checarQuebra(15.5 + 20);
-  tituloSec('11. Assinaturas');
   y += 12;
+
+  // 10. Assinaturas
+  checarQuebra(12 + 15);
+  tituloSec('10. Assinaturas');
+  y += 8;
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
   doc.line(ml, y, ml + 78, y);
   doc.line(W - mr - 78, y, W - mr, y);
@@ -886,18 +969,79 @@ function _gerarTermoPDFInterno() {
     doc.text((m && m.nome) || r.motoristaNome || '', ml, y + 10);
   }
 
-  // Rodapé em todas as páginas
-  const totalPaginas = doc.internal.getNumberOfPages();
-  for (let p = 1; p <= totalPaginas; p++) {
+  // Rodapé em todas as páginas do termo em si (antes de anexar as NFs)
+  const totalPaginasTermo = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPaginasTermo; p++) {
     doc.setPage(p);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(120, 120, 120);
     doc.text('Grupo MF Paris — Termo de Transporte de Carga', ml, 292);
-    doc.text('Página ' + p + '/' + totalPaginas, W - mr, 292, { align: 'right' });
+    doc.text('Página ' + p + '/' + totalPaginasTermo, W - mr, 292, { align: 'right' });
   }
 
-  doc.save('Termo_Transporte_' + (r.rotaNome || rotaAtual.token).replace(/[^a-zA-Z0-9]+/g, '_') + '.pdf');
-  toast('Termo gerado com sucesso.', 'ok');
+  const nomeArquivo = 'Termo_Transporte_' + (r.rotaNome || rotaAtual.token).replace(/[^a-zA-Z0-9]+/g, '_') + '.pdf';
+  await _finalizarEAnexarNFs(doc, nomeArquivo);
   marcarTermoEmitido(rotaAtual);
+}
+
+// Anexa o PDF real de cada NF (DANFE) e, quando existir, o boleto vinculado
+// a ela, como páginas extras logo depois do termo, num único arquivo —
+// assim quem recebe já tem termo + nota + boleto pra conferir/assinar, sem
+// precisar abrir o Omie à parte. A busca de boleto é melhor esforço (nem
+// todo pedido tem boleto — pode ser outra forma de pagamento). Se não achar
+// nada pra anexar, ou o PDFLib não carregar, ou a montagem falhar por
+// qualquer motivo, cai pro termo sozinho (nunca trava a emissão por causa
+// de um anexo que não baixou).
+async function _finalizarEAnexarNFs(doc, nomeArquivo) {
+  const alvosNF = pedidosAtual.filter(it => it.status === 'ok' && it.urlPdf);
+  const alvosBoleto = pedidosAtual.filter(it => it.status === 'ok' && it.urlBoleto);
+  if ((!alvosNF.length && !alvosBoleto.length) || !window.PDFLib) {
+    doc.save(nomeArquivo);
+    toast('Termo gerado com sucesso.' + (alvosNF.length ? '' : ' (nenhum DANFE em PDF foi localizado pra anexar — termo saiu sozinho)'), 'ok');
+    return;
+  }
+  try {
+    const { PDFDocument } = PDFLib;
+    const termoBytes = doc.output('arraybuffer');
+    const merged = await PDFDocument.load(termoBytes);
+    let anexadas = 0, falharam = 0, boletosAnexados = 0;
+
+    async function anexar(urlArquivo, rotulo) {
+      const bytes = await baixarArquivo(urlArquivo);
+      const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      const pgs = await merged.copyPages(src, src.getPageIndices());
+      pgs.forEach(pg => merged.addPage(pg));
+    }
+
+    for (const it of alvosNF) {
+      try {
+        await anexar(it.urlPdf, 'NF ' + (it.nf || it.pedido));
+        anexadas++;
+      } catch (e) {
+        falharam++;
+        log('Não deu pra anexar o PDF da NF ' + (it.nf || it.pedido) + ': ' + (e.message || e));
+      }
+    }
+    for (const it of alvosBoleto) {
+      try {
+        await anexar(it.urlBoleto, 'Boleto do pedido ' + it.pedido);
+        boletosAnexados++;
+      } catch (e) {
+        log('Não deu pra anexar o boleto do pedido ' + it.pedido + ': ' + (e.message || e));
+      }
+    }
+
+    const finalBytes = await merged.save();
+    const blob = new Blob([finalBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nomeArquivo; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('Termo gerado com ' + anexadas + ' NF(s)' + (boletosAnexados ? ' e ' + boletosAnexados + ' boleto(s)' : '') + ' anexado(s) em PDF' + (falharam ? ' — ' + falharam + ' não puderam ser baixadas (confira o log)' : '') + '.', falharam ? 'info' : 'ok');
+  } catch (e) {
+    console.error('[Termo] Falha ao anexar NFs/boletos — baixando só o termo:', e);
+    doc.save(nomeArquivo);
+    toast('Termo gerado (não foi possível anexar os PDFs: ' + e.message + ')', 'info');
+  }
 }
 
 // Move o card da rota para "Enviados" depois de gerar o termo, guardando
