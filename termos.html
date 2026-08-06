@@ -408,35 +408,53 @@ async function buscarDocsPorNF(nf, empCod) {
   return { pdf: null, xml: null };
 }
 
-/* Boleto (contas a receber) vinculado à NF do pedido — melhor esforço:
-   1) PesquisarTitulos pelo número do documento fiscal (a NF) pra achar o
-      título financeiro gerado a partir dela (nCodTitulo);
-   2) ObterBoleto com esse código, devolvendo o link do PDF do boleto.
-   Nem todo pedido tem boleto (pode ser outra forma de pagamento) — quando
-   não acha, simplesmente não anexa nada, sem travar o termo por causa
-   disso. */
-async function buscarBoletoPorNF(numeroNF, empCod) {
-  if (!numeroNF) return null;
-  try {
-    const busca = await omieCall(
-      'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', 'PesquisarTitulos', empCod,
-      [{ pagina: 1, registros_por_pagina: 5, cNumDocFiscal: String(numeroNF) }]
-    );
-    const titulos = busca.titulosEncontrados || busca.titulos || [];
-    const titulo = titulos[0];
-    const nCodTitulo = titulo && (titulo.nCodTitulo || titulo.codigo_lancamento_omie);
-    if (!nCodTitulo) return null;
-    await sleep(300);
-    const boleto = await omieCall(
-      'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
-      [{ nCodTitulo }]
-    );
-    const links = extrairLinks(boleto);
-    return links.pdf || null;
-  } catch (e) {
-    log('Boleto da NF ' + numeroNF + ': ' + (e.message || e));
-    return null;
+/* Acha o título financeiro (nCodTitulo) de um filtro do PesquisarTitulos e
+   devolve o link do boleto via ObterBoleto. Isolado pra poder tentar mais
+   de um filtro (NF, depois pedido) sem repetir a lógica de extração. */
+async function _tituloParaBoleto(filtro, empCod) {
+  const busca = await omieCall(
+    'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', 'PesquisarTitulos', empCod,
+    [Object.assign({ pagina: 1, registros_por_pagina: 5 }, filtro)]
+  );
+  const titulos = busca.titulosEncontrados || busca.titulos || [];
+  const titulo = titulos[0];
+  const nCodTitulo = titulo && (titulo.nCodTitulo || titulo.codigo_lancamento_omie);
+  if (!nCodTitulo) return null;
+  await sleep(300);
+  const boleto = await omieCall(
+    'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
+    [{ nCodTitulo }]
+  );
+  const links = extrairLinks(boleto);
+  return links.pdf || null;
+}
+
+/* Boleto (contas a receber) vinculado ao pedido — melhor esforço, tentando
+   os dois jeitos de achar o título financeiro no Omie: primeiro pelo
+   número da NF-e (o mais direto, já que o título nasce da NF faturada),
+   e se não achar nada, pelo número do pedido de venda (cobre título gerado
+   antes/sem NF ou vinculado direto ao pedido). Nem todo pedido tem boleto
+   (pode ser outra forma de pagamento) — quando não acha em nenhum dos
+   dois, simplesmente não anexa nada, sem travar o termo por causa disso. */
+async function buscarBoletoPorNF(numeroNF, numeroPedido, empCod) {
+  if (numeroNF) {
+    try {
+      const pdf = await _tituloParaBoleto({ cNumDocFiscal: String(numeroNF) }, empCod);
+      if (pdf) return pdf;
+    } catch (e) {
+      log('Boleto pela NF ' + numeroNF + ': ' + (e.message || e));
+    }
   }
+  if (numeroPedido) {
+    try {
+      await sleep(300);
+      const pdf = await _tituloParaBoleto({ cNumPedido: String(numeroPedido) }, empCod);
+      if (pdf) return pdf;
+    } catch (e) {
+      log('Boleto pelo pedido ' + numeroPedido + ': ' + (e.message || e));
+    }
+  }
+  return null;
 }
 
 /* Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie). */
@@ -677,10 +695,10 @@ async function buscarNotasDaRota(rota) {
               if (links.xml && !item.urlXml) item.urlXml = links.xml;
             } catch (e) { /* segue sem o PDF anexado — o termo ainda sai, só sem essa NF anexa */ }
           }
-          // Boleto (contas a receber) vinculado a essa NF, se existir —
-          // melhor esforço, nem todo pedido tem boleto (pode ser outra
-          // forma de pagamento combinada).
-          item.urlBoleto = await buscarBoletoPorNF(nf.nf, empCod);
+          // Boleto (contas a receber) vinculado a essa NF ou ao pedido, se
+          // existir — melhor esforço, nem todo pedido tem boleto (pode ser
+          // outra forma de pagamento combinada).
+          item.urlBoleto = await buscarBoletoPorNF(nf.nf, p.pedido, empCod);
           if (nf.pesoEstimado) item.obs = 'NF sem peso/volume declarado — usando peso do roteirizador (conferir antes de assinar)';
           // Alerta de peso fora do padrão: bruto igual ao líquido pra carga com volumes, ou 0
           if (nf.pesoBruto <= 0 || (nf.pesoBruto === nf.pesoLiquido && nf.volumes > 1)) pesoAlerta++;
