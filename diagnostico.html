@@ -424,29 +424,37 @@ async function testarEndpointsCte() {
   const de30 = new Date(); de30.setDate(de30.getDate() - 30);
   const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
 
+  // O usuário confirmou que os CT-e's aparecem em Compras > Notas Fiscais
+  // de Entrada no Omie (as transportadoras — TG, BHT, Camilo dos Santos etc
+  // — entram como fornecedor do "recebimento"). Achei referências reais
+  // (fora deste projeto) ao endpoint produtos/recebimentonfe/ com o método
+  // ListarRecebimentos, filtrável por data de emissão — é o candidato mais
+  // forte, testado primeiro com 3 formatos de filtro de data possíveis, já
+  // que não consegui confirmar o nome exato do parâmetro. Os outros ficam
+  // como reserva.
   const CANDIDATOS_CTE = [
+    { label: 'produtos/recebimentonfe — ListarRecebimentos (dEmissaoNFeDe/Ate)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
+      param: [{ pagina: 1, registros_por_pagina: 20, dEmissaoNFeDe: fmt(de30), dEmissaoNFeAte: fmt(hoje) }] },
+
+    { label: 'produtos/recebimentonfe — ListarRecebimentos (dEmissaoNFe único)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
+      param: [{ pagina: 1, registros_por_pagina: 20, dEmissaoNFe: fmt(hoje) }] },
+
+    { label: 'produtos/recebimentonfe — ListarRecebimentos (sem filtro de data)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
+      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+
+    { label: 'produtos/recebimentonfe — PesquisarRecebimentos',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'PesquisarRecebimentos',
+      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+
     { label: 'produtos/dfedocs — ListarDocumentos (cModelo 57)',
       ep: 'https://app.omie.com.br/api/v1/produtos/dfedocs/', call: 'ListarDocumentos',
       param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57', dDtEmissaoInicial: fmt(de30), dDtEmissaoFinal: fmt(hoje) }] },
 
-    { label: 'produtos/dfedocs — PesquisarDocumentos (cModelo 57)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/dfedocs/', call: 'PesquisarDocumentos',
-      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
-
-    { label: 'produtos/cte — ListarCTe',
-      ep: 'https://app.omie.com.br/api/v1/produtos/cte/', call: 'ListarCTe',
-      param: [{ pagina: 1, registros_por_pagina: 20 }] },
-
-    { label: 'produtos/cte — ListarConhecimentos',
-      ep: 'https://app.omie.com.br/api/v1/produtos/cte/', call: 'ListarConhecimentos',
-      param: [{ pagina: 1, registros_por_pagina: 20 }] },
-
     { label: 'produtos/notafiscalutil — ListarDocumentosRecebidos (cModelo 57)',
       ep: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ListarDocumentosRecebidos',
-      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
-
-    { label: 'produtos/comprasnfe — ListarNFCompra (cModelo 57)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/comprasnfe/', call: 'ListarNFCompra',
       param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
   ];
 
