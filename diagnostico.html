@@ -432,30 +432,43 @@ async function testarEndpointsCte() {
   // forte, testado primeiro com 3 formatos de filtro de data possíveis, já
   // que não consegui confirmar o nome exato do parâmetro. Os outros ficam
   // como reserva.
+  // CONFIRMADO: produtos/recebimentonfe / ListarRecebimentos EXISTE de
+  // verdade — os testes anteriores voltaram "Tag [X] não faz parte da
+  // estrutura do tipo complexo [rcbtoListarRequest]", ou seja, achou o
+  // método e rejeitou só os NOMES dos campos (pagina, dEmissaoNFe...).
+  // Agora: manda vazio pra Omie apontar os campos obrigatórios de verdade,
+  // e tenta a convenção Húngara (nPagina/nRegPorPagina) que o endpoint
+  // geral/produtos deste mesmo sistema já usa.
+  // NOVO (usuário confirmou): "CT-e ficam em Compras, etapas das compras" —
+  // isso aponta pro irmão de produtos/pedido/ (Pedido de Venda, que já uso
+  // com sucesso no sistema inteiro): produtos/pedidocompra/ (Pedido de
+  // Compra), que também tem etapas. Testado primeiro com a MESMA convenção
+  // de paginação que já funciona em ListarPedidos (pagina/registros_por_pagina),
+  // por ser da mesma família de API.
   const CANDIDATOS_CTE = [
-    { label: 'produtos/recebimentonfe — ListarRecebimentos (dEmissaoNFeDe/Ate)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ pagina: 1, registros_por_pagina: 20, dEmissaoNFeDe: fmt(de30), dEmissaoNFeAte: fmt(hoje) }] },
+    { label: 'produtos/pedidocompra — ListarPedidosCompra (convenção de ListarPedidos)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/pedidocompra/', call: 'ListarPedidosCompra',
+      param: [{ pagina: 1, registros_por_pagina: 20, apenas_importado_api: 'N' }] },
 
-    { label: 'produtos/recebimentonfe — ListarRecebimentos (dEmissaoNFe único)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ pagina: 1, registros_por_pagina: 20, dEmissaoNFe: fmt(hoje) }] },
+    { label: 'produtos/pedidocompra — ListarPedidosCompra ({} vazio — Omie deve apontar os campos obrigatórios)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/pedidocompra/', call: 'ListarPedidosCompra',
+      param: [{}] },
 
-    { label: 'produtos/recebimentonfe — ListarRecebimentos (sem filtro de data)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+    { label: 'produtos/pedidocompra — ListarPedidosCompra (nPagina/nRegPorPagina, estilo Húngaro)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/pedidocompra/', call: 'ListarPedidosCompra',
+      param: [{ nPagina: 1, nRegPorPagina: 20 }] },
 
-    { label: 'produtos/recebimentonfe — PesquisarRecebimentos',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'PesquisarRecebimentos',
-      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+    { label: 'produtos/recebimentonfe — ListarRecebimentos ({} vazio — Omie deve apontar os campos obrigatórios)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
+      param: [{}] },
+
+    { label: 'produtos/recebimentonfe — ListarRecebimentos (nPagina/nRegPorPagina, estilo Húngaro)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
+      param: [{ nPagina: 1, nRegPorPagina: 20 }] },
 
     { label: 'produtos/dfedocs — ListarDocumentos (cModelo 57)',
       ep: 'https://app.omie.com.br/api/v1/produtos/dfedocs/', call: 'ListarDocumentos',
       param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57', dDtEmissaoInicial: fmt(de30), dDtEmissaoFinal: fmt(hoje) }] },
-
-    { label: 'produtos/notafiscalutil — ListarDocumentosRecebidos (cModelo 57)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ListarDocumentosRecebidos',
-      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
   ];
 
   for (const t of CANDIDATOS_CTE) {
@@ -468,8 +481,11 @@ async function testarEndpointsCte() {
     div.appendChild(pre);
     try {
       const data = await omie(t.ep, t.call, t.param, empresa);
-      if (data && data.faultstring) {
-        pre.innerHTML = '<span class="err">ERRO: ' + data.faultstring + '</span>';
+      // Erros deste endpoint não vêm só como {faultstring}: também aparecem
+      // como {status:"error", message:"..."} — trata os dois formatos.
+      const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
+      if (erroMsg) {
+        pre.innerHTML = '<span class="err">ERRO: ' + erroMsg + '</span>';
       } else {
         pre.innerHTML = '<span class="ok">✓ RESPOSTA (pode ou não ser o certo — confira o conteúdo):</span>\n' + JSON.stringify(data, null, 2).slice(0, 1500);
       }
