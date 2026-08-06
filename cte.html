@@ -78,6 +78,7 @@ tr:hover td{background:rgba(184,134,74,.04);}
     <div class="kcard"><div class="label">Com rota identificada</div><div class="val" id="k-comrota" style="color:var(--green)">—</div><div class="sub">cruzamento por cliente/data/valor</div></div>
     <div class="kcard"><div class="label">Valor total pago</div><div class="val" id="k-valor">—</div><div class="sub">soma dos CT-e's</div></div>
     <div class="kcard"><div class="label">R$/kg médio</div><div class="val" id="k-rskg" style="color:var(--gold)">—</div><div class="sub">só onde achou peso</div></div>
+    <div class="kcard"><div class="label">Real vs. cotação</div><div class="val" id="k-diff">—</div><div class="sub">cobrado a mais (+) ou a menos (−) que a estimativa</div></div>
   </div>
 
   <div class="sec">
@@ -85,10 +86,13 @@ tr:hover td{background:rgba(184,134,74,.04);}
 
     <div class="alerta">
       A API do Omie não devolve peso da carga nem o pedido vinculado ao CT-e (testado e confirmado —
-      só valor, transportadora, destinatário e data). Peso, pedido(s) e R$/kg abaixo são identificados
-      por <b>aproximação</b>: cruza cada CT-e com as rotas já despachadas no sistema (TG/Camilo dos
-      Santos/BHT/Eureka) por transportadora + data + valor + nome do destinatário. Quando o cruzamento
-      não bate com confiança, esses campos ficam em branco em vez de arriscar um dado errado.
+      só valor, transportadora, destinatário e data). Peso, pedido(s), "Cotação (sistema)" e R$/kg
+      abaixo são identificados por <b>aproximação</b>: cruza cada CT-e com as rotas já despachadas no
+      sistema (TG/Camilo dos Santos/BHT/Eureka) por transportadora + data + valor + nome do
+      destinatário. "Cotação (sistema)" é o frete que a tabela de tarifa interna estimou na hora de
+      rotear (não é a nota fiscal — o sistema não emite CT-e); "Real (CT-e)" é o valor de verdade
+      cobrado pela transportadora. Quando o cruzamento não bate com confiança, esses campos ficam em
+      branco em vez de arriscar um dado errado.
     </div>
 
     <div class="filtros">
@@ -111,11 +115,11 @@ tr:hover td{background:rgba(184,134,74,.04);}
         <thead>
           <tr>
             <th>Empresa</th><th>CT-e (NF)</th><th>Emissão</th><th>Transportadora</th>
-            <th>Destinatário</th><th>Valor (R$)</th><th>Rota / Pedidos (aprox.)</th>
-            <th>Peso (aprox., kg)</th><th>R$/kg (aprox.)</th>
+            <th>Destinatário</th><th>Cotação (sistema)</th><th>Real (CT-e)</th><th>Diferença</th>
+            <th>Rota / Pedidos (aprox.)</th><th>Peso (aprox., kg)</th><th>R$/kg real (aprox.)</th>
           </tr>
         </thead>
-        <tbody id="tbody-ctes"><tr><td colspan="9" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
+        <tbody id="tbody-ctes"><tr><td colspan="11" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -278,7 +282,14 @@ function acharRotaCorrespondente(cte, rotas) {
   const paradasParaSomar = bateCliente ? paradasQueBatem : melhor.paradas;
   const pesoTotal = paradasParaSomar.reduce((s, p) => s + (Number(p.peso) || 0), 0);
   const pedidos = [...new Set(paradasParaSomar.map(p => p.pedido).filter(Boolean))];
-  return { rota: melhor, confianca: bateCliente ? 'alta' : 'baixa', pesoTotal, pedidos };
+  // Cotação = o que o sistema estimou na hora de rotear (tabela de tarifa
+  // interna, calcTG/calcCS/calcBHT/calcEureka), somando só o rateio das
+  // paradas do mesmo destino do CT-e quando o cliente bateu (mais preciso);
+  // sem bater o cliente, cai pro frete total da rota inteira (tem outros
+  // destinos misturados, então a comparação fica menos exata).
+  const somaRateio = paradasParaSomar.reduce((s, p) => s + (Number(p.freteRateio) || 0), 0);
+  const cotacao = bateCliente && somaRateio > 0 ? somaRateio : melhor.freteTotal;
+  return { rota: melhor, confianca: bateCliente ? 'alta' : 'baixa', pesoTotal, pedidos, cotacao };
 }
 
 let _ctesAtuais = [];
@@ -344,17 +355,26 @@ async function buscarCtes() {
 
 function renderTabela(ctes) {
   const tb = $('tbody-ctes');
-  if (!ctes.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">Nenhum CT-e encontrado no período/empresas selecionados.</td></tr>'; return; }
+  if (!ctes.length) { tb.innerHTML = '<tr><td colspan="11" class="empty">Nenhum CT-e encontrado no período/empresas selecionados.</td></tr>'; return; }
   tb.innerHTML = ctes.map(c => {
     const m = c.match;
     const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : null;
+    const temCotacao = m && m.cotacao > 0;
+    const diff = temCotacao ? (c.valor - m.cotacao) : null;
+    const diffPct = temCotacao ? (diff / m.cotacao * 100) : null;
     return '<tr>'
       + '<td><span class="badge b-empresa">' + esc(EMPRESAS[c.empCod]) + '</span></td>'
       + '<td>' + esc(c.numero) + (c.serie ? ' / ' + esc(c.serie) : '') + '</td>'
       + '<td>' + esc(c.dataEmissao) + '</td>'
       + '<td>' + esc(c.transportadora) + '</td>'
       + '<td>' + esc(c.destinatario) + '</td>'
+      + '<td>' + (temCotacao ? fmtMoeda(m.cotacao) : '—') + '</td>'
       + '<td>' + fmtMoeda(c.valor) + '</td>'
+      + '<td>' + (diff != null
+          ? ('<span style="color:' + (diff > 0 ? 'var(--red)' : (diff < 0 ? 'var(--green)' : 'var(--muted)')) + ';font-weight:700;">'
+             + (diff > 0 ? '+' : '') + fmtMoeda(diff).replace('R$ ', 'R$ ') + ' (' + (diffPct > 0 ? '+' : '') + diffPct.toFixed(1) + '%)</span>')
+          : '—')
+      + '</td>'
       + '<td>' + (m
           ? ('<span class="badge ' + (m.confianca === 'alta' ? 'b-ok' : 'b-pend') + '">' + esc(m.rota.rotaNome) + (m.confianca === 'alta' ? ' ✓' : ' ?') + '</span>'
              + (m.pedidos.length ? '<div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Ped: ' + esc(m.pedidos.join(', ')) + '</div>' : ''))
@@ -380,6 +400,19 @@ function atualizarKPIs(ctes) {
   } else {
     $('k-rskg').textContent = '—';
   }
+  const comCotacao = ctes.filter(c => c.match && c.match.cotacao > 0);
+  const kDiffEl = $('k-diff');
+  if (kDiffEl) {
+    if (comCotacao.length) {
+      const cotacaoTotal = comCotacao.reduce((s, c) => s + c.match.cotacao, 0);
+      const realTotal = comCotacao.reduce((s, c) => s + (c.valor || 0), 0);
+      const diffTotal = realTotal - cotacaoTotal;
+      kDiffEl.textContent = (diffTotal > 0 ? '+' : '') + fmtMoeda(diffTotal);
+      kDiffEl.style.color = diffTotal > 0 ? 'var(--red)' : (diffTotal < 0 ? 'var(--green)' : 'var(--navy)');
+    } else {
+      kDiffEl.textContent = '—';
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -393,13 +426,18 @@ function exportarCsv() {
   if (!_ctesAtuais.length) return;
   try {
     const cab = ['empresa', 'cte_numero', 'cte_serie', 'chave', 'data_emissao', 'transportadora', 'cnpj_transportadora',
-      'destinatario', 'valor', 'rota_correspondente', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
+      'destinatario', 'cotacao_sistema', 'valor_real_cte', 'diferenca', 'diferenca_pct',
+      'rota_correspondente', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
     const linhas = _ctesAtuais.map(c => {
       const m = c.match;
       const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : '';
+      const temCotacao = m && m.cotacao > 0;
+      const diff = temCotacao ? (c.valor - m.cotacao) : '';
+      const diffPct = temCotacao ? (diff / m.cotacao * 100) : '';
       return [
         EMPRESAS[c.empCod], c.numero, c.serie, c.chave, c.dataEmissao, c.transportadora, c.transportadoraCnpj,
-        c.destinatario, c.valor, m ? m.rota.rotaNome : '', m ? m.confianca : '', m ? m.pedidos.join(' | ') : '',
+        c.destinatario, temCotacao ? m.cotacao.toFixed(2) : '', c.valor, diff !== '' ? diff.toFixed(2) : '', diffPct !== '' ? diffPct.toFixed(1) : '',
+        m ? m.rota.rotaNome : '', m ? m.confianca : '', m ? m.pedidos.join(' | ') : '',
         m && m.pesoTotal > 0 ? m.pesoTotal.toFixed(1) : '', rskg ? rskg.toFixed(2) : ''
       ];
     });
