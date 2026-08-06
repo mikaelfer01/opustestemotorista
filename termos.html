@@ -267,10 +267,18 @@ async function statusPedido(codigoPedido, empCod) {
 }
 
 /* Localiza um pedido pelo número (numero_pedido) dentro de UMA empresa específica.
-   Usado quando a parada não veio com _codigo_pedido/_emp_key gravados (dado
-   faltando desde a roteirização) — mesmo padrão já usado em notas-fiscais.html. */
+   Usado quando a parada não veio com _codigo_pedido/_emp_key gravados — seja
+   por ter sido roteirizada antes da correção que passou a salvar isso, seja
+   por ter vindo de importação por PLANILHA (que nunca grava esses campos,
+   só o número do pedido digitado na aba "Pedido"). Mesmo padrão já usado em
+   notas-fiscais.html.
+   O número extraído da planilha às vezes vem com prefixo/sufixo não numérico
+   (ex.: "PED-4521") ou com zeros à esquerda diferentes do Omie — por isso
+   extrai só os dígitos pra buscar, e compara tanto como número quanto como
+   texto puro, em vez de exigir igualdade exata de string. */
 async function acharPedidoPorNumero(numeroPedido, empCod) {
-  const n = parseInt(numeroPedido, 10) || 0;
+  const soDigitos = String(numeroPedido || '').replace(/\D/g, '');
+  const n = parseInt(soDigitos, 10) || 0;
   if (!n) return null;
   const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
     pagina: 1, registros_por_pagina: 20,
@@ -278,9 +286,13 @@ async function acharPedidoPorNumero(numeroPedido, empCod) {
     apenas_importado_api: 'N'
   }]);
   const lista = (data && data.pedido_venda_produto) || [];
-  const achado = lista.find(p =>
-    String((p.cabecalho || {}).numero_pedido || '').trim() === String(numeroPedido).trim()
-  );
+  const alvo = String(numeroPedido).trim();
+  const achado = lista.find(p => {
+    const np = String((p.cabecalho || {}).numero_pedido || '').trim();
+    if (np === alvo) return true;
+    const npDigitos = np.replace(/\D/g, '');
+    return npDigitos && (parseInt(npDigitos, 10) === n);
+  });
   if (!achado) return null;
   return achado.cabecalho.codigo_pedido;
 }
@@ -622,10 +634,14 @@ async function buscarNotasDaRota(rota) {
       empCod, pedido: p.pedido, cliente: p.cliente, produto: p.produto,
       pesoRoteirizador: Number(p.peso) || 0,
       nf: '', serie: '', chave: '', pesoBruto: 0, pesoLiquido: 0, volumes: 1, valor: null,
-      status: 'sem', obs: 'Empresa/código do pedido não veio gravado nesta parada (dado faltando desde a roteirização) — não dá pra buscar a NF automaticamente. Confira manualmente no Omie pelo número do pedido.'
+      status: 'sem', obs: p.pedido
+        ? 'Empresa/código do pedido não veio gravado nesta parada — buscando pelo número em MF Paris, DMS e Profi...'
+        : 'Esta parada não tem número de pedido nem empresa/código gravados (comum em rotas importadas por planilha sem a coluna "Pedido" preenchida) — não dá pra buscar a NF automaticamente. Confira manualmente no Omie.'
     };
 
-    // Dado faltando (empresa e/ou código do pedido não gravados na parada):
+    // Dado faltando (empresa e/ou código do pedido não gravados na parada —
+    // acontece tanto em rotas antigas quanto em qualquer parada importada
+    // por PLANILHA, já que a planilha nunca grava _emp_key/_codigo_pedido):
     // tenta achar o pedido pelo NÚMERO em cada uma das 3 empresas do grupo
     // antes de desistir — resolve o caso mais comum de "NF não encontrada".
     if ((!empCod || !codigoPedido) && p.pedido) {
