@@ -42,6 +42,23 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="diagnosticarPedido()">Diagnosticar pedido</button>
 <div id="res-pedido"></div>
 
+<h2>Diagnóstico — Descobrir endpoint de CT-e no Omie</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Não existe hoje nenhuma tela puxando CT-e real do Omie — o sistema só tem uma <em>estimativa</em>
+  interna de frete (tarifas cadastradas pra TG/Camilo/BHT/Eureka), não o documento fiscal de verdade.
+  A API de CT-e do Omie não está documentada nos mesmos moldes da de NF-e que já uso no sistema, então
+  antes de construir a aba de CT-e preciso descobrir qual método/endpoint realmente lista os CT-e's da
+  conta. Este teste dispara vários candidatos plausíveis contra uma empresa e mostra a resposta crua de
+  cada um — o que voltar com dados (em vez de erro "método inválido") é o que vamos usar.
+</p>
+<select id="cte-empresa">
+  <option value="MFP">MF Paris</option>
+  <option value="DMS">DMS</option>
+  <option value="PRF">Profi</option>
+</select>
+<button onclick="testarEndpointsCte()">Testar candidatos de CT-e</button>
+<div id="res-cte"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -391,6 +408,72 @@ async function diagnosticarPedido() {
   }
   html += '</pre>';
   div.innerHTML = html;
+}
+
+// Dispara vários candidatos plausíveis de endpoint/método pra LISTAR CT-e no
+// Omie (não confirmados — a documentação do Omie pra CT-e não ficou acessível
+// na hora de escrever isso) e mostra a resposta crua de cada um. O objetivo é
+// achar qual (se algum) devolve dados de verdade, pra então construir a aba
+// de CT-e de fato em cima do que funcionar.
+async function testarEndpointsCte() {
+  const empresa = document.getElementById('cte-empresa').value;
+  const div = document.getElementById('res-cte');
+  div.innerHTML = '';
+
+  const hoje = new Date();
+  const de30 = new Date(); de30.setDate(de30.getDate() - 30);
+  const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+
+  const CANDIDATOS_CTE = [
+    { label: 'produtos/dfedocs — ListarDocumentos (cModelo 57)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/dfedocs/', call: 'ListarDocumentos',
+      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57', dDtEmissaoInicial: fmt(de30), dDtEmissaoFinal: fmt(hoje) }] },
+
+    { label: 'produtos/dfedocs — PesquisarDocumentos (cModelo 57)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/dfedocs/', call: 'PesquisarDocumentos',
+      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
+
+    { label: 'produtos/cte — ListarCTe',
+      ep: 'https://app.omie.com.br/api/v1/produtos/cte/', call: 'ListarCTe',
+      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+
+    { label: 'produtos/cte — ListarConhecimentos',
+      ep: 'https://app.omie.com.br/api/v1/produtos/cte/', call: 'ListarConhecimentos',
+      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+
+    { label: 'produtos/notafiscalutil — ListarDocumentosRecebidos (cModelo 57)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ListarDocumentosRecebidos',
+      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
+
+    { label: 'produtos/comprasnfe — ListarNFCompra (cModelo 57)',
+      ep: 'https://app.omie.com.br/api/v1/produtos/comprasnfe/', call: 'ListarNFCompra',
+      param: [{ pagina: 1, registros_por_pagina: 20, cModelo: '57' }] },
+  ];
+
+  for (const t of CANDIDATOS_CTE) {
+    await new Promise(r => setTimeout(r, 700));
+    const h = document.createElement('h3');
+    h.textContent = t.label;
+    div.appendChild(h);
+    const pre = document.createElement('pre');
+    pre.textContent = '...';
+    div.appendChild(pre);
+    try {
+      const data = await omie(t.ep, t.call, t.param, empresa);
+      if (data && data.faultstring) {
+        pre.innerHTML = '<span class="err">ERRO: ' + data.faultstring + '</span>';
+      } else {
+        pre.innerHTML = '<span class="ok">✓ RESPOSTA (pode ou não ser o certo — confira o conteúdo):</span>\n' + JSON.stringify(data, null, 2).slice(0, 1500);
+      }
+    } catch (e) {
+      pre.innerHTML = '<span class="err">' + e.message + '</span>';
+    }
+  }
+
+  const aviso = document.createElement('p');
+  aviso.style.cssText = 'font-size:12px;color:#555;max-width:640px;margin-top:10px';
+  aviso.textContent = 'Se nenhum voltou com dados reais, me avise com a mensagem de erro completa (ou, se tiver acesso ao Portal do Desenvolvedor do Omie — developer.omie.com.br — me passa o nome exato do endpoint/método de CT-e de lá) que eu ajusto e tento de novo.';
+  div.appendChild(aviso);
 }
 
 async function testar() {
