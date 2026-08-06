@@ -862,7 +862,7 @@ async function _gerarTermoPDFInterno() {
   if (!ehPJ) {
     tituloSec('3. Dados do Veículo');
     linhaBox([
-      ['Placa', r.motoristaPlaca], ['UF', m && m.ufVeiculo], ['Modelo', (m && m.veiculo) || r.motoristaVeiculo],
+      ['Placa', (m && m.placa) || r.motoristaPlaca], ['UF', m && m.ufVeiculo], ['Modelo', (m && m.veiculo) || r.motoristaVeiculo],
     ]);
     linhaBox([
       ['RENAVAM', m && m.renavan], ['Propriedade', (m && m.veiculoTerceiro) ? 'De terceiro' : 'Próprio'],
@@ -872,14 +872,14 @@ async function _gerarTermoPDFInterno() {
     }
   }
 
-  // 4. TAC/RNTRC
-  tituloSec('4. TAC / RNTRC');
+  // 4. TAC/RNTRC/ANTT
+  tituloSec('4. TAC / RNTRC / ANTT');
   if (ehPJ) {
     linhaBox([['RNTRC', m && m.transpRntrc], ['Categoria', m && m.transpCategoria], ['Referente a', 'Transportadora']]);
   } else {
     const rntrcValor = (m && m.veiculoTerceiro) ? m.terceiroRntrc : (m && m.rntrc);
     const rntrcOrigem = (m && m.veiculoTerceiro) ? 'Proprietário do veículo' : 'Motorista autônomo';
-    linhaBox([['RNTRC', rntrcValor], ['Categoria', 'TAC'], ['Referente a', rntrcOrigem]]);
+    linhaBox([['RNTRC', rntrcValor], ['ANTT / Registro', m && m.antt], ['Referente a', rntrcOrigem]]);
   }
 
   // 5. Pagamento
