@@ -439,38 +439,36 @@ async function testarEndpointsCte() {
   // Agora: manda vazio pra Omie apontar os campos obrigatórios de verdade,
   // e tenta a convenção Húngara (nPagina/nRegPorPagina) que o endpoint
   // geral/produtos deste mesmo sistema já usa.
-  // DESCARTADO: produtos/pedidocompra / ListarPedidosCompra — "Method not
-  // exists" nos 3 formatos testados.
-  // CONFIRMADO: produtos/recebimentonfe / ListarRecebimentos existe. Com
-  // {nPagina:1, nRegPorPagina:20} o erro reclamou só da tag NREGPORPAGINA —
-  // NÃO reclamou de NPAGINA, e a Omie aponta a primeira tag inválida que
-  // encontra. Ou seja, nPagina provavelmente está certo; falta achar o nome
-  // certo do campo "registros por página". Testando nPagina sozinho (pra
-  // ver a próxima reclamação) e variações do segundo campo.
+  // CONFIRMADO DE VERDADE (resposta real do usuário): produtos/recebimentonfe
+  // / ListarRecebimentos com {nPagina:1} funciona, devolve 100 registros por
+  // página (default) num total de 51 páginas / ~5007 registros. Cada
+  // "recebimento" tem cabec.cModeloNFe ("57" = CT-e, "55" = NF-e normal) e,
+  // quando tem frete, um bloco transporte.cNomeTransp/cRazaoTransp com o
+  // nome da transportadora (bateu com BHT). Faltam 2 coisas antes de dar
+  // pra construir a aba de verdade: (1) um jeito de filtrar por período pra
+  // não ter que paginar 51 páginas de anos de histórico toda vez, e (2) a
+  // ordem de classificação (a página 1 trouxe registro de 2020 — se for
+  // cronológica crescente, os CT-e's recentes estão nas últimas páginas).
   const CANDIDATOS_CTE = [
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina sozinho)',
+    { label: 'recebimentonfe — ListarRecebimentos (nPagina=51, última página — testa ordem cronológica)',
       ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1 }] },
+      param: [{ nPagina: 51 }] },
 
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + nRegPagina)',
+    { label: 'recebimentonfe — ListarRecebimentos (nPagina + cModeloNFe=57, filtro de tipo no request)',
       ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, nRegPagina: 20 }] },
+      param: [{ nPagina: 1, cModeloNFe: '57' }] },
 
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + nQtdeRegistros)',
+    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dEmissaoNFeDe/Ate)',
       ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, nQtdeRegistros: 20 }] },
+      param: [{ nPagina: 1, dEmissaoNFeDe: fmt(de30), dEmissaoNFeAte: fmt(hoje) }] },
 
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + nRegistrosPagina)',
+    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dRegistroDe/Ate)',
       ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, nRegistrosPagina: 20 }] },
+      param: [{ nPagina: 1, dRegistroDe: fmt(de30), dRegistroAte: fmt(hoje) }] },
 
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + nRegistros)',
+    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dDtRecebimentoDe/Ate)',
       ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, nRegistros: 20 }] },
-
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + nQtdePagina)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, nQtdePagina: 20 }] },
+      param: [{ nPagina: 1, dDtRecebimentoDe: fmt(de30), dDtRecebimentoAte: fmt(hoje) }] },
   ];
 
   for (const t of CANDIDATOS_CTE) {
