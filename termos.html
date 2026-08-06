@@ -408,53 +408,66 @@ async function buscarDocsPorNF(nf, empCod) {
   return { pdf: null, xml: null };
 }
 
-/* Título financeiro (contas a receber) via financas/contareceber /
-   ListarContasReceber — endpoint e paginação (pagina/registros_por_pagina,
-   mesma convenção de ListarPedidos) confirmados contra o Omie de verdade.
-   O filtro passado (chave_nfe ou numero_documento_fiscal) pode ser aceito
-   mas IGNORADO silenciosamente pela Omie (não dá erro nem quando o campo
-   não existe de verdade nessa struct) — por isso sempre confere se o
-   título devolvido realmente bate com a chave da NF antes de confiar
-   nele, em vez de assumir que o filtro funcionou. */
-async function _buscarTituloContaReceber(filtro, chaveEsperada, empCod) {
-  const busca = await omieCall(
-    'https://app.omie.com.br/api/v1/financas/contareceber/', 'ListarContasReceber', empCod,
-    [Object.assign({ pagina: 1, registros_por_pagina: 5 }, filtro)]
-  );
-  const lista = busca.conta_receber_cadastro || [];
-  if (chaveEsperada) return lista.find(t => t.chave_nfe === chaveEsperada) || null;
-  return lista[0] || null;
+/* financas/contareceber / ListarContasReceber — endpoint, método e
+   paginação (pagina/registros_por_pagina) confirmados contra o Omie de
+   verdade. CONFIRMADO TAMBÉM (erro de schema real, não suposição): o tipo
+   de request dessa chamada (lcrListarRequest) NÃO aceita chave_nfe nem
+   numero_documento_fiscal como filtro — só pagina/registros_por_pagina.
+   Sem filtro de busca disponível, a saída é paginar de trás pra frente
+   (mesma ordem cronológica crescente confirmada pro CT-e) e comparar no
+   navegador. Pra não repetir esse scan de várias páginas PARA CADA
+   PEDIDO da rota (lento demais numa rota com muitas paradas), os títulos
+   recentes são buscados uma vez por empresa e reaproveitados. */
+var _cacheTitulosRecentes = {}; // empCod -> array de títulos (populado uma vez)
+async function _carregarTitulosRecentes(empCod) {
+  if (_cacheTitulosRecentes[empCod]) return _cacheTitulosRecentes[empCod];
+  const EP_CR = 'https://app.omie.com.br/api/v1/financas/contareceber/';
+  const TETO_PAGINAS = 20; // ~400 títulos mais recentes, cobre bem a janela de rotas recentes do termo
+  const titulos = [];
+  try {
+    const primeira = await omieCall(EP_CR, 'ListarContasReceber', empCod, [{ pagina: 1, registros_por_pagina: 20 }]);
+    const totalPaginas = primeira.total_de_paginas || 1;
+    for (let p = totalPaginas, vistas = 0; p >= 1 && vistas < TETO_PAGINAS; p--, vistas++) {
+      await sleep(350);
+      const dados = (p === 1) ? primeira : await omieCall(EP_CR, 'ListarContasReceber', empCod, [{ pagina: p, registros_por_pagina: 20 }]);
+      titulos.push.apply(titulos, dados.conta_receber_cadastro || []);
+    }
+  } catch (e) {
+    log('Carregando títulos recentes de ' + empCod + ': ' + (e.message || e));
+  }
+  _cacheTitulosRecentes[empCod] = titulos;
+  return titulos;
 }
 
-/* Boleto vinculado ao pedido — melhor esforço, tentando primeiro pela
-   chave da NF-e (mais preciso, chave é única) e depois pelo número da
-   NF-e, sem nunca aceitar um título que não bata de fato com a chave
-   esperada. Nem todo pedido tem boleto (pode ser outra forma de
-   pagamento) — quando não acha, simplesmente não anexa nada, sem travar
-   o termo por causa disso. */
+/* Boleto vinculado ao pedido — melhor esforço: procura, na lista de
+   títulos recentes já carregada, um que bata pela chave da NF-e (mais
+   preciso) ou pelo número. Nem todo pedido tem boleto (pode ser outra
+   forma de pagamento), e o cache só cobre os títulos mais recentes — se
+   não achar, simplesmente não anexa nada, sem travar o termo por causa
+   disso. */
 async function buscarBoletoPorNF(numeroNF, chaveNF, numeroPedido, empCod) {
-  const tentativas = [];
-  if (chaveNF) tentativas.push({ chave_nfe: chaveNF });
-  if (numeroNF) tentativas.push({ numero_documento_fiscal: String(numeroNF) });
-  for (const filtro of tentativas) {
-    try {
-      const titulo = await _buscarTituloContaReceber(filtro, chaveNF, empCod);
-      await sleep(300);
-      if (!titulo) continue;
-      const nCodTitulo = titulo.codigo_lancamento_omie;
-      if (!nCodTitulo) continue;
-      const boleto = await omieCall(
-        'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
-        [{ nCodTitulo }]
-      );
-      await sleep(300);
-      const links = extrairLinks(boleto);
-      if (links.pdf) return links.pdf;
-    } catch (e) {
-      log('Boleto (' + JSON.stringify(filtro) + '): ' + (e.message || e));
-    }
+  if (!chaveNF && !numeroNF) return null;
+  try {
+    const titulos = await _carregarTitulosRecentes(empCod);
+    const numeroSemZeros = numeroNF ? String(numeroNF).replace(/^0+/, '') : '';
+    const titulo = titulos.find(t =>
+      (chaveNF && t.chave_nfe === chaveNF) ||
+      (numeroSemZeros && String(t.numero_documento_fiscal || '').replace(/^0+/, '') === numeroSemZeros)
+    );
+    if (!titulo) return null;
+    const nCodTitulo = titulo.codigo_lancamento_omie;
+    if (!nCodTitulo) return null;
+    await sleep(300);
+    const boleto = await omieCall(
+      'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
+      [{ nCodTitulo }]
+    );
+    const links = extrairLinks(boleto);
+    return links.pdf || null;
+  } catch (e) {
+    log('Boleto (NF ' + numeroNF + '): ' + (e.message || e));
+    return null;
   }
-  return null;
 }
 
 /* Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie). */
