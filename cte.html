@@ -84,17 +84,6 @@ tr:hover td{background:rgba(184,134,74,.04);}
   <div class="sec">
     <div class="sec-title"><span>CT-e — Conhecimentos de Transporte (Compras / NF de entrada, modelo 57)</span></div>
 
-    <div class="alerta">
-      A API do Omie não devolve peso da carga nem o pedido vinculado ao CT-e (testado e confirmado —
-      só valor, transportadora, destinatário e data). Peso, pedido(s), "Cotação (sistema)" e R$/kg
-      abaixo são identificados por <b>aproximação</b>: cruza cada CT-e com as rotas já despachadas no
-      sistema (TG/Camilo dos Santos/BHT/Eureka) por transportadora + data + valor + nome do
-      destinatário. "Cotação (sistema)" é o frete que a tabela de tarifa interna estimou na hora de
-      rotear (não é a nota fiscal — o sistema não emite CT-e); "Real (CT-e)" é o valor de verdade
-      cobrado pela transportadora. Quando o cruzamento não bate com confiança, esses campos ficam em
-      branco em vez de arriscar um dado errado.
-    </div>
-
     <div class="filtros">
       <div class="chk-empresas">
         <label><input type="checkbox" class="chk-emp" value="MFP" checked/> MF Paris</label>
@@ -105,6 +94,43 @@ tr:hover td{background:rgba(184,134,74,.04);}
       <label>Até <input type="date" id="f-ate"/></label>
       <button class="btn-primary" id="btn-buscar" onclick="buscarCtes()">🔎 Buscar CT-e's</button>
       <button class="btn-secondary" id="btn-csv" onclick="exportarCsv()" disabled>📥 Exportar CSV</button>
+    </div>
+
+    <div class="filtros" id="filtros-pos-busca" style="display:none;border-top:1px solid var(--gold-l);padding-top:12px;">
+      <label>Busca <input type="text" id="f-busca" placeholder="destinatário, CT-e, pedido..." style="width:200px;"/></label>
+      <label>Transportadora
+        <select id="f-transportadora"><option value="">Todas</option></select>
+      </label>
+      <label>Confiança
+        <select id="f-confianca">
+          <option value="">Todas</option>
+          <option value="alta">Só confiança alta ✓</option>
+          <option value="baixa">Só confiança baixa ?</option>
+          <option value="sem">Só sem correspondência</option>
+        </select>
+      </label>
+      <label>Ordenar por
+        <select id="f-ordenar">
+          <option value="dataEmissao">Data de emissão</option>
+          <option value="valor">Valor real (CT-e)</option>
+          <option value="cotacao">Cotação (sistema)</option>
+          <option value="diferenca">Diferença</option>
+          <option value="diferencaPct">Diferença (%)</option>
+          <option value="peso">Peso</option>
+          <option value="rskg">R$/kg</option>
+          <option value="transportadora">Transportadora</option>
+          <option value="destinatario">Destinatário</option>
+          <option value="embRota">Data roteirização</option>
+        </select>
+      </label>
+      <label>
+        <select id="f-direcao">
+          <option value="desc">Maior → menor</option>
+          <option value="asc">Menor → maior</option>
+        </select>
+      </label>
+      <button class="btn-secondary" id="btn-limpar-filtros" onclick="limparFiltros()">✕ Limpar filtros</button>
+      <span id="contador-filtro" style="font-size:11.5px;color:var(--muted);"></span>
     </div>
 
     <div id="status-busca" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
@@ -292,7 +318,81 @@ function acharRotaCorrespondente(cte, rotas) {
   return { rota: melhor, confianca: bateCliente ? 'alta' : 'baixa', pesoTotal, pedidos, cotacao };
 }
 
-let _ctesAtuais = [];
+let _ctesAtuais = [];   // tudo que a última busca trouxe, sem filtro/ordenação
+let _ctesExibidos = []; // depois de aplicar filtros/ordenação — é o que a tabela, os KPIs e o CSV usam
+
+function popularFiltroTransportadora(ctes) {
+  const sel = $('f-transportadora');
+  const atual = sel.value;
+  const nomes = [...new Set(ctes.map(c => c.transportadora).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todas</option>' + nomes.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  if (nomes.includes(atual)) sel.value = atual;
+}
+
+function limparFiltros() {
+  $('f-busca').value = '';
+  $('f-transportadora').value = '';
+  $('f-confianca').value = '';
+  $('f-ordenar').value = 'dataEmissao';
+  $('f-direcao').value = 'desc';
+  aplicarFiltros();
+}
+
+function _valorOrdenacao(c, chave) {
+  const m = c.match;
+  switch (chave) {
+    case 'valor': return c.valor || 0;
+    case 'cotacao': return (m && m.cotacao) || 0;
+    case 'diferenca': return (m && m.cotacao > 0) ? (c.valor - m.cotacao) : -Infinity;
+    case 'diferencaPct': return (m && m.cotacao > 0) ? ((c.valor - m.cotacao) / m.cotacao) : -Infinity;
+    case 'peso': return (m && m.pesoTotal) || 0;
+    case 'rskg': return (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : -Infinity;
+    case 'transportadora': return normTxt(c.transportadora);
+    case 'destinatario': return normTxt(c.destinatario);
+    case 'embRota': return (m && m.rota.embObj) ? m.rota.embObj.getTime() : -Infinity;
+    case 'dataEmissao': default: return c.dataEmissaoObj ? c.dataEmissaoObj.getTime() : 0;
+  }
+}
+
+/* Aplica busca livre + filtro de transportadora/confiança + ordenação sobre
+   _ctesAtuais (o resultado bruto da última busca), sem precisar buscar de
+   novo no Omie — tudo client-side sobre o que já foi trazido. */
+function aplicarFiltros() {
+  const termo = normTxt($('f-busca').value);
+  const transp = $('f-transportadora').value;
+  const conf = $('f-confianca').value;
+  const ordenarPor = $('f-ordenar').value;
+  const direcao = $('f-direcao').value;
+
+  let lista = _ctesAtuais.filter(c => {
+    if (transp && c.transportadora !== transp) return false;
+    if (conf === 'alta' && !(c.match && c.match.confianca === 'alta')) return false;
+    if (conf === 'baixa' && !(c.match && c.match.confianca === 'baixa')) return false;
+    if (conf === 'sem' && c.match) return false;
+    if (termo) {
+      const alvo = normTxt(c.destinatario) + ' ' + normTxt(c.numero) + ' ' + normTxt(c.transportadora) + ' ' + (c.match ? c.match.pedidos.join(' ') : '');
+      if (!alvo.includes(termo)) return false;
+    }
+    return true;
+  });
+
+  lista.sort((a, b) => {
+    const va = _valorOrdenacao(a, ordenarPor), vb = _valorOrdenacao(b, ordenarPor);
+    if (typeof va === 'string') return direcao === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return direcao === 'asc' ? va - vb : vb - va;
+  });
+
+  _ctesExibidos = lista;
+  renderTabela(lista);
+  atualizarKPIs(lista);
+  $('btn-csv').disabled = lista.length === 0;
+  $('contador-filtro').textContent = lista.length !== _ctesAtuais.length ? (lista.length + ' de ' + _ctesAtuais.length + ' CT-e(s)') : '';
+}
+
+['f-busca', 'f-transportadora', 'f-confianca', 'f-ordenar', 'f-direcao'].forEach(id => {
+  const el = $(id);
+  if (el) { el.addEventListener('input', aplicarFiltros); el.addEventListener('change', aplicarFiltros); }
+});
 
 async function buscarCtes() {
   const btn = $('btn-buscar');
@@ -339,9 +439,9 @@ async function buscarCtes() {
     todos.forEach(c => { const m = acharRotaCorrespondente(c, rotas); c.match = m; });
     todos.sort((a, b) => (b.dataEmissaoObj || 0) - (a.dataEmissaoObj || 0));
     _ctesAtuais = todos;
-    renderTabela(todos);
-    atualizarKPIs(todos);
-    $('btn-csv').disabled = todos.length === 0;
+    popularFiltroTransportadora(todos);
+    $('filtros-pos-busca').style.display = todos.length ? 'flex' : 'none';
+    aplicarFiltros();
     $('status-busca').textContent = todos.length + ' CT-e(s) encontrado(s) entre ' + $('f-de').value.split('-').reverse().join('/') + ' e ' + $('f-ate').value.split('-').reverse().join('/') + '.';
     toast('Busca concluída: ' + todos.length + ' CT-e(s).', 'ok');
   } catch (e) {
@@ -424,12 +524,12 @@ function _csvEscape(v) {
   return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 function exportarCsv() {
-  if (!_ctesAtuais.length) return;
+  if (!_ctesExibidos.length) return;
   try {
     const cab = ['empresa', 'cte_numero', 'cte_serie', 'chave', 'data_emissao', 'transportadora', 'cnpj_transportadora',
       'destinatario', 'cotacao_sistema', 'valor_real_cte', 'diferenca', 'diferenca_pct',
       'rota_correspondente', 'data_roteirizacao', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
-    const linhas = _ctesAtuais.map(c => {
+    const linhas = _ctesExibidos.map(c => {
       const m = c.match;
       const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : '';
       const temCotacao = m && m.cotacao > 0;
