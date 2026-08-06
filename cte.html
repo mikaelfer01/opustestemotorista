@@ -38,6 +38,10 @@ td{padding:9px 10px;border-bottom:1px solid var(--icon);vertical-align:top;}
 tr:hover td{background:rgba(184,134,74,.04);}
 .empty{text-align:center;color:var(--muted);padding:26px;font-style:italic;}
 .table-wrap{overflow-x:auto;}
+.th-sort{cursor:pointer;user-select:none;}
+.th-sort:hover{color:var(--gold);}
+.th-sort .arrow{display:inline-block;margin-left:3px;opacity:.35;}
+.th-sort.sort-ativo .arrow{opacity:1;color:var(--gold);}
 
 .btn-primary{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:0 18px;height:36px;font-weight:700;font-size:12.5px;cursor:pointer;letter-spacing:.02em;}
 .btn-primary:hover{background:var(--navy-d);}
@@ -109,28 +113,9 @@ tr:hover td{background:rgba(184,134,74,.04);}
           <option value="sem">Só sem correspondência</option>
         </select>
       </label>
-      <label>Ordenar por
-        <select id="f-ordenar">
-          <option value="dataEmissao">Data de emissão</option>
-          <option value="valor">Valor real (CT-e)</option>
-          <option value="cotacao">Cotação (sistema)</option>
-          <option value="diferenca">Diferença</option>
-          <option value="diferencaPct">Diferença (%)</option>
-          <option value="peso">Peso</option>
-          <option value="rskg">R$/kg</option>
-          <option value="transportadora">Transportadora</option>
-          <option value="destinatario">Destinatário</option>
-          <option value="embRota">Data roteirização</option>
-        </select>
-      </label>
-      <label>
-        <select id="f-direcao">
-          <option value="desc">Maior → menor</option>
-          <option value="asc">Menor → maior</option>
-        </select>
-      </label>
       <button class="btn-secondary" id="btn-limpar-filtros" onclick="limparFiltros()">✕ Limpar filtros</button>
       <span id="contador-filtro" style="font-size:11.5px;color:var(--muted);"></span>
+      <span style="font-size:11px;color:var(--muted);font-style:italic;">Clique no cabeçalho de uma coluna pra ordenar.</span>
     </div>
 
     <div id="status-busca" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
@@ -140,9 +125,18 @@ tr:hover td{background:rgba(184,134,74,.04);}
       <table>
         <thead>
           <tr>
-            <th>Empresa</th><th>CT-e (NF)</th><th>Emissão</th><th>Transportadora</th>
-            <th>Destinatário</th><th>Cotação (sistema)</th><th>Real (CT-e)</th><th>Diferença</th>
-            <th>Rota / Pedidos (aprox.)</th><th>Data roteirização</th><th>Peso (aprox., kg)</th><th>R$/kg real (aprox.)</th>
+            <th>Empresa</th>
+            <th class="th-sort" data-sort="numero">CT-e (NF)</th>
+            <th class="th-sort" data-sort="dataEmissao">Emissão</th>
+            <th class="th-sort" data-sort="transportadora">Transportadora</th>
+            <th class="th-sort" data-sort="destinatario">Destinatário</th>
+            <th class="th-sort" data-sort="cotacao">Cotação (sistema)</th>
+            <th class="th-sort" data-sort="valor">Real (CT-e)</th>
+            <th class="th-sort" data-sort="diferenca">Diferença</th>
+            <th>Rota / Pedidos (aprox.)</th>
+            <th class="th-sort" data-sort="embRota">Data roteirização</th>
+            <th class="th-sort" data-sort="peso">Peso (aprox., kg)</th>
+            <th class="th-sort" data-sort="rskg">R$/kg real (aprox.)</th>
           </tr>
         </thead>
         <tbody id="tbody-ctes"><tr><td colspan="12" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
@@ -333,18 +327,18 @@ function limparFiltros() {
   $('f-busca').value = '';
   $('f-transportadora').value = '';
   $('f-confianca').value = '';
-  $('f-ordenar').value = 'dataEmissao';
-  $('f-direcao').value = 'desc';
+  _sortKey = 'dataEmissao'; _sortDir = 'desc';
+  atualizarSetasCabecalho();
   aplicarFiltros();
 }
 
 function _valorOrdenacao(c, chave) {
   const m = c.match;
   switch (chave) {
+    case 'numero': return parseInt(String(c.numero).replace(/\D/g, ''), 10) || 0;
     case 'valor': return c.valor || 0;
     case 'cotacao': return (m && m.cotacao) || 0;
     case 'diferenca': return (m && m.cotacao > 0) ? (c.valor - m.cotacao) : -Infinity;
-    case 'diferencaPct': return (m && m.cotacao > 0) ? ((c.valor - m.cotacao) / m.cotacao) : -Infinity;
     case 'peso': return (m && m.pesoTotal) || 0;
     case 'rskg': return (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : -Infinity;
     case 'transportadora': return normTxt(c.transportadora);
@@ -354,15 +348,38 @@ function _valorOrdenacao(c, chave) {
   }
 }
 
-/* Aplica busca livre + filtro de transportadora/confiança + ordenação sobre
-   _ctesAtuais (o resultado bruto da última busca), sem precisar buscar de
-   novo no Omie — tudo client-side sobre o que já foi trazido. */
+// Clique no cabeçalho de uma coluna ordena por ela — clicar de novo na
+// mesma coluna inverte a direção (maior→menor / menor→maior).
+let _sortKey = 'dataEmissao';
+let _sortDir = 'desc';
+function atualizarSetasCabecalho() {
+  document.querySelectorAll('.th-sort').forEach(th => {
+    const ativo = th.dataset.sort === _sortKey;
+    th.classList.toggle('sort-ativo', ativo);
+    const seta = ativo ? (_sortDir === 'asc' ? '▲' : '▼') : '↕';
+    const rotulo = th.textContent.replace(/\s*[▲▼↕]\s*$/, '');
+    th.innerHTML = esc(rotulo) + ' <span class="arrow">' + seta + '</span>';
+  });
+}
+document.querySelectorAll('.th-sort').forEach(th => {
+  th.addEventListener('click', () => {
+    const chave = th.dataset.sort;
+    if (_sortKey === chave) { _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'; }
+    else { _sortKey = chave; _sortDir = 'desc'; }
+    atualizarSetasCabecalho();
+    aplicarFiltros();
+  });
+});
+atualizarSetasCabecalho();
+
+/* Aplica busca livre + filtro de transportadora/confiança + ordenação (por
+   clique no cabeçalho) sobre _ctesAtuais (o resultado bruto da última
+   busca), sem precisar buscar de novo no Omie — tudo client-side sobre o
+   que já foi trazido. */
 function aplicarFiltros() {
   const termo = normTxt($('f-busca').value);
   const transp = $('f-transportadora').value;
   const conf = $('f-confianca').value;
-  const ordenarPor = $('f-ordenar').value;
-  const direcao = $('f-direcao').value;
 
   let lista = _ctesAtuais.filter(c => {
     if (transp && c.transportadora !== transp) return false;
@@ -377,9 +394,9 @@ function aplicarFiltros() {
   });
 
   lista.sort((a, b) => {
-    const va = _valorOrdenacao(a, ordenarPor), vb = _valorOrdenacao(b, ordenarPor);
-    if (typeof va === 'string') return direcao === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-    return direcao === 'asc' ? va - vb : vb - va;
+    const va = _valorOrdenacao(a, _sortKey), vb = _valorOrdenacao(b, _sortKey);
+    if (typeof va === 'string') return _sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return _sortDir === 'asc' ? va - vb : vb - va;
   });
 
   _ctesExibidos = lista;
@@ -389,7 +406,7 @@ function aplicarFiltros() {
   $('contador-filtro').textContent = lista.length !== _ctesAtuais.length ? (lista.length + ' de ' + _ctesAtuais.length + ' CT-e(s)') : '';
 }
 
-['f-busca', 'f-transportadora', 'f-confianca', 'f-ordenar', 'f-direcao'].forEach(id => {
+['f-busca', 'f-transportadora', 'f-confianca'].forEach(id => {
   const el = $(id);
   if (el) { el.addEventListener('input', aplicarFiltros); el.addEventListener('change', aplicarFiltros); }
 });
