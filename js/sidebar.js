@@ -33,7 +33,8 @@
       { href: "notas-fiscais.html", label: "Notas Fiscais", icon: '<path d="M6 2h9l5 5v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>' },
       { href: "anexos.html", label: "Anexos do Pedido", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
       { href: "anexo-ar.html", label: "Anexar AR", icon: '<path d="M21 8.5l-9 9a4 4 0 01-6-6l9-9a3 3 0 014 4l-8.5 8.5a2 2 0 01-3-3L15 4"/>' },
-      { href: "termos.html", label: "Termos de Transporte", icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>' }
+      { href: "termos.html", label: "Termos de Transporte", icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>' },
+      { href: "cte.html", label: "CT-e", icon: '<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h3l3 3v4h-6z"/><circle cx="5.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/>' }
     ]},
     { titulo: "Estoque", itens: [
       { href: "estoque.html", label: "Estoque", icon: '<line x1="2" y1="17" x2="18" y2="17"/><path d="M4 17V7h8v10"/><path d="M12 10h4l2 4v3h-6V10z"/><circle cx="6" cy="19.5" r="1.5"/><circle cx="15" cy="19.5" r="1.5"/>' },

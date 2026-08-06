@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CT-e — OPUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1500px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.kcard{background:var(--card);border:0.5px solid var(--gold-b);border-radius:14px;padding:14px 16px;}
+.kcard .label{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.kcard .val{font-size:24px;font-weight:700;color:var(--navy);margin-top:4px;font-family:'Playfair Display',serif;font-style:italic;}
+.kcard .sub{font-size:10.5px;color:var(--muted);margin-top:2px;}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th{text-align:left;font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1.5px solid var(--gold-b);white-space:nowrap;}
+td{padding:9px 10px;border-bottom:1px solid var(--icon);vertical-align:top;}
+tr:hover td{background:rgba(184,134,74,.04);}
+.empty{text-align:center;color:var(--muted);padding:26px;font-style:italic;}
+.table-wrap{overflow-x:auto;}
+
+.btn-primary{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:0 18px;height:36px;font-weight:700;font-size:12.5px;cursor:pointer;letter-spacing:.02em;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-secondary{background:transparent;color:var(--navy);border:1.5px solid var(--gold-b);border-radius:10px;padding:0 16px;height:34px;font-weight:600;font-size:12px;cursor:pointer;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--gold-l);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+.filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.filtros label{font-size:11.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.filtros select,.filtros input{padding:7px 10px;border:1px solid var(--gold-b);border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--navy);}
+.chk-empresas{display:flex;gap:12px;flex-wrap:wrap;}
+.chk-empresas label{font-weight:600;}
+
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.b-ok{background:var(--green-l);color:var(--green);}
+.b-pend{background:var(--amber-l);color:var(--amber);}
+.b-empresa{background:var(--blue-l);color:var(--blue);font-weight:700;}
+
+.alerta{background:var(--amber-l);border:1px solid rgba(154,107,26,.3);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:10px;line-height:1.5;}
+
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.log{background:#0F1D33;color:#cfe0f5;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;padding:10px 12px;border-radius:8px;max-height:140px;overflow-y:auto;display:none;line-height:1.6;}
+.toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 6px 18px rgba(0,0,0,.2);animation:fadeUp .25s ease;}
+.toast-ok{background:var(--green);}
+.toast-err{background:var(--red);}
+.toast-info{background:var(--navy);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="cards">
+    <div class="kcard"><div class="label">CT-e's encontrados</div><div class="val" id="k-total">—</div><div class="sub" id="k-total-sub">período selecionado</div></div>
+    <div class="kcard"><div class="label">Com rota identificada</div><div class="val" id="k-comrota" style="color:var(--green)">—</div><div class="sub">cruzamento por cliente/data/valor</div></div>
+    <div class="kcard"><div class="label">Valor total pago</div><div class="val" id="k-valor">—</div><div class="sub">soma dos CT-e's</div></div>
+    <div class="kcard"><div class="label">R$/kg médio</div><div class="val" id="k-rskg" style="color:var(--gold)">—</div><div class="sub">só onde achou peso</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title"><span>CT-e — Conhecimentos de Transporte (Compras / NF de entrada, modelo 57)</span></div>
+
+    <div class="alerta">
+      A API do Omie não devolve peso da carga nem o pedido vinculado ao CT-e (testado e confirmado —
+      só valor, transportadora, destinatário e data). Peso, pedido(s) e R$/kg abaixo são identificados
+      por <b>aproximação</b>: cruza cada CT-e com as rotas já despachadas no sistema (TG/Camilo dos
+      Santos/BHT/Eureka) por transportadora + data + valor + nome do destinatário. Quando o cruzamento
+      não bate com confiança, esses campos ficam em branco em vez de arriscar um dado errado.
+    </div>
+
+    <div class="filtros">
+      <div class="chk-empresas">
+        <label><input type="checkbox" class="chk-emp" value="MFP" checked/> MF Paris</label>
+        <label><input type="checkbox" class="chk-emp" value="DMS" checked/> DMS</label>
+        <label><input type="checkbox" class="chk-emp" value="PRF" checked/> Profi</label>
+      </div>
+      <label>De <input type="date" id="f-de"/></label>
+      <label>Até <input type="date" id="f-ate"/></label>
+      <button class="btn-primary" id="btn-buscar" onclick="buscarCtes()">🔎 Buscar CT-e's</button>
+      <button class="btn-secondary" id="btn-csv" onclick="exportarCsv()" disabled>📥 Exportar CSV</button>
+    </div>
+
+    <div id="status-busca" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
+    <div class="log" id="log"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th><th>CT-e (NF)</th><th>Emissão</th><th>Transportadora</th>
+            <th>Destinatário</th><th>Valor (R$)</th><th>Rota / Pedidos (aprox.)</th>
+            <th>Peso (aprox., kg)</th><th>R$/kg (aprox.)</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-ctes"><tr><td colspan="9" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  try {
+    const m = await import('/js/auth.js');
+    m.exigirPerfis(['admin', 'logistica']);
+  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG / HELPERS
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = { MFP: 'MF Paris', DMS: 'DMS', PRF: 'Profi' };
+const EP_RECEB = 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/';
+
+// Carrega isso ANTES do teste no diagnostico.html: endpoint, método e
+// convenção de paginação (nPagina) confirmados contra o Omie de verdade.
+// A resposta NÃO tem peso nem pedido vinculado (itensRecebimento sempre
+// null nos CT-e's testados) — só cabec/transporte/valor.
+async function omieCall(ep, call, param, empCod) {
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: ep, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) throw new Error(data.faultstring);
+  if (data && data.status === 'error') throw new Error(data.message || 'erro desconhecido');
+  return data;
+}
+
+async function fbRead(path) {
+  const r = await fetch('/api/firebase-read', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  return r.json();
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function toast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-' + (tipo || 'info');
+  el.textContent = msg;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function parseDataBr(s) {
+  const p = String(s || '').split('/');
+  return p.length === 3 ? new Date(+p[2], +p[1] - 1, +p[0]) : null;
+}
+function fmtMoeda(v) { return v == null ? '—' : ('R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
+function normTxt(s) { return String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+
+(function initDatas() {
+  const hoje = new Date();
+  const d30 = new Date(); d30.setDate(d30.getDate() - 29);
+  const fmt = d => d.toISOString().slice(0, 10);
+  $('f-de').value = fmt(d30);
+  $('f-ate').value = fmt(hoje);
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. BUSCA DOS CT-E'S — pagina de trás pra frente (ordem cronológica
+   crescente confirmada) até sair da janela de data ou bater o teto de
+   segurança, filtrando cModeloNFe==="57" no navegador (não dá pra filtrar
+   isso nem o período direto no request — testado e confirmado).
+   ══════════════════════════════════════════════════════════════════════════ */
+async function buscarCtesDaEmpresa(empCod, dataDe, dataAte, TETO_PAGINAS) {
+  const encontrados = [];
+  const primeira = await omieCall(EP_RECEB, 'ListarRecebimentos', [{ nPagina: 1 }], empCod);
+  const totalPaginas = primeira.nTotalPaginas || 1;
+  let paginasVistas = 0;
+  for (let p = totalPaginas; p >= 1 && paginasVistas < TETO_PAGINAS; p--) {
+    paginasVistas++;
+    $('status-busca').textContent = EMPRESAS[empCod] + ': página ' + p + '/' + totalPaginas + ' (' + paginasVistas + '/' + TETO_PAGINAS + ' verificadas) — ' + encontrados.length + ' CT-e(s) na janela...';
+    await sleep(450);
+    const dados = (p === 1) ? primeira : await omieCall(EP_RECEB, 'ListarRecebimentos', [{ nPagina: p }], empCod);
+    const lista = dados.recebimentos || [];
+    if (!lista.length) continue;
+
+    let algumDentroDaJanela = false;
+    lista.forEach(rec => {
+      const cab = rec.cabec || {};
+      const dEmis = parseDataBr(cab.dEmissaoNFe);
+      if (dEmis && dEmis >= dataDe && dEmis <= dataAte) algumDentroDaJanela = true;
+      if (String(cab.cModeloNFe) !== '57') return;
+      if (!dEmis || dEmis < dataDe || dEmis > dataAte) return;
+      encontrados.push({
+        empCod, numero: cab.cNumeroNFe, chave: cab.cChaveNFe, serie: cab.cSerieNFe,
+        dataEmissao: cab.dEmissaoNFe, dataEmissaoObj: dEmis, valor: cab.nValorNFe,
+        destinatario: cab.cRazaoSocial || cab.cNome || '',
+        transportadora: (rec.transporte || {}).cNomeTransp || (rec.transporte || {}).cRazaoTransp || '—',
+        transportadoraCnpj: (rec.transporte || {}).cCnpjCpfTransp || ''
+      });
+    });
+    // Página inteira mais antiga que a janela desejada -> as próximas
+    // (ainda mais antigas, ordem crescente) também vão estar fora. Pra.
+    const maisAntigaDaPagina = lista.reduce((min, r) => {
+      const d = parseDataBr((r.cabec || {}).dEmissaoNFe);
+      return (d && (!min || d < min)) ? d : min;
+    }, null);
+    if (maisAntigaDaPagina && maisAntigaDaPagina < dataDe && !algumDentroDaJanela) break;
+  }
+  return encontrados;
+}
+
+/* Tenta achar a rota despachada no sistema que corresponde a este CT-e:
+   mesma transportadora (prefixo do nome da rota), data de embarque perto
+   da emissão do CT-e (±5 dias) e, como desempate, valor do frete mais
+   próximo do valor do CT-e. Confere também se o nome do destinatário
+   aparece em alguma parada da rota, pra marcar a confiança do achado. */
+const PREFIXOS_TRANSPORTADORA = [
+  { regex: /CAMILO/i, prefixo: 'Camilo dos Santos' },
+  { regex: /\bTG\b/i, prefixo: 'TG' },
+  { regex: /\bBHT\b/i, prefixo: 'BHT' },
+  { regex: /EUREKA/i, prefixo: 'Eureka' },
+];
+function acharRotaCorrespondente(cte, rotas) {
+  const transp = PREFIXOS_TRANSPORTADORA.find(t => t.regex.test(cte.transportadora));
+  if (!transp || !cte.dataEmissaoObj) return null;
+  const candidatas = rotas.filter(r => r.rotaNome && r.rotaNome.indexOf(transp.prefixo) === 0 && r.embObj);
+  let melhor = null, melhorScore = Infinity;
+  candidatas.forEach(r => {
+    const diffDias = Math.abs((cte.dataEmissaoObj - r.embObj) / 86400000);
+    if (diffDias > 5) return;
+    const diffValor = Math.abs((r.freteTotal || 0) - (cte.valor || 0));
+    const score = diffDias * 10000 + diffValor;
+    if (score < melhorScore) { melhorScore = score; melhor = r; }
+  });
+  if (!melhor) return null;
+  const clienteCte = normTxt(cte.destinatario);
+  const paradasQueBatem = melhor.paradas.filter(p => {
+    const c = normTxt(p.cliente);
+    return c && clienteCte && (c.includes(clienteCte) || clienteCte.includes(c));
+  });
+  const bateCliente = paradasQueBatem.length > 0;
+  // TG/Camilo emitem 1 CT-e POR DESTINO, com o peso do grupo daquele
+  // destino só — uma rota pode ter vários destinos diferentes despachados
+  // juntos. Por isso soma só as paradas do MESMO destinatário do CT-e; se
+  // o nome não bateu com nenhuma parada (formatação diferente, etc.), cai
+  // pro total da rota inteira como aproximação menos precisa, mas nunca
+  // mistura peso de destinos que esse CT-e específico não cobre.
+  const paradasParaSomar = bateCliente ? paradasQueBatem : melhor.paradas;
+  const pesoTotal = paradasParaSomar.reduce((s, p) => s + (Number(p.peso) || 0), 0);
+  const pedidos = [...new Set(paradasParaSomar.map(p => p.pedido).filter(Boolean))];
+  return { rota: melhor, confianca: bateCliente ? 'alta' : 'baixa', pesoTotal, pedidos };
+}
+
+let _ctesAtuais = [];
+
+async function buscarCtes() {
+  const btn = $('btn-buscar');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Buscando...';
+  $('log').innerHTML = ''; $('log').style.display = 'none';
+  $('tbody-ctes').innerHTML = '<tr><td colspan="9" class="empty">Buscando...</td></tr>';
+  $('btn-csv').disabled = true;
+
+  const empresasSel = Array.from(document.querySelectorAll('.chk-emp:checked')).map(c => c.value);
+  if (!empresasSel.length) { toast('Selecione ao menos uma empresa.', 'err'); btn.disabled = false; btn.textContent = '🔎 Buscar CT-e\'s'; return; }
+  const dataDe = new Date($('f-de').value + 'T00:00:00');
+  const dataAte = new Date($('f-ate').value + 'T23:59:59');
+  const diasJanela = Math.max(1, Math.round((dataAte - dataDe) / 86400000));
+  const TETO_PAGINAS = Math.min(60, Math.max(10, Math.ceil(diasJanela / 2))); // estimativa: ~2 dias de recebimentos por página de 100
+
+  try {
+    // Histórico de rotas despachadas — usado só pro cruzamento aproximado
+    // (transportadora + data + valor + cliente), nunca como fonte do CT-e.
+    const historico = await fbRead('historico_roteirizados') || {};
+    const rotas = [];
+    Object.keys(historico).forEach(dataKey => {
+      const registros = historico[dataKey] || {};
+      Object.keys(registros).forEach(token => {
+        const reg = registros[token];
+        if (!reg || !reg.emb) return;
+        rotas.push({
+          rotaNome: reg.rotaNome || '', embObj: new Date(reg.emb + 'T00:00:00'),
+          freteTotal: reg.freteTotal || 0, paradas: reg.paradas || []
+        });
+      });
+    });
+
+    let todos = [];
+    for (const emp of empresasSel) {
+      try {
+        const ctes = await buscarCtesDaEmpresa(emp, dataDe, dataAte, TETO_PAGINAS);
+        todos = todos.concat(ctes);
+      } catch (e) {
+        log(EMPRESAS[emp] + ': erro — ' + e.message);
+        toast('Erro buscando CT-e de ' + EMPRESAS[emp] + ': ' + e.message, 'err');
+      }
+    }
+
+    todos.forEach(c => { const m = acharRotaCorrespondente(c, rotas); c.match = m; });
+    todos.sort((a, b) => (b.dataEmissaoObj || 0) - (a.dataEmissaoObj || 0));
+    _ctesAtuais = todos;
+    renderTabela(todos);
+    atualizarKPIs(todos);
+    $('btn-csv').disabled = todos.length === 0;
+    $('status-busca').textContent = todos.length + ' CT-e(s) encontrado(s) entre ' + $('f-de').value.split('-').reverse().join('/') + ' e ' + $('f-ate').value.split('-').reverse().join('/') + '.';
+    toast('Busca concluída: ' + todos.length + ' CT-e(s).', 'ok');
+  } catch (e) {
+    log('Erro geral: ' + e.message);
+    toast('Erro: ' + e.message, 'err');
+    $('tbody-ctes').innerHTML = '<tr><td colspan="9" class="empty">Erro na busca — veja o log.</td></tr>';
+  }
+
+  btn.disabled = false; btn.innerHTML = '🔎 Buscar CT-e\'s';
+}
+
+function renderTabela(ctes) {
+  const tb = $('tbody-ctes');
+  if (!ctes.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">Nenhum CT-e encontrado no período/empresas selecionados.</td></tr>'; return; }
+  tb.innerHTML = ctes.map(c => {
+    const m = c.match;
+    const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : null;
+    return '<tr>'
+      + '<td><span class="badge b-empresa">' + esc(EMPRESAS[c.empCod]) + '</span></td>'
+      + '<td>' + esc(c.numero) + (c.serie ? ' / ' + esc(c.serie) : '') + '</td>'
+      + '<td>' + esc(c.dataEmissao) + '</td>'
+      + '<td>' + esc(c.transportadora) + '</td>'
+      + '<td>' + esc(c.destinatario) + '</td>'
+      + '<td>' + fmtMoeda(c.valor) + '</td>'
+      + '<td>' + (m
+          ? ('<span class="badge ' + (m.confianca === 'alta' ? 'b-ok' : 'b-pend') + '">' + esc(m.rota.rotaNome) + (m.confianca === 'alta' ? ' ✓' : ' ?') + '</span>'
+             + (m.pedidos.length ? '<div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Ped: ' + esc(m.pedidos.join(', ')) + '</div>' : ''))
+          : '<span style="color:var(--muted)">—</span>')
+      + '</td>'
+      + '<td>' + (m && m.pesoTotal > 0 ? m.pesoTotal.toFixed(1) : '—') + '</td>'
+      + '<td>' + (rskg != null ? ('R$ ' + rskg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function atualizarKPIs(ctes) {
+  $('k-total').textContent = ctes.length;
+  const comRota = ctes.filter(c => c.match).length;
+  $('k-comrota').textContent = comRota;
+  const valorTotal = ctes.reduce((s, c) => s + (c.valor || 0), 0);
+  $('k-valor').textContent = fmtMoeda(valorTotal);
+  const comPeso = ctes.filter(c => c.match && c.match.pesoTotal > 0);
+  if (comPeso.length) {
+    const pesoTotal = comPeso.reduce((s, c) => s + c.match.pesoTotal, 0);
+    const valorComPeso = comPeso.reduce((s, c) => s + (c.valor || 0), 0);
+    $('k-rskg').textContent = 'R$ ' + (valorComPeso / pesoTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else {
+    $('k-rskg').textContent = '—';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. CSV
+   ══════════════════════════════════════════════════════════════════════════ */
+function _csvEscape(v) {
+  const s = String(v == null ? '' : v);
+  return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function exportarCsv() {
+  if (!_ctesAtuais.length) return;
+  try {
+    const cab = ['empresa', 'cte_numero', 'cte_serie', 'chave', 'data_emissao', 'transportadora', 'cnpj_transportadora',
+      'destinatario', 'valor', 'rota_correspondente', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
+    const linhas = _ctesAtuais.map(c => {
+      const m = c.match;
+      const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : '';
+      return [
+        EMPRESAS[c.empCod], c.numero, c.serie, c.chave, c.dataEmissao, c.transportadora, c.transportadoraCnpj,
+        c.destinatario, c.valor, m ? m.rota.rotaNome : '', m ? m.confianca : '', m ? m.pedidos.join(' | ') : '',
+        m && m.pesoTotal > 0 ? m.pesoTotal.toFixed(1) : '', rskg ? rskg.toFixed(2) : ''
+      ];
+    });
+    const csv = [cab].concat(linhas).map(l => l.map(_csvEscape).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ctes_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) {
+    toast('Erro ao exportar CSV: ' + e.message, 'err');
+  }
+}
+</script>
+<script src="js/sidebar.js?v=3" defer></script>
+</body>
+</html>

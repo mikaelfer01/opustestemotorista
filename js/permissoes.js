@@ -52,6 +52,7 @@ export const PERMISSOES = {
   
   // Carteira
   'carteira.html':            ['admin', 'logistica', 'comercial'],
+  'cte.html':                  ['admin', 'logistica'],
   
   // Simuladores
   'simulador.html':           ['admin', 'logistica', 'comercial'],
