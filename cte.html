@@ -116,10 +116,10 @@ tr:hover td{background:rgba(184,134,74,.04);}
           <tr>
             <th>Empresa</th><th>CT-e (NF)</th><th>Emissão</th><th>Transportadora</th>
             <th>Destinatário</th><th>Cotação (sistema)</th><th>Real (CT-e)</th><th>Diferença</th>
-            <th>Rota / Pedidos (aprox.)</th><th>Peso (aprox., kg)</th><th>R$/kg real (aprox.)</th>
+            <th>Rota / Pedidos (aprox.)</th><th>Data roteirização</th><th>Peso (aprox., kg)</th><th>R$/kg real (aprox.)</th>
           </tr>
         </thead>
-        <tbody id="tbody-ctes"><tr><td colspan="11" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
+        <tbody id="tbody-ctes"><tr><td colspan="12" class="empty">Clique em "Buscar CT-e's" pra começar.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -319,7 +319,7 @@ async function buscarCtes() {
         const reg = registros[token];
         if (!reg || !reg.emb) return;
         rotas.push({
-          rotaNome: reg.rotaNome || '', embObj: new Date(reg.emb + 'T00:00:00'),
+          rotaNome: reg.rotaNome || '', emb: reg.emb, embObj: new Date(reg.emb + 'T00:00:00'),
           freteTotal: reg.freteTotal || 0, paradas: reg.paradas || []
         });
       });
@@ -355,7 +355,7 @@ async function buscarCtes() {
 
 function renderTabela(ctes) {
   const tb = $('tbody-ctes');
-  if (!ctes.length) { tb.innerHTML = '<tr><td colspan="11" class="empty">Nenhum CT-e encontrado no período/empresas selecionados.</td></tr>'; return; }
+  if (!ctes.length) { tb.innerHTML = '<tr><td colspan="12" class="empty">Nenhum CT-e encontrado no período/empresas selecionados.</td></tr>'; return; }
   tb.innerHTML = ctes.map(c => {
     const m = c.match;
     const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : null;
@@ -380,6 +380,7 @@ function renderTabela(ctes) {
              + (m.pedidos.length ? '<div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Ped: ' + esc(m.pedidos.join(', ')) + '</div>' : ''))
           : '<span style="color:var(--muted)">—</span>')
       + '</td>'
+      + '<td>' + (m && m.rota.emb ? esc(m.rota.emb.split('-').reverse().join('/')) : '—') + '</td>'
       + '<td>' + (m && m.pesoTotal > 0 ? m.pesoTotal.toFixed(1) : '—') + '</td>'
       + '<td>' + (rskg != null ? ('R$ ' + rskg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '—') + '</td>'
       + '</tr>';
@@ -427,7 +428,7 @@ function exportarCsv() {
   try {
     const cab = ['empresa', 'cte_numero', 'cte_serie', 'chave', 'data_emissao', 'transportadora', 'cnpj_transportadora',
       'destinatario', 'cotacao_sistema', 'valor_real_cte', 'diferenca', 'diferenca_pct',
-      'rota_correspondente', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
+      'rota_correspondente', 'data_roteirizacao', 'confianca_cruzamento', 'pedidos_associados', 'peso_aprox_kg', 'rs_por_kg_aprox'];
     const linhas = _ctesAtuais.map(c => {
       const m = c.match;
       const rskg = (m && m.pesoTotal > 0) ? (c.valor / m.pesoTotal) : '';
@@ -437,7 +438,7 @@ function exportarCsv() {
       return [
         EMPRESAS[c.empCod], c.numero, c.serie, c.chave, c.dataEmissao, c.transportadora, c.transportadoraCnpj,
         c.destinatario, temCotacao ? m.cotacao.toFixed(2) : '', c.valor, diff !== '' ? diff.toFixed(2) : '', diffPct !== '' ? diffPct.toFixed(1) : '',
-        m ? m.rota.rotaNome : '', m ? m.confianca : '', m ? m.pedidos.join(' | ') : '',
+        m ? m.rota.rotaNome : '', m && m.rota.emb ? m.rota.emb.split('-').reverse().join('/') : '', m ? m.confianca : '', m ? m.pedidos.join(' | ') : '',
         m && m.pesoTotal > 0 ? m.pesoTotal.toFixed(1) : '', rskg ? rskg.toFixed(2) : ''
       ];
     });
