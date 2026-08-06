@@ -32,6 +32,16 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="buscarOrfas()">Buscar rotas órfãs</button>
 <div id="res-orfas"></div>
 
+<h2>Diagnóstico — Por que um pedido não aparece na Carteira?</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Busca o número do pedido direto no Omie, em MF Paris, DMS e Profi (nessa ordem), e mostra
+  exatamente qual dos filtros da Carteira de Pedidos excluiria esse pedido da lista — etapa,
+  faturado/cancelado, data de inclusão fora dos últimos 120 dias, ou nenhum item com SKU.
+</p>
+<input id="pedido-numero" placeholder="Número do pedido (ex.: 12150)"/>
+<button onclick="diagnosticarPedido()">Diagnosticar pedido</button>
+<div id="res-pedido"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -302,6 +312,85 @@ async function omie(ep, call, param, empresa) {
     body: JSON.stringify({endpoint:ep, call, param, empresa: empresa || 'MFP'})
   });
   return r.json();
+}
+
+// Busca um pedido pelo número em MF Paris, DMS e Profi (nessa ordem) e
+// reaplica os MESMOS filtros que js/carteira.js usa pra montar a Carteira
+// de Pedidos, mostrando exatamente qual deles excluiria esse pedido da
+// lista — sem precisar adivinhar.
+async function diagnosticarPedido() {
+  const numero = document.getElementById('pedido-numero').value.trim();
+  const div = document.getElementById('res-pedido');
+  if (!numero) { div.innerHTML = '<p style="color:#f87171">Informe o número do pedido.</p>'; return; }
+  div.innerHTML = '<pre>Buscando em MF Paris, DMS e Profi...</pre>';
+
+  const EMPRESAS_DIAG = [{cod:'MFP',nome:'MF Paris'},{cod:'DMS',nome:'DMS'},{cod:'PRF',nome:'Profi'}];
+  const n = parseInt(numero, 10) || 0;
+  let achado = null, empresaAchada = null;
+  const tentativas = [];
+
+  for (const emp of EMPRESAS_DIAG) {
+    try {
+      const data = await omie('https://app.omie.com.br/api/v1/produtos/pedido/', 'ListarPedidos', [{
+        pagina: 1, registros_por_pagina: 20, apenas_importado_api: 'N',
+        numero_pedido_de: n, numero_pedido_ate: n
+      }], emp.cod);
+      if (data && data.faultstring) { tentativas.push(emp.nome + ': erro — ' + data.faultstring); continue; }
+      const lista = (data && data.pedido_venda_produto) || [];
+      const p = lista.find(x => String((x.cabecalho || {}).numero_pedido || '').trim() === String(numero).trim());
+      tentativas.push(emp.nome + ': ' + (p ? 'encontrado' : 'não encontrado'));
+      if (p) { achado = p; empresaAchada = emp; break; }
+    } catch (e) {
+      tentativas.push(emp.nome + ': erro — ' + e.message);
+    }
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  if (!achado) {
+    div.innerHTML = '<pre>' + tentativas.join('\n') + '\n\n❌ Pedido ' + numero + ' não foi encontrado em nenhuma das 3 empresas.</pre>';
+    return;
+  }
+
+  const cab = achado.cabecalho || {};
+  const info = achado.infoCadastro || {};
+  const det = achado.det || [];
+  const detArr = Array.isArray(det) ? det : (det.det || []);
+  const itensComSku = detArr.filter(d => d.produto && d.produto.codigo);
+
+  function parseDataBr(s) {
+    const p = String(s || '').split('/');
+    return p.length === 3 ? new Date(+p[2], +p[1] - 1, +p[0]) : null;
+  }
+  const dInc = info.dInc || '';
+  const dataInclusao = parseDataBr(dInc);
+  const dtCorte = new Date(); dtCorte.setDate(dtCorte.getDate() - 120);
+  const foraDoPeriodo = dataInclusao ? (dataInclusao < dtCorte) : null;
+
+  const etapa = String(cab.etapa || '');
+  const etapaOk = ['10', '20', '50'].includes(etapa);
+  const faturado = info.faturado === 'S';
+  const cancelado = info.cancelado === 'S';
+
+  const motivos = [];
+  if (faturado || cancelado) motivos.push('Pedido está ' + (faturado ? 'faturado' : '') + (faturado && cancelado ? ' e ' : '') + (cancelado ? 'cancelado' : '') + ' — a Carteira sempre esconde esses.');
+  if (!etapaOk) motivos.push('Etapa atual é "' + etapa + '" — a Carteira só busca pedidos nas etapas 10 (em digitação), 20 (em análise) e 50 (aprovado).');
+  if (foraDoPeriodo) motivos.push('Data de inclusão (' + dInc + ') está fora da janela dos últimos 120 dias que a Carteira consulta.');
+  if (!itensComSku.length) motivos.push('Nenhum item do pedido tem um código de produto (SKU) preenchido no Omie.');
+
+  let html = '<pre>' + tentativas.join('\n') + '\n\n';
+  html += '✅ Encontrado em ' + empresaAchada.nome + '\n';
+  html += 'Código do pedido (Omie): ' + cab.codigo_pedido + '\n';
+  html += 'Etapa: ' + etapa + (etapaOk ? '' : '  ⚠ fora das etapas que a Carteira busca') + '\n';
+  html += 'Faturado: ' + (info.faturado || '—') + '   Cancelado: ' + (info.cancelado || '—') + '\n';
+  html += 'Data de inclusão: ' + (dInc || '—') + (foraDoPeriodo ? '  ⚠ fora dos últimos 120 dias' : '') + '\n';
+  html += 'Itens no pedido: ' + detArr.length + ' (com SKU preenchido: ' + itensComSku.length + ')\n\n';
+  if (motivos.length) {
+    html += '<span class="err">❌ Por isso não aparece na Carteira:</span>\n - ' + motivos.join('\n - ');
+  } else {
+    html += '<span class="ok">✅ Nenhum dos filtros da Carteira excluiria esse pedido.</span> Se ainda assim ele não aparece, clique em "Atualizar" na Carteira — a lista só é recarregada quando isso é clicado, não sozinha.';
+  }
+  html += '</pre>';
+  div.innerHTML = html;
 }
 
 async function testar() {
