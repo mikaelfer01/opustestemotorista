@@ -59,6 +59,23 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="testarEndpointsCte()">Testar candidatos de CT-e</button>
 <div id="res-cte"></div>
 
+<h2>Diagnóstico — Boleto de um pedido/NF (termos.html não está achando)</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  O termos.html busca o boleto via PesquisarTitulos → ObterBoleto, mas esses nomes de endpoint/campo
+  nunca foram confirmados contra o Omie de verdade (vieram só de uma busca na web) — é bem provável
+  que estejam errados, do mesmo jeito que os primeiros palpites de CT-e estavam. Preenche o número da
+  NF-e (ou do pedido) e a empresa e testa vários formatos, igual foi feito pro CT-e.
+</p>
+<select id="bol-empresa">
+  <option value="MFP">MF Paris</option>
+  <option value="DMS">DMS</option>
+  <option value="PRF">Profi</option>
+</select>
+<input id="bol-nf" placeholder="Número da NF-e (opcional)"/>
+<input id="bol-pedido" placeholder="Número do pedido (opcional)"/>
+<button onclick="testarEndpointsBoleto()">Testar candidatos de Boleto</button>
+<div id="res-boleto"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -454,6 +471,65 @@ async function testarEndpointsCte() {
   } catch (e) {
     pre0.innerHTML = '<span class="err">' + e.message + '</span>';
   }
+}
+
+// PesquisarTitulos/ObterBoleto (usados em termos.html pra anexar o boleto
+// no termo) nunca foram confirmados contra o Omie de verdade — vieram só
+// de uma busca na web. Testa vários formatos, incluindo objeto vazio (pra
+// Omie apontar os campos obrigatórios reais, igual funcionou pro CT-e) e
+// um endpoint alternativo (financas/contareceber / ListarContasReceber).
+async function testarEndpointsBoleto() {
+  const empresa = document.getElementById('bol-empresa').value;
+  const nf = document.getElementById('bol-nf').value.trim();
+  const pedido = document.getElementById('bol-pedido').value.trim();
+  const div = document.getElementById('res-boleto');
+  div.innerHTML = '';
+
+  const CANDIDATOS = [
+    { label: 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios)',
+      ep: 'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', call: 'PesquisarTitulos', param: [{}] },
+
+    { label: 'financas/pesquisartitulos — PesquisarTitulos (cNumDocFiscal = NF, palpite original)',
+      ep: 'https://app.omie.com.br/api/v1/financas/pesquisartitulos/', call: 'PesquisarTitulos',
+      param: [{ pagina: 1, registros_por_pagina: 5, cNumDocFiscal: nf }] },
+
+    { label: 'financas/contareceber — ListarContasReceber ({} vazio — aponta campos obrigatórios)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber', param: [{}] },
+
+    { label: 'financas/contareceber — ListarContasReceber (pagina/registros_por_pagina)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
+      param: [{ pagina: 1, registros_por_pagina: 20 }] },
+
+    { label: 'financas/contareceber — ListarContasReceber (nPagina/nRegPorPagina, estilo Húngaro)',
+      ep: 'https://app.omie.com.br/api/v1/financas/contareceber/', call: 'ListarContasReceber',
+      param: [{ nPagina: 1, nRegPorPagina: 20 }] },
+  ];
+
+  for (const t of CANDIDATOS) {
+    await new Promise(r => setTimeout(r, 700));
+    const h = document.createElement('h3');
+    h.textContent = t.label;
+    div.appendChild(h);
+    const pre = document.createElement('pre');
+    pre.textContent = '...';
+    div.appendChild(pre);
+    try {
+      const data = await omie(t.ep, t.call, t.param, empresa);
+      const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
+      if (erroMsg) {
+        pre.innerHTML = '<span class="err">ERRO: ' + erroMsg + '</span>';
+      } else {
+        pre.innerHTML = '<span class="ok">✓ RESPOSTA (pode ou não ser o certo — confira o conteúdo):</span>\n' + JSON.stringify(data, null, 2).slice(0, 1500);
+      }
+    } catch (e) {
+      pre.innerHTML = '<span class="err">' + e.message + '</span>';
+    }
+  }
+
+  const aviso = document.createElement('p');
+  aviso.style.cssText = 'font-size:12px;color:#555;max-width:640px;margin-top:10px';
+  aviso.textContent = 'Me manda o resultado de todos — principalmente as mensagens "Tag [X] não faz parte da estrutura", que apontam os nomes certos de campo (foi assim que resolvi o CT-e). Se um endpoint aceitar {} sem erro de campo, também me avisa.' + (nf || pedido ? '' : ' (Preencheu NF ou pedido? Sem isso alguns candidatos não têm o que buscar.)');
+  div.appendChild(aviso);
 }
 
 async function testar() {
