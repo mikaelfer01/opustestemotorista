@@ -410,94 +410,50 @@ async function diagnosticarPedido() {
   div.innerHTML = html;
 }
 
-// Dispara vários candidatos plausíveis de endpoint/método pra LISTAR CT-e no
-// Omie (não confirmados — a documentação do Omie pra CT-e não ficou acessível
-// na hora de escrever isso) e mostra a resposta crua de cada um. O objetivo é
-// achar qual (se algum) devolve dados de verdade, pra então construir a aba
-// de CT-e de fato em cima do que funcionar.
+// CONFIRMADO contra o Omie de verdade: produtos/recebimentonfe/
+// ListarRecebimentos com {nPagina:N} funciona (100 registros/página,
+// ordem cronológica CRESCENTE — os mais recentes ficam nas últimas
+// páginas). cabec.cModeloNFe="57" identifica CT-e (vs "55"=NF-e). Não dá
+// pra filtrar cModeloNFe nem período no request (testado e rejeitado) —
+// então esta busca contorna isso paginando de trás pra frente a partir da
+// última página e mostra o primeiro CT-e encontrado, JSON completo, pra
+// mapear onde ficam peso e os pedidos/NFs vinculados antes de montar a
+// aba de verdade.
 async function testarEndpointsCte() {
   const empresa = document.getElementById('cte-empresa').value;
   const div = document.getElementById('res-cte');
   div.innerHTML = '';
 
-  const hoje = new Date();
-  const de30 = new Date(); de30.setDate(de30.getDate() - 30);
-  const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  const h0 = document.createElement('h3');
+  h0.textContent = 'Achar exemplo de CT-e (paginando de trás pra frente a partir da última página)';
+  div.appendChild(h0);
+  const pre0 = document.createElement('pre');
+  pre0.textContent = 'Buscando...';
+  div.appendChild(pre0);
 
-  // O usuário confirmou que os CT-e's aparecem em Compras > Notas Fiscais
-  // de Entrada no Omie (as transportadoras — TG, BHT, Camilo dos Santos etc
-  // — entram como fornecedor do "recebimento"). Achei referências reais
-  // (fora deste projeto) ao endpoint produtos/recebimentonfe/ com o método
-  // ListarRecebimentos, filtrável por data de emissão — é o candidato mais
-  // forte, testado primeiro com 3 formatos de filtro de data possíveis, já
-  // que não consegui confirmar o nome exato do parâmetro. Os outros ficam
-  // como reserva.
-  // CONFIRMADO: produtos/recebimentonfe / ListarRecebimentos EXISTE de
-  // verdade — os testes anteriores voltaram "Tag [X] não faz parte da
-  // estrutura do tipo complexo [rcbtoListarRequest]", ou seja, achou o
-  // método e rejeitou só os NOMES dos campos (pagina, dEmissaoNFe...).
-  // Agora: manda vazio pra Omie apontar os campos obrigatórios de verdade,
-  // e tenta a convenção Húngara (nPagina/nRegPorPagina) que o endpoint
-  // geral/produtos deste mesmo sistema já usa.
-  // CONFIRMADO DE VERDADE (resposta real do usuário): produtos/recebimentonfe
-  // / ListarRecebimentos com {nPagina:1} funciona, devolve 100 registros por
-  // página (default) num total de 51 páginas / ~5007 registros. Cada
-  // "recebimento" tem cabec.cModeloNFe ("57" = CT-e, "55" = NF-e normal) e,
-  // quando tem frete, um bloco transporte.cNomeTransp/cRazaoTransp com o
-  // nome da transportadora (bateu com BHT). Faltam 2 coisas antes de dar
-  // pra construir a aba de verdade: (1) um jeito de filtrar por período pra
-  // não ter que paginar 51 páginas de anos de histórico toda vez, e (2) a
-  // ordem de classificação (a página 1 trouxe registro de 2020 — se for
-  // cronológica crescente, os CT-e's recentes estão nas últimas páginas).
-  const CANDIDATOS_CTE = [
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina=51, última página — testa ordem cronológica)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 51 }] },
-
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + cModeloNFe=57, filtro de tipo no request)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, cModeloNFe: '57' }] },
-
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dEmissaoNFeDe/Ate)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, dEmissaoNFeDe: fmt(de30), dEmissaoNFeAte: fmt(hoje) }] },
-
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dRegistroDe/Ate)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, dRegistroDe: fmt(de30), dRegistroAte: fmt(hoje) }] },
-
-    { label: 'recebimentonfe — ListarRecebimentos (nPagina + dDtRecebimentoDe/Ate)',
-      ep: 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/', call: 'ListarRecebimentos',
-      param: [{ nPagina: 1, dDtRecebimentoDe: fmt(de30), dDtRecebimentoAte: fmt(hoje) }] },
-  ];
-
-  for (const t of CANDIDATOS_CTE) {
-    await new Promise(r => setTimeout(r, 700));
-    const h = document.createElement('h3');
-    h.textContent = t.label;
-    div.appendChild(h);
-    const pre = document.createElement('pre');
-    pre.textContent = '...';
-    div.appendChild(pre);
-    try {
-      const data = await omie(t.ep, t.call, t.param, empresa);
-      // Erros deste endpoint não vêm só como {faultstring}: também aparecem
-      // como {status:"error", message:"..."} — trata os dois formatos.
-      const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
-      if (erroMsg) {
-        pre.innerHTML = '<span class="err">ERRO: ' + erroMsg + '</span>';
-      } else {
-        pre.innerHTML = '<span class="ok">✓ RESPOSTA (pode ou não ser o certo — confira o conteúdo):</span>\n' + JSON.stringify(data, null, 2).slice(0, 1500);
+  const EP_RECEB = 'https://app.omie.com.br/api/v1/produtos/recebimentonfe/';
+  try {
+    const primeira = await omie(EP_RECEB, 'ListarRecebimentos', [{ nPagina: 1 }], empresa);
+    const totalPaginas = primeira.nTotalPaginas || 1;
+    let achado = null;
+    // Vai da última página pra trás até achar um cModeloNFe==="57" (CT-e),
+    // olhando no máximo 8 páginas (~800 registros) pra não estourar de
+    // chamadas — os recebimentos mais recentes ficam nas últimas páginas.
+    for (let p = totalPaginas; p >= Math.max(1, totalPaginas - 7) && !achado; p--) {
+      await new Promise(r => setTimeout(r, 500));
+      const dados = (p === 1) ? primeira : await omie(EP_RECEB, 'ListarRecebimentos', [{ nPagina: p }], empresa);
+      const lista = dados.recebimentos || [];
+      achado = lista.find(rec => rec.cabec && String(rec.cabec.cModeloNFe) === '57');
+      if (achado) {
+        pre0.innerHTML = '<span class="ok">✓ CT-e encontrado na página ' + p + ' de ' + totalPaginas + ':</span>\n' + JSON.stringify(achado, null, 2);
       }
-    } catch (e) {
-      pre.innerHTML = '<span class="err">' + e.message + '</span>';
     }
+    if (!achado) {
+      pre0.innerHTML = '<span class="err">Nenhum CT-e (cModeloNFe=57) nas últimas 8 páginas dessa empresa. Tenta outra empresa no seletor acima, ou aumenta o alcance da busca (me avisa).</span>';
+    }
+  } catch (e) {
+    pre0.innerHTML = '<span class="err">' + e.message + '</span>';
   }
-
-  const aviso = document.createElement('p');
-  aviso.style.cssText = 'font-size:12px;color:#555;max-width:640px;margin-top:10px';
-  aviso.textContent = 'Se nenhum voltou com dados reais, me avise com a mensagem de erro completa (ou, se tiver acesso ao Portal do Desenvolvedor do Omie — developer.omie.com.br — me passa o nome exato do endpoint/método de CT-e de lá) que eu ajusto e tento de novo.';
-  div.appendChild(aviso);
 }
 
 async function testar() {
