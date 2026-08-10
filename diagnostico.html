@@ -59,21 +59,21 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="testarEndpointsCte()">Testar candidatos de CT-e</button>
 <div id="res-cte"></div>
 
-<h2>Diagnóstico — Boleto de um pedido/NF (termos.html não está achando)</h2>
+<h2>Diagnóstico — Boleto de um pedido (passo a passo)</h2>
 <p style="font-size:12px;color:#555;max-width:640px">
-  O termos.html busca o boleto via PesquisarTitulos → ObterBoleto, mas esses nomes de endpoint/campo
-  nunca foram confirmados contra o Omie de verdade (vieram só de uma busca na web) — é bem provável
-  que estejam errados, do mesmo jeito que os primeiros palpites de CT-e estavam. Preenche o número da
-  NF-e (ou do pedido) e a empresa e testa vários formatos, igual foi feito pro CT-e.
+  Roda a MESMA lógica que o termos.html usa hoje pra anexar o boleto no termo, mas mostrando cada
+  etapa separada: 1) acha o pedido no Omie e pega a NF faturada; 2) carrega os títulos financeiros
+  recentes de contas a receber (financas/contareceber, confirmado contra o Omie real); 3) procura, entre
+  esses títulos, um cuja chave ou número bata com a NF; 4) se achar, busca o link do boleto. Se travar
+  em alguma etapa, fica claro qual.
 </p>
 <select id="bol-empresa">
   <option value="MFP">MF Paris</option>
   <option value="DMS">DMS</option>
   <option value="PRF">Profi</option>
 </select>
-<input id="bol-nf" placeholder="Número da NF-e (opcional)"/>
-<input id="bol-pedido" placeholder="Número do pedido (opcional)"/>
-<button onclick="testarEndpointsBoleto()">Testar candidatos de Boleto</button>
+<input id="bol-pedido" placeholder="Número do pedido (ex.: 12171)"/>
+<button onclick="diagnosticarBoletoPedido()">Diagnosticar boleto do pedido</button>
 <div id="res-boleto"></div>
 
 <h2>Diagnóstico Lista Técnica v2</h2>
@@ -511,77 +511,107 @@ async function testarEndpointsCte() {
   }
 }
 
-// CONFIRMADO contra o Omie de verdade: financas/contareceber /
-// ListarContasReceber com {pagina, registros_por_pagina} (mesma convenção
-// snake_case de ListarPedidos) funciona e cada título já vem com
-// chave_nfe, numero_documento_fiscal e codigo_lancamento_omie — os campos
-// que preciso pra achar o boleto certo. PesquisarTitulos/ObterBoleto
-// (usados em termos.html hoje) nunca foram confirmados.
-// Os 3 filtros de request testados (numero_documento_fiscal, chave_nfe,
-// filtrar_por_data_de/ate) não deram erro, MAS o total_de_registros
-// continuou 16477 — sinal de que a Omie aceita a tag mas ignora ela
-// silenciosamente (ao contrário do endpoint de CT-e, que rejeita tag
-// desconhecida com erro). Sem um jeito confiável de filtrar por request,
-// aplica a mesma solução que funcionou pro CT-e: confirma a ordem
-// cronológica pegando a última página, e se for recente, dá pra paginar
-// de trás pra frente igual fiz lá.
-async function testarEndpointsBoleto() {
+// Roda a MESMA lógica que termos.html usa hoje (buscarBoletoPorNF), mas
+// passo a passo e com o resultado bruto de cada etapa visível — pra achar
+// exatamente onde a busca do boleto de um pedido específico está travando.
+async function diagnosticarBoletoPedido() {
   const empresa = document.getElementById('bol-empresa').value;
-  const nf = document.getElementById('bol-nf').value.trim();
+  const pedido = document.getElementById('bol-pedido').value.trim();
   const div = document.getElementById('res-boleto');
   div.innerHTML = '';
+  if (!pedido) { div.innerHTML = '<p style="color:#f87171">Informe o número do pedido.</p>'; return; }
 
+  function passo(titulo) {
+    const h = document.createElement('h3'); h.textContent = titulo; div.appendChild(h);
+    const pre = document.createElement('pre'); pre.textContent = 'Buscando...'; div.appendChild(pre);
+    return pre;
+  }
+
+  // 1) Pedido -> codigo_pedido
+  const pre1 = passo('1) Localizar pedido ' + pedido + ' em ' + empresa + ' (ListarPedidos)');
+  let codigoPedido = null;
+  try {
+    const n = parseInt(pedido.replace(/\D/g, ''), 10) || 0;
+    const data = await omie('https://app.omie.com.br/api/v1/produtos/pedido/', 'ListarPedidos', [{
+      pagina: 1, registros_por_pagina: 20, apenas_importado_api: 'N', numero_pedido_de: n, numero_pedido_ate: n
+    }], empresa);
+    const lista = (data && data.pedido_venda_produto) || [];
+    const achado = lista.find(p => String((p.cabecalho || {}).numero_pedido || '').trim() === String(pedido).trim());
+    if (!achado) {
+      pre1.innerHTML = '<span class="err">Não encontrado em ' + empresa + '. Tenta outra empresa no seletor acima.</span>';
+      return;
+    }
+    codigoPedido = achado.cabecalho.codigo_pedido;
+    pre1.innerHTML = '<span class="ok">✓ Achado — codigo_pedido: ' + codigoPedido + ', etapa: ' + achado.cabecalho.etapa + '</span>';
+  } catch (e) {
+    pre1.innerHTML = '<span class="err">ERRO: ' + e.message + '</span>';
+    return;
+  }
+
+  // 2) StatusPedido -> NF
+  const pre2 = passo('2) Buscar NF-e faturada do pedido (StatusPedido)');
+  let nfNumero = null, nfChave = null;
+  try {
+    const st = await omie('https://app.omie.com.br/api/v1/produtos/pedido/', 'StatusPedido', [{ codigo_pedido: codigoPedido }], empresa);
+    const notas = (st && st.ListaNfe) || [];
+    if (!notas.length) {
+      pre2.innerHTML = '<span class="err">Pedido sem NF-e emitida ainda — sem NF não tem título/boleto pra achar.</span>\n' + JSON.stringify(st, null, 2).slice(0, 800);
+      return;
+    }
+    const nf = notas[0];
+    nfNumero = nf.numero_nfe || nf.nNF || '';
+    nfChave = nf.chave_nfe || nf.cChaveNFe || nf.nfe_chave || '';
+    pre2.innerHTML = '<span class="ok">✓ NF ' + nfNumero + ' — chave: ' + (nfChave || '(sem chave)') + '</span>';
+  } catch (e) {
+    pre2.innerHTML = '<span class="err">ERRO: ' + e.message + '</span>';
+    return;
+  }
+
+  // 3) Carrega os títulos recentes de contas a receber (mesmo endpoint e
+  // método que termos.html usa hoje, confirmado contra o Omie real —
+  // paginando de trás pra frente, já que não há filtro de request confiável)
+  const pre3 = passo('3) Carregar títulos recentes (financas/contareceber / ListarContasReceber, últimas 20 páginas)');
   const EP_CR = 'https://app.omie.com.br/api/v1/financas/contareceber/';
-
-  const h1 = document.createElement('h3');
-  h1.textContent = 'ListarContasReceber — última página (testa ordem cronológica)';
-  div.appendChild(h1);
-  const pre1 = document.createElement('pre');
-  pre1.textContent = 'Buscando...';
-  div.appendChild(pre1);
+  const TETO_PAGINAS = 20;
+  let titulos = [];
   try {
     const primeira = await omie(EP_CR, 'ListarContasReceber', [{ pagina: 1, registros_por_pagina: 20 }], empresa);
     const totalPaginas = primeira.total_de_paginas || 1;
-    const ultima = await omie(EP_CR, 'ListarContasReceber', [{ pagina: totalPaginas, registros_por_pagina: 20 }], empresa);
-    pre1.innerHTML = '<span class="ok">✓ Página ' + totalPaginas + ' de ' + totalPaginas + ':</span>\n' + JSON.stringify(ultima, null, 2).slice(0, 1500);
-  } catch (e) {
-    pre1.innerHTML = '<span class="err">' + e.message + '</span>';
-  }
-
-  if (nf) {
-    const h2 = document.createElement('h3');
-    h2.textContent = 'ListarContasReceber (filtro numero_documento_fiscal = ' + nf + ') — checa se total_de_registros mudou';
-    div.appendChild(h2);
-    const pre2 = document.createElement('pre');
-    pre2.textContent = 'Buscando...';
-    div.appendChild(pre2);
-    await new Promise(r => setTimeout(r, 700));
-    try {
-      const data = await omie(EP_CR, 'ListarContasReceber', [{ pagina: 1, registros_por_pagina: 5, numero_documento_fiscal: nf }], empresa);
-      const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
-      pre2.innerHTML = erroMsg
-        ? '<span class="err">ERRO: ' + erroMsg + '</span>'
-        : '<span class="' + (data.total_de_registros < 16000 ? 'ok' : 'err') + '">total_de_registros: ' + data.total_de_registros + (data.total_de_registros < 16000 ? ' — FILTRO FUNCIONOU!' : ' — igual ao total geral, filtro foi ignorado') + '</span>\n' + JSON.stringify(data, null, 2).slice(0, 1200);
-    } catch (e) {
-      pre2.innerHTML = '<span class="err">' + e.message + '</span>';
+    for (let p = totalPaginas, vistas = 0; p >= 1 && vistas < TETO_PAGINAS; p--, vistas++) {
+      pre3.textContent = 'Página ' + p + '/' + totalPaginas + ' (' + (vistas + 1) + '/' + TETO_PAGINAS + ' verificadas)...';
+      await new Promise(r => setTimeout(r, 350));
+      const dados = (p === 1) ? primeira : await omie(EP_CR, 'ListarContasReceber', [{ pagina: p, registros_por_pagina: 20 }], empresa);
+      titulos = titulos.concat(dados.conta_receber_cadastro || []);
     }
+    pre3.innerHTML = '<span class="ok">✓ ' + titulos.length + ' título(s) carregado(s) (de ' + (primeira.total_de_registros || '?') + ' no total da conta).</span>';
+  } catch (e) {
+    pre3.innerHTML = '<span class="err">ERRO: ' + e.message + '</span>';
+    return;
   }
 
-  await new Promise(r => setTimeout(r, 700));
-  const h3 = document.createElement('h3');
-  h3.textContent = 'financas/pesquisartitulos — PesquisarTitulos ({} vazio — aponta campos obrigatórios, se existir)';
-  div.appendChild(h3);
-  const pre3 = document.createElement('pre');
-  pre3.textContent = 'Buscando...';
-  div.appendChild(pre3);
+  // 4) Procura o título que bate com a NF
+  const pre4 = passo('4) Procurar, entre os títulos carregados, um com chave_nfe = ' + nfChave + ' ou numero_documento_fiscal = ' + nfNumero);
+  const numeroSemZeros = nfNumero ? String(nfNumero).replace(/^0+/, '') : '';
+  const titulo = titulos.find(t =>
+    (nfChave && t.chave_nfe === nfChave) ||
+    (numeroSemZeros && String(t.numero_documento_fiscal || '').replace(/^0+/, '') === numeroSemZeros)
+  );
+  if (!titulo) {
+    const amostra = titulos.slice(0, 5).map(t => '  ' + (t.numero_documento_fiscal || '—') + ' / chave ' + (t.chave_nfe || '—') + ' / emissão ' + (t.data_emissao || '—')).join('\n');
+    pre4.innerHTML = '<span class="err">Não encontrado entre os ' + titulos.length + ' títulos carregados — provavelmente a NF é mais antiga que a janela de 20 páginas verificada aqui (e no termos.html). Amostra do que foi carregado (mais recentes primeiro):</span>\n' + esc(amostra);
+    return;
+  }
+  pre4.innerHTML = '<span class="ok">✓ Título encontrado:</span>\n' + JSON.stringify(titulo, null, 2);
+
+  // 5) Link do boleto
+  const nCodTitulo = titulo.codigo_lancamento_omie;
+  if (!nCodTitulo) return;
+  const pre5 = passo('5) Buscar o link do boleto (financas/contareceberboleto / ObterBoleto)');
   try {
-    const data = await omie('https://app.omie.com.br/api/v1/financas/pesquisartitulos/', 'PesquisarTitulos', [{}], empresa);
-    const erroMsg = (data && data.faultstring) || (data && data.status === 'error' && data.message);
-    pre3.innerHTML = erroMsg
-      ? '<span class="err">ERRO: ' + erroMsg + '</span>'
-      : '<span class="ok">✓ RESPOSTA:</span>\n' + JSON.stringify(data, null, 2).slice(0, 1200);
+    const boleto = await omie('https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', [{ nCodTitulo }], empresa);
+    pre5.innerHTML = '<span class="ok">✓ RESPOSTA:</span>\n' + JSON.stringify(boleto, null, 2);
   } catch (e) {
-    pre3.innerHTML = '<span class="err">' + e.message + '</span>';
+    pre5.innerHTML = '<span class="err">ERRO: ' + e.message + '</span>';
   }
 }
 
