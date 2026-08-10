@@ -439,35 +439,44 @@ async function _carregarTitulosRecentes(empCod) {
   return titulos;
 }
 
-/* Boleto vinculado ao pedido — melhor esforço: procura, na lista de
-   títulos recentes já carregada, um que bata pela chave da NF-e (mais
-   preciso) ou pelo número. Nem todo pedido tem boleto (pode ser outra
-   forma de pagamento), e o cache só cobre os títulos mais recentes — se
-   não achar, simplesmente não anexa nada, sem travar o termo por causa
-   disso. */
-async function buscarBoletoPorNF(numeroNF, chaveNF, numeroPedido, empCod) {
-  if (!chaveNF && !numeroNF) return null;
+/* Boletos vinculados ao pedido — melhor esforço: procura, na lista de
+   títulos recentes já carregada, TODOS os que batem pela chave da NF-e
+   (mais preciso) ou pelo número — não só o primeiro. Um pedido faturado
+   parcelado (ex.: 30/60/90 dias) gera um título e um boleto POR PARCELA,
+   todos com a mesma chave_nfe/numero_documento_fiscal, então pegar só o
+   primeiro deixava as outras parcelas de fora do termo. Nem todo pedido
+   tem boleto (pode ser outra forma de pagamento), e o cache só cobre os
+   títulos mais recentes — quando não acha nenhum, retorna lista vazia,
+   sem travar o termo por causa disso. */
+async function buscarBoletosPorNF(numeroNF, chaveNF, numeroPedido, empCod) {
+  if (!chaveNF && !numeroNF) return [];
+  const links = [];
   try {
     const titulos = await _carregarTitulosRecentes(empCod);
     const numeroSemZeros = numeroNF ? String(numeroNF).replace(/^0+/, '') : '';
-    const titulo = titulos.find(t =>
+    const encontrados = titulos.filter(t =>
       (chaveNF && t.chave_nfe === chaveNF) ||
       (numeroSemZeros && String(t.numero_documento_fiscal || '').replace(/^0+/, '') === numeroSemZeros)
     );
-    if (!titulo) return null;
-    const nCodTitulo = titulo.codigo_lancamento_omie;
-    if (!nCodTitulo) return null;
-    await sleep(300);
-    const boleto = await omieCall(
-      'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
-      [{ nCodTitulo }]
-    );
-    const links = extrairLinks(boleto);
-    return links.pdf || null;
+    for (const titulo of encontrados) {
+      const nCodTitulo = titulo.codigo_lancamento_omie;
+      if (!nCodTitulo) continue;
+      try {
+        await sleep(300);
+        const boleto = await omieCall(
+          'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
+          [{ nCodTitulo }]
+        );
+        const l = extrairLinks(boleto);
+        if (l.pdf) links.push({ url: l.pdf, parcela: titulo.numero_parcela || '' });
+      } catch (e) {
+        log('Boleto (título ' + nCodTitulo + ', NF ' + numeroNF + '): ' + (e.message || e));
+      }
+    }
   } catch (e) {
-    log('Boleto (NF ' + numeroNF + '): ' + (e.message || e));
-    return null;
+    log('Boletos (NF ' + numeroNF + '): ' + (e.message || e));
   }
+  return links;
 }
 
 /* Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie). */
@@ -708,10 +717,12 @@ async function buscarNotasDaRota(rota) {
               if (links.xml && !item.urlXml) item.urlXml = links.xml;
             } catch (e) { /* segue sem o PDF anexado — o termo ainda sai, só sem essa NF anexa */ }
           }
-          // Boleto (contas a receber) vinculado a essa NF ou ao pedido, se
-          // existir — melhor esforço, nem todo pedido tem boleto (pode ser
-          // outra forma de pagamento combinada).
-          item.urlBoleto = await buscarBoletoPorNF(nf.nf, nf.chave, p.pedido, empCod);
+          // Boleto(s) (contas a receber) vinculado(s) a essa NF ou ao
+          // pedido, se existir — melhor esforço. Um pedido pode ter mais
+          // de um boleto quando o pagamento foi parcelado (uma parcela =
+          // um título = um boleto), então isso é sempre uma lista, mesmo
+          // quando só tem 1 ou 0.
+          item.urlsBoleto = await buscarBoletosPorNF(nf.nf, nf.chave, p.pedido, empCod);
           if (nf.pesoEstimado) item.obs = 'NF sem peso/volume declarado — usando peso do roteirizador (conferir antes de assinar)';
           // Alerta de peso fora do padrão: bruto igual ao líquido pra carga com volumes, ou 0
           if (nf.pesoBruto <= 0 || (nf.pesoBruto === nf.pesoLiquido && nf.volumes > 1)) pesoAlerta++;
@@ -1040,8 +1051,8 @@ async function _gerarTermoPDFInterno() {
 // de um anexo que não baixou).
 async function _finalizarEAnexarNFs(doc, nomeArquivo) {
   const alvosNF = pedidosAtual.filter(it => it.status === 'ok' && it.urlPdf);
-  const alvosBoleto = pedidosAtual.filter(it => it.status === 'ok' && it.urlBoleto);
-  if ((!alvosNF.length && !alvosBoleto.length) || !window.PDFLib) {
+  const totalBoletos = pedidosAtual.reduce((s, it) => s + ((it.urlsBoleto && it.urlsBoleto.length) || 0), 0);
+  if ((!alvosNF.length && !totalBoletos) || !window.PDFLib) {
     doc.save(nomeArquivo);
     toast('Termo gerado com sucesso.' + (alvosNF.length ? '' : ' (nenhum DANFE em PDF foi localizado pra anexar — termo saiu sozinho)'), 'ok');
     return;
@@ -1068,12 +1079,15 @@ async function _finalizarEAnexarNFs(doc, nomeArquivo) {
         log('Não deu pra anexar o PDF da NF ' + (it.nf || it.pedido) + ': ' + (e.message || e));
       }
     }
-    for (const it of alvosBoleto) {
-      try {
-        await anexar(it.urlBoleto, 'Boleto do pedido ' + it.pedido);
-        boletosAnexados++;
-      } catch (e) {
-        log('Não deu pra anexar o boleto do pedido ' + it.pedido + ': ' + (e.message || e));
+    for (const it of pedidosAtual) {
+      if (it.status !== 'ok' || !it.urlsBoleto || !it.urlsBoleto.length) continue;
+      for (const b of it.urlsBoleto) {
+        try {
+          await anexar(b.url, 'Boleto' + (b.parcela ? ' parcela ' + b.parcela : '') + ' do pedido ' + it.pedido);
+          boletosAnexados++;
+        } catch (e) {
+          log('Não deu pra anexar um boleto do pedido ' + it.pedido + (b.parcela ? ' (parcela ' + b.parcela + ')' : '') + ': ' + (e.message || e));
+        }
       }
     }
 
