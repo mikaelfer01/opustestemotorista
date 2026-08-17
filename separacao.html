@@ -155,6 +155,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--i
 .btn-rod:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed;transform:none}
 .btn-devtudo{background:var(--err-bg);color:#991b1b;border:1px solid rgba(220,38,38,.25)}
 .btn-fim-sep{background:linear-gradient(135deg,var(--ok),#15803d);color:#fff;flex:2}
+.btn-forcar-sep{background:linear-gradient(135deg,#f59e0b,#b45309);color:#fff}
 .btn-fim-car{background:linear-gradient(135deg,var(--purple),#6d28d9);color:#fff}
 /* ASSINATURA */
 .assina-inner{display:flex;flex-direction:column;padding:14px;flex:1;min-height:0}
@@ -331,6 +332,7 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
   </div>
   <div class="footer hide" id="footer-sep">
     <button class="btn-rod btn-devtudo" onclick="abrirDevTudo()">↩ Devolver tudo</button>
+    <button class="btn-rod btn-forcar-sep hide" id="btn-forcar-sep" onclick="forcarFimSep()">⚡ Forçar</button>
     <button class="btn-rod btn-fim-sep" id="btn-fim-sep" onclick="irAssina('sep')" disabled>✓ Finalizar</button>
   </div>
   <!-- ASSINATURA SEPARAÇÃO -->
@@ -699,12 +701,16 @@ function renderDetSep() {
   document.getElementById('sep-prog').textContent = nSep + '/' + pars.length;
   // Banner de somente leitura
   const banner = finalizado
-    ? `<div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;display:flex;align-items:center;gap:8px;">✅ Separação finalizada — somente consulta</div>`
+    ? (sep.forcado
+        ? `<div style="background:#fef3c7;border:1px solid rgba(180,83,9,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#92400e;font-weight:600;display:flex;align-items:center;gap:8px;">⚡ Separação forçada por ${(sep.forcado_por||{}).nome||'—'} — sem conferência/assinatura</div>`
+        : `<div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600;display:flex;align-items:center;gap:8px;">✅ Separação finalizada — somente consulta</div>`)
     : '';
   document.getElementById('lista-peds-sep').innerHTML = banner + (pars.map((p, i) => pedCardSep(p, i, acoes[i], fotos[i]||[], finalizado)).join('') || '<div class="vazio"><div class="ico">📦</div>Sem pedidos.</div>');
   if (!finalizado) {
     const btn = document.getElementById('btn-fim-sep');
     btn.disabled = !(nRes === pars.length && pars.length > 0 && nSep > 0);
+    const podeForcar = usuario && ['admin', 'logistica'].includes(usuario.perfil);
+    document.getElementById('btn-forcar-sep').classList.toggle('hide', !podeForcar);
   }
 }
 function pedCardSep(p, i, acao, fotosArr, finalizado) {
@@ -1169,6 +1175,24 @@ window.confirmarAssina = function(tipo) {
         setTimeout(() => { window.location.href = '/despacho.html?dt=' + dtCar; }, 1800);
       }).catch(e => { esconderLoading(); toast('❌ ' + e.message, 'err'); });
   }
+};
+// Encerramento manual: pula conferência de itens e assinatura, marca a separação
+// como concluída na hora. Restrito a admin/logística (ver renderDetSep).
+window.forcarFimSep = function() {
+  const dt = DTS[dtSep]; if (!dt) return;
+  if (!confirm('Forçar finalização desta separação?\n\nIsso marca a separação como concluída imediatamente, sem conferir os pedidos pendentes nem coletar assinatura.')) return;
+  setLoading('Forçando finalização...');
+  fbUpd('despachos/' + dtSep, {
+    statusFluxo: 'separado',
+    'separacao/finalizada_em': Date.now(),
+    'separacao/finalizada_por': usuario ? { uid:usuario.uid, nome:usuario.nome } : { nome:'operador' },
+    'separacao/forcado': true,
+    'separacao/forcado_por': usuario ? { uid:usuario.uid, nome:usuario.nome } : { nome:'operador' }
+  }).then(() => {
+    esconderLoading();
+    toast('⚡ Separação forçada como finalizada!', 'ok');
+    setTimeout(() => { dtSep = null; mudarAba('car'); }, 1400);
+  }).catch(e => { esconderLoading(); toast('❌ ' + e.message, 'err'); });
 };
 // ══════════════════════════════════════════════════════════════════════════════
 // HISTÓRICO DE FOTOS (separação + carregamento)
