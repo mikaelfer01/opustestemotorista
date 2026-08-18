@@ -331,7 +331,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
 import { db as _db, auth } from '/js/firebase-init.js';
 import { ref, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getUsuarioAtual } from '/js/auth.js';
+import { onUsuarioPronto, getUsuarioAtual } from '/js/auth.js';
 
 var despachos = {}, marcadores = {}, paradaLy = [];
 var motoristaSel = null, filtroAtual = 'todos', buscaAtual = '', abaAtual = 'mapa';
@@ -339,10 +339,16 @@ var filtroMotPlaca = '', filtroRegiao = '', painelColapsado = false;
 var CORES = ['#3b82f6','#f97316','#22c55e','#a855f7','#ef4444','#06b6d4','#eab308','#ec4899'];
 var coresMot = {}, corIdx = 0;
 var map;
-var PODE_FORCAR_ENCERRAMENTO = (function(){
-  var usr = getUsuarioAtual();
-  return !!(usr && ['admin', 'logistica'].includes(usr.perfil));
-})();
+// getUsuarioAtual() só resolve depois que o auth state chega (é assíncrono);
+// no carregamento da página ainda retorna null, então a permissão é calculada
+// de novo quando onUsuarioPronto avisar que o perfil já está disponível.
+var PODE_FORCAR_ENCERRAMENTO = false;
+onUsuarioPronto(function(usr){
+  PODE_FORCAR_ENCERRAMENTO = !!(usr && ['admin', 'logistica'].includes(usr.perfil));
+  var btn = document.getElementById('btn-finalizar-transp');
+  if (btn) btn.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
+  if (typeof renderPainel === 'function') { try { renderPainel(); } catch(e) { console.error('[Torre] renderPainel apos permissao:', e); } }
+});
 
 // ── BUSCA POR NF / PEDIDO / CLIENTE ───────────────────────────────────────────
 // Compara NF e pedido só pelos dígitos, então "NF 12.345", "12345" e "nf12345"
@@ -530,9 +536,6 @@ window.forcarEncerramentoRota = async function(t){
 // (ex: "TG 3", "Camilo dos Santos 1") ignorando acento/maiúscula, então cobre
 // "Pajuçara"/"Pajucara" também. Marca concluido:true na hora, sem exigir que
 // as paradas tenham confirmação — fica registrado quem forçou.
-(function initBtnFinalizarTransp(){
-  if (PODE_FORCAR_ENCERRAMENTO) document.getElementById('btn-finalizar-transp').classList.remove('hide');
-})();
 var TRANSP_FINALIZAR_TODAS = ['TG', 'BHT', 'CAMILO', 'EUREKA', 'PAJU'];
 function normNomeTransp(v){ return (v==null?'':String(v)).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(); }
 window.finalizarRotasTransportadoras = async function(){
