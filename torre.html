@@ -721,7 +721,7 @@ window.renderPainel = function() {
       var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
       if (filtroAtual==='emrota' && (!d.iniciou||d.concluido)) return false;
       if (filtroAtual==='pendente' && nC>=nP) return false;
-      if (filtroAtual==='naoiniciada' && d.iniciou) return false;
+      if (filtroAtual==='naoiniciada' && (d.iniciou || d.concluido)) return false;
       if (filtroAtual==='concluido' && !d.concluido) return false;
       if (filtroMotPlaca && t !== filtroMotPlaca) return false;
       if (filtroRegiao) {
@@ -764,7 +764,7 @@ window.renderPainel = function() {
     var GPS_STALE_MS = 15*60*1000;
     var emRotaAtiva = d.iniciou && !d.concluido;
     var gpsStale = emRotaAtiva && (!d.gps || (Date.now()-(d.gps.ts||0)) > GPS_STALE_MS);
-    var status = !d.iniciou ? 'Aguardando início' : (d.concluido ? '✅ Concluído' : '🚗 Em rota');
+    var status = d.concluido ? '✅ Concluído' : (!d.iniciou ? 'Aguardando início' : '🚗 Em rota');
     var sel = motoristaSel===t;
     var nE=0, nD=0, nA=0, nP2=0, nFora=0;
     Object.values(d.confirmacoes||{}).forEach(function(c){
@@ -781,10 +781,15 @@ window.renderPainel = function() {
     // Rota marcada como concluída mas com paradas sem confirmação — sinal de
     // que verificarConcluido() fechou a rota cedo demais (ou algum outro
     // problema). Sem isso ela some da aba "Em rota" mesmo faltando entrega.
-    var concluidaComPendencia = !!d.concluido && nC < nP;
+    // Não se aplica a uma rota que a torre fechou de propósito (forcado) —
+    // ali a falta de confirmação é esperada, não é um erro pra investigar.
+    var concluidaComPendencia = !!d.concluido && nC < nP && !d.concluido_forcado;
 
-    var statusClasse = !d.iniciou ? 'st-aguardando' : (d.concluido ? 'st-concluido' : 'st-emrota');
-    var statusLabel = !d.iniciou ? 'Aguardando' : (d.concluido ? '✅ Concluído' : '🚗 Em rota');
+    // concluido manda sempre, mesmo numa rota que nunca chegou a iniciar
+    // (ex: encerrada à força antes do motorista abrir o link) — senão o
+    // card fica preso mostrando "Aguardando" pra sempre.
+    var statusClasse = d.concluido ? 'st-concluido' : (!d.iniciou ? 'st-aguardando' : 'st-emrota');
+    var statusLabel = d.concluido ? '✅ Concluído' : (!d.iniciou ? 'Aguardando' : '🚗 Em rota');
     if (emRotaAtiva && (gpsStale || nFora>0)) statusClasse = 'st-alerta';
     if (concluidaComPendencia) { statusClasse = 'st-alerta'; statusLabel = '⚠️ Concluída c/ pendência'; }
 
@@ -833,7 +838,7 @@ window.renderPainel = function() {
     if (PODE_FORCAR_ENCERRAMENTO && !d.concluido) {
       html += '<button onclick="event.stopPropagation();forcarEncerramentoRota(\''+t+'\')" style="width:100%;margin-top:6px;padding:7px;border:1.5px solid #b45309;border-radius:8px;background:rgba(245,158,11,.1);color:#92400e;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">🏁 Forçar encerramento</button>';
     }
-    if (PODE_FORCAR_ENCERRAMENTO && !d.iniciou) {
+    if (PODE_FORCAR_ENCERRAMENTO && !d.iniciou && !d.concluido) {
       html += '<button onclick="event.stopPropagation();excluirRotaForcado(\''+t+'\')" style="width:100%;margin-top:6px;padding:7px;border:1.5px solid var(--vm);border-radius:8px;background:rgba(220,38,38,.08);color:var(--vm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">🗑️ Excluir rota</button>';
     }
     if (sel) {
