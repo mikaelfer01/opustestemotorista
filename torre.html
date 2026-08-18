@@ -504,6 +504,37 @@ window.reabrirRota = async function(t){
   }
 };
 
+// Grava concluido:true no despacho e RELÊ do Firebase pra confirmar que a
+// gravação realmente pegou — não basta o 200 da API de escrita, porque um
+// PATCH pode "responder ok" e mesmo assim não refletir o valor esperado
+// (ex: payload rejeitado silenciosamente, path errado). Assim o botão só
+// reporta sucesso quando o dado no banco já mudou de verdade.
+async function _gravarConclusaoForcada(t){
+  var usr = getUsuarioAtual();
+  var resp = await fetch('/api/firebase-write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      path: 'despachos/' + t,
+      data: {
+        concluido: true,
+        tsConclusao: Date.now(),
+        concluido_forcado: true,
+        concluido_forcado_por: usr ? { uid: usr.uid, nome: usr.nome } : { nome: 'operador' }
+      },
+      method: 'update'
+    })
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ao gravar no Firebase');
+  var confResp = await fetch('/api/firebase-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: 'despachos/' + t + '/concluido' })
+  });
+  var confVal = confResp.ok ? await confResp.json() : null;
+  if (confVal !== true) throw new Error('gravação não confirmada no Firebase (leitura retornou ' + JSON.stringify(confVal) + ')');
+}
+
 // Encerra na hora uma única rota em aberto, direto do card — restrito a
 // admin/logística (ver PODE_FORCAR_ENCERRAMENTO). Não exige confirmação das
 // paradas; fica registrado quem forçou.
@@ -513,23 +544,8 @@ window.forcarEncerramentoRota = async function(t){
   var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
   if (!confirm('Forçar encerramento da rota de ' + (d.motoristaNome||'?') + ' (' + (d.nomeRota||'—') + ')?\n\n' + (nP-nC) + ' parada(s) ainda sem confirmação vão ficar pendentes, mas a rota some de "Em rota".')) return;
   try {
-    var usr = getUsuarioAtual();
-    var resp = await fetch('/api/firebase-write', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        path: 'despachos/' + t,
-        data: {
-          concluido: true,
-          tsConclusao: Date.now(),
-          concluido_forcado: true,
-          concluido_forcado_por: usr ? { uid: usr.uid, nome: usr.nome } : { nome: 'operador' }
-        },
-        method: 'update'
-      })
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    alert('🏁 Rota encerrada.');
+    await _gravarConclusaoForcada(t);
+    alert('🏁 Rota encerrada e confirmada no Firebase.');
   } catch (e) {
     alert('Erro ao forçar encerramento: ' + e.message);
   }
@@ -573,31 +589,16 @@ async function _finalizarRotasEmMassa(alvos, btnId, mensagemConfirm){
   var btn = document.getElementById(btnId);
   var txtOrig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Finalizando...'; }
-  var usr = getUsuarioAtual();
   var ok = 0, falhas = [];
   for (var i = 0; i < alvos.length; i++) {
     var t = alvos[i];
     try {
-      var resp = await fetch('/api/firebase-write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: 'despachos/' + t,
-          data: {
-            concluido: true,
-            tsConclusao: Date.now(),
-            concluido_forcado: true,
-            concluido_forcado_por: usr ? { uid: usr.uid, nome: usr.nome } : { nome: 'operador' }
-          },
-          method: 'update'
-        })
-      });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      await _gravarConclusaoForcada(t);
       ok++;
     } catch (e) { falhas.push((despachos[t].nomeRota||t) + ': ' + e.message); }
   }
   if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
-  alert('✅ ' + ok + ' rota(s) finalizada(s).' + (falhas.length ? '\n\n❌ Falhas:\n' + falhas.join('\n') : ''));
+  alert('✅ ' + ok + ' rota(s) finalizada(s) e confirmada(s) no Firebase.' + (falhas.length ? '\n\n❌ Falhas:\n' + falhas.join('\n') : ''));
 }
 
 window.finalizarRotasTransportadoras = async function(){
