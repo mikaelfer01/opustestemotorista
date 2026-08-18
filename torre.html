@@ -236,6 +236,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
           <option value="">Todas as regiões</option>
         </select>
       </div>
+      <button class="filtro-btn hide" id="btn-finalizar-naoiniciadas" onclick="finalizarTodasNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.3);font-weight:700" title="Finaliza na hora todas as rotas ainda não iniciadas e manda pra Concluídos">🏁 Finalizar todas as não iniciadas</button>
       <input class="busca" type="text" placeholder="Buscar por ID da rota, NF, pedido, cliente ou motorista..." oninput="filtrarBusca(this.value)">
     </div>
     <div class="painel-scroll" id="painel-lista">
@@ -346,8 +347,10 @@ var map;
 var PODE_FORCAR_ENCERRAMENTO = false;
 onUsuarioPronto(function(usr){
   PODE_FORCAR_ENCERRAMENTO = !!(usr && ['admin', 'logistica'].includes(usr.perfil));
-  var btn = document.getElementById('btn-finalizar-transp');
-  if (btn) btn.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
+  var btnTransp = document.getElementById('btn-finalizar-transp');
+  if (btnTransp) btnTransp.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
+  var btnNaoIniciadas = document.getElementById('btn-finalizar-naoiniciadas');
+  if (btnNaoIniciadas) btnNaoIniciadas.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
   if (typeof renderPainel === 'function') { try { renderPainel(); } catch(e) { console.error('[Torre] renderPainel apos permissao:', e); } }
 });
 
@@ -561,17 +564,13 @@ window.excluirRotaForcado = async function(t){
 // as paradas tenham confirmação — fica registrado quem forçou.
 var TRANSP_FINALIZAR_TODAS = ['TG', 'BHT', 'CAMILO', 'EUREKA', 'PAJU'];
 function normNomeTransp(v){ return (v==null?'':String(v)).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(); }
-window.finalizarRotasTransportadoras = async function(){
-  var alvos = Object.keys(despachos).filter(function(t){
-    var d = despachos[t];
-    if (!d || d.concluido) return false;
-    var alvo = normNomeTransp(d.nomeRota) + ' ' + normNomeTransp(d.motoristaNome);
-    return TRANSP_FINALIZAR_TODAS.some(function(p){ return alvo.indexOf(p) !== -1; });
-  });
-  if (!alvos.length) { alert('Nenhuma rota em aberto de TG, BHT, Camilo dos Santos, Eureka ou Pajuçara agora.'); return; }
-  var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
-  if (!confirm('Forçar finalização de ' + alvos.length + ' rota(s) em aberto?\n\n' + lista + '\n\nCada rota será marcada como concluída imediatamente, mesmo com paradas sem confirmação.')) return;
-  var btn = document.getElementById('btn-finalizar-transp');
+// Base comum dos botões de finalização em massa: recebe a lista de tokens já
+// filtrada, confirma, dispara o update de cada uma (mesmo payload usado pelo
+// forçar-encerramento individual) e reporta sucesso/falha no final.
+async function _finalizarRotasEmMassa(alvos, btnId, mensagemConfirm){
+  if (!alvos.length) { alert('Nenhuma rota encontrada para finalizar.'); return; }
+  if (!confirm(mensagemConfirm)) return;
+  var btn = document.getElementById(btnId);
   var txtOrig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Finalizando...'; }
   var usr = getUsuarioAtual();
@@ -599,6 +598,30 @@ window.finalizarRotasTransportadoras = async function(){
   }
   if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
   alert('✅ ' + ok + ' rota(s) finalizada(s).' + (falhas.length ? '\n\n❌ Falhas:\n' + falhas.join('\n') : ''));
+}
+
+window.finalizarRotasTransportadoras = async function(){
+  var alvos = Object.keys(despachos).filter(function(t){
+    var d = despachos[t];
+    if (!d || d.concluido) return false;
+    var alvo = normNomeTransp(d.nomeRota) + ' ' + normNomeTransp(d.motoristaNome);
+    return TRANSP_FINALIZAR_TODAS.some(function(p){ return alvo.indexOf(p) !== -1; });
+  });
+  var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
+  await _finalizarRotasEmMassa(alvos, 'btn-finalizar-transp',
+    'Forçar finalização de ' + alvos.length + ' rota(s) em aberto?\n\n' + lista + '\n\nCada rota será marcada como concluída imediatamente, mesmo com paradas sem confirmação.');
+};
+
+// Finaliza TODAS as rotas ainda não abertas pelo motorista (iniciou:false),
+// de qualquer transportadora, e manda direto pra "Concluídos".
+window.finalizarTodasNaoIniciadas = async function(){
+  var alvos = Object.keys(despachos).filter(function(t){
+    var d = despachos[t];
+    return d && !d.iniciou && !d.concluido;
+  });
+  var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
+  await _finalizarRotasEmMassa(alvos, 'btn-finalizar-naoiniciadas',
+    'Forçar finalização de TODAS as ' + alvos.length + ' rota(s) não iniciada(s)?\n\n' + lista + '\n\nElas vão direto pra "Concluídos", mesmo sem o motorista nunca ter aberto o link.');
 };
 
 // Atualiza TODAS as NFs pendentes de TODAS as rotas (útil pra colocar em dia
