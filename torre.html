@@ -225,6 +225,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
         <button class="filtro-btn on" onclick="setFiltro('todos',this)">Todos</button>
         <button class="filtro-btn" onclick="setFiltro('emrota',this)">🚗 Em rota</button>
         <button class="filtro-btn" onclick="setFiltro('pendente',this)">⏳ Pendentes</button>
+        <button class="filtro-btn" onclick="setFiltro('naoiniciada',this)">🛑 Não iniciadas</button>
         <button class="filtro-btn" onclick="setFiltro('concluido',this)">✅ Concluídos</button>
       </div>
       <div class="filtros-sel-row">
@@ -531,6 +532,28 @@ window.forcarEncerramentoRota = async function(t){
   }
 };
 
+// Exclui de vez uma rota que nunca foi iniciada (ex: DT criado por engano,
+// duplicado). Só aparece pra rotas com d.iniciou falso — pra rota já em
+// andamento ou concluída, o caminho é forçar encerramento, não excluir.
+// Restrito a admin/logística (ver PODE_FORCAR_ENCERRAMENTO).
+window.excluirRotaForcado = async function(t){
+  var d = despachos[t];
+  if (!d) return;
+  if (!confirm('Excluir definitivamente a rota de ' + (d.motoristaNome||'?') + ' (' + (d.nomeRota||'—') + ')?\n\nEla ainda não foi iniciada. Essa ação apaga o DT do sistema e não pode ser desfeita.')) return;
+  try {
+    var resp = await fetch('/api/firebase-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'despachos/' + t, method: 'remove' })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (motoristaSel === t) motoristaSel = null;
+    alert('🗑️ Rota excluída.');
+  } catch (e) {
+    alert('Erro ao excluir a rota: ' + e.message);
+  }
+};
+
 // Encerramento em massa das rotas em aberto (não concluídas) de um grupo fixo
 // de transportadoras — restrito a admin/logística. Casa pelo nome da rota
 // (ex: "TG 3", "Camilo dos Santos 1") ignorando acento/maiúscula, então cobre
@@ -698,6 +721,7 @@ window.renderPainel = function() {
       var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
       if (filtroAtual==='emrota' && (!d.iniciou||d.concluido)) return false;
       if (filtroAtual==='pendente' && nC>=nP) return false;
+      if (filtroAtual==='naoiniciada' && d.iniciou) return false;
       if (filtroAtual==='concluido' && !d.concluido) return false;
       if (filtroMotPlaca && t !== filtroMotPlaca) return false;
       if (filtroRegiao) {
@@ -808,6 +832,9 @@ window.renderPainel = function() {
     html += '<div class="mot-ult">🕐 '+(d.gps?tempoRel(d.gps.ts):'sem GPS')+' · '+nC+'/'+nP+' paradas</div>';
     if (PODE_FORCAR_ENCERRAMENTO && !d.concluido) {
       html += '<button onclick="event.stopPropagation();forcarEncerramentoRota(\''+t+'\')" style="width:100%;margin-top:6px;padding:7px;border:1.5px solid #b45309;border-radius:8px;background:rgba(245,158,11,.1);color:#92400e;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">🏁 Forçar encerramento</button>';
+    }
+    if (PODE_FORCAR_ENCERRAMENTO && !d.iniciou) {
+      html += '<button onclick="event.stopPropagation();excluirRotaForcado(\''+t+'\')" style="width:100%;margin-top:6px;padding:7px;border:1.5px solid var(--vm);border-radius:8px;background:rgba(220,38,38,.08);color:var(--vm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">🗑️ Excluir rota</button>';
     }
     if (sel) {
       var pendNF = (d.paradas||[]).filter(function(p){ return p.pedido && !p.nf; }).length;
