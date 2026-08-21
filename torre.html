@@ -508,12 +508,22 @@ window.reabrirRota = async function(t){
 // lista em tempo real). Relê em seguida pra confirmar que pegou de verdade.
 async function _gravarConclusaoForcada(t){
   var usr = getUsuarioAtual();
-  await update(ref(_db, 'despachos/' + t), {
+  var d = despachos[t] || {};
+  var patch = {
     concluido: true,
     tsConclusao: Date.now(),
     concluido_forcado: true,
     concluido_forcado_por: usr ? { uid: usr.uid, nome: usr.nome } : { nome: 'operador' }
-  });
+  };
+  // Uma rota concluída precisa estar "iniciada" pra ficar consistente com o
+  // resto do sistema — mas só forja iniciou/tsInicio quando ela realmente
+  // nunca foi aberta pelo motorista; numa rota já em andamento isso apagaria
+  // o horário real de início (e o gpsInicio real do celular dele).
+  if (!d.iniciou) {
+    patch.iniciou = true;
+    patch.tsInicio = Date.now();
+  }
+  await update(ref(_db, 'despachos/' + t), patch);
   var snap = await get(ref(_db, 'despachos/' + t + '/concluido'));
   if (snap.val() !== true) throw new Error('gravação não confirmada no Firebase (leitura retornou ' + JSON.stringify(snap.val()) + ')');
 }
@@ -600,7 +610,7 @@ window.finalizarTodasNaoIniciadas = async function(){
   });
   var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
   await _finalizarRotasEmMassa(alvos, 'btn-finalizar-naoiniciadas',
-    'Forçar finalização de TODAS as ' + alvos.length + ' rota(s) não iniciada(s)?\n\n' + lista + '\n\nElas vão direto pra "Concluídos", mesmo sem o motorista nunca ter aberto o link.');
+    'Iniciar e finalizar automaticamente TODAS as ' + alvos.length + ' rota(s) não iniciada(s)?\n\n' + lista + '\n\nElas vão ser marcadas como iniciadas e concluídas ao mesmo tempo, e vão direto pra "Concluídos" — mesmo sem o motorista nunca ter aberto o link.');
 };
 
 // Atualiza TODAS as NFs pendentes de TODAS as rotas (útil pra colocar em dia
