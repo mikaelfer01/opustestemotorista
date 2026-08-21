@@ -237,7 +237,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
         </select>
       </div>
       <button class="filtro-btn hide" id="btn-finalizar-naoiniciadas" onclick="finalizarTodasNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.3);font-weight:700" title="Finaliza na hora todas as rotas ainda não iniciadas e manda pra Concluídos">🏁 Finalizar todas as não iniciadas</button>
-      <button class="filtro-btn hide" id="btn-reverter-concluidas" onclick="retornarTodasConcluidasParaNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.3);font-weight:700" title="Desfaz início e conclusão de todas as rotas concluídas, devolvendo pra Não iniciadas">↩️ Retornar todas as concluídas p/ não iniciadas</button>
+      <button class="filtro-btn hide" id="btn-reverter-concluidas" onclick="retornarTodasConcluidasParaNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.3);font-weight:700" title="Desfaz início e conclusão de todas as rotas concluídas e pendentes, devolvendo pra Não iniciadas">↩️ Retornar concluídas e pendentes p/ não iniciadas</button>
       <input class="busca" type="text" placeholder="Buscar por ID da rota, NF, pedido, cliente ou motorista..." oninput="filtrarBusca(this.value)">
     </div>
     <div class="painel-scroll" id="painel-lista">
@@ -638,15 +638,21 @@ async function _gravarReversaoParaNaoIniciada(t){
 }
 
 // Retorna TODAS as rotas concluídas (de qualquer jeito — normal ou forçada)
-// pra "Não iniciadas", como se o motorista nunca tivesse aberto o link.
+// E pendentes (pelo menos 1 parada sem confirmação — mesmo critério da aba
+// "Pendentes") pra "Não iniciadas", como se o motorista nunca tivesse
+// aberto o link. Inclui rota com motorista ativo no meio da entrega agora
+// (progresso parcial) — as confirmações já registradas não são apagadas,
+// só o status iniciou/concluído é resetado.
 window.retornarTodasConcluidasParaNaoIniciadas = async function(){
   var alvos = Object.keys(despachos).filter(function(t){
     var d = despachos[t];
-    return d && d.concluido;
+    if (!d) return false;
+    var nC = Object.keys(d.confirmacoes||{}).length, nP = (d.paradas||[]).length;
+    return d.concluido || nC < nP;
   });
   var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
   await _rodarAcaoEmMassa(alvos, 'btn-reverter-concluidas',
-    'Retornar TODAS as ' + alvos.length + ' rota(s) concluída(s) para "Não iniciadas"?\n\n' + lista + '\n\nIsso desfaz o início e a conclusão de cada uma — voltam ao estado original, como se o motorista nunca tivesse aberto o link. As confirmações de entrega já registradas não são apagadas.',
+    'Retornar TODAS as ' + alvos.length + ' rota(s) concluída(s) e pendente(s) para "Não iniciadas"?\n\n' + lista + '\n\nIsso inclui rota com motorista ativo agora, com entrega parcial já confirmada — o status iniciou/concluído de cada uma é resetado (como se o motorista nunca tivesse aberto o link), mas as confirmações de entrega já registradas não são apagadas.',
     _gravarReversaoParaNaoIniciada, '⏳ Revertendo...', 'rota(s) revertida(s) para "Não iniciadas".');
 };
 
