@@ -237,6 +237,7 @@ body{display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
         </select>
       </div>
       <button class="filtro-btn hide" id="btn-finalizar-naoiniciadas" onclick="finalizarTodasNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.3);font-weight:700" title="Finaliza na hora todas as rotas ainda não iniciadas e manda pra Concluídos">🏁 Finalizar todas as não iniciadas</button>
+      <button class="filtro-btn hide" id="btn-reverter-concluidas" onclick="retornarTodasConcluidasParaNaoIniciadas()" style="width:100%;margin-bottom:8px;padding:7px;background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.3);font-weight:700" title="Desfaz início e conclusão de todas as rotas concluídas, devolvendo pra Não iniciadas">↩️ Retornar todas as concluídas p/ não iniciadas</button>
       <input class="busca" type="text" placeholder="Buscar por ID da rota, NF, pedido, cliente ou motorista..." oninput="filtrarBusca(this.value)">
     </div>
     <div class="painel-scroll" id="painel-lista">
@@ -351,6 +352,8 @@ onUsuarioPronto(function(usr){
   if (btnTransp) btnTransp.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
   var btnNaoIniciadas = document.getElementById('btn-finalizar-naoiniciadas');
   if (btnNaoIniciadas) btnNaoIniciadas.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
+  var btnReverter = document.getElementById('btn-reverter-concluidas');
+  if (btnReverter) btnReverter.classList.toggle('hide', !PODE_FORCAR_ENCERRAMENTO);
   if (typeof renderPainel === 'function') { try { renderPainel(); } catch(e) { console.error('[Torre] renderPainel apos permissao:', e); } }
 });
 
@@ -568,25 +571,26 @@ window.excluirRotaForcado = async function(t){
 // as paradas tenham confirmação — fica registrado quem forçou.
 var TRANSP_FINALIZAR_TODAS = ['TG', 'BHT', 'CAMILO', 'EUREKA', 'PAJU'];
 function normNomeTransp(v){ return (v==null?'':String(v)).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(); }
-// Base comum dos botões de finalização em massa: recebe a lista de tokens já
-// filtrada, confirma, dispara o update de cada uma (mesmo payload usado pelo
-// forçar-encerramento individual) e reporta sucesso/falha no final.
-async function _finalizarRotasEmMassa(alvos, btnId, mensagemConfirm){
-  if (!alvos.length) { alert('Nenhuma rota encontrada para finalizar.'); return; }
+// Base comum dos botões em massa (finalizar OU reverter): recebe a lista de
+// tokens já filtrada, confirma, roda acaoFn(t) pra cada uma e reporta
+// sucesso/falha no final. O loop e o relatório são idênticos nos dois casos,
+// só muda a gravação em si (acaoFn) e os textos do botão/alerta.
+async function _rodarAcaoEmMassa(alvos, btnId, mensagemConfirm, acaoFn, textoRodando, textoResultado){
+  if (!alvos.length) { alert('Nenhuma rota encontrada para essa ação.'); return; }
   if (!confirm(mensagemConfirm)) return;
   var btn = document.getElementById(btnId);
   var txtOrig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Finalizando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = textoRodando; }
   var ok = 0, falhas = [];
   for (var i = 0; i < alvos.length; i++) {
     var t = alvos[i];
     try {
-      await _gravarConclusaoForcada(t);
+      await acaoFn(t);
       ok++;
     } catch (e) { falhas.push((despachos[t].nomeRota||t) + ': ' + e.message); }
   }
   if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
-  alert('✅ ' + ok + ' rota(s) finalizada(s) e confirmada(s) no Firebase.' + (falhas.length ? '\n\n❌ Falhas:\n' + falhas.join('\n') : ''));
+  alert('✅ ' + ok + ' ' + textoResultado + (falhas.length ? '\n\n❌ Falhas:\n' + falhas.join('\n') : ''));
 }
 
 window.finalizarRotasTransportadoras = async function(){
@@ -597,8 +601,9 @@ window.finalizarRotasTransportadoras = async function(){
     return TRANSP_FINALIZAR_TODAS.some(function(p){ return alvo.indexOf(p) !== -1; });
   });
   var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
-  await _finalizarRotasEmMassa(alvos, 'btn-finalizar-transp',
-    'Forçar finalização de ' + alvos.length + ' rota(s) em aberto?\n\n' + lista + '\n\nCada rota será marcada como concluída imediatamente, mesmo com paradas sem confirmação.');
+  await _rodarAcaoEmMassa(alvos, 'btn-finalizar-transp',
+    'Forçar finalização de ' + alvos.length + ' rota(s) em aberto?\n\n' + lista + '\n\nCada rota será marcada como concluída imediatamente, mesmo com paradas sem confirmação.',
+    _gravarConclusaoForcada, '⏳ Finalizando...', 'rota(s) finalizada(s) e confirmada(s) no Firebase.');
 };
 
 // Finaliza TODAS as rotas ainda não abertas pelo motorista (iniciou:false),
@@ -609,8 +614,40 @@ window.finalizarTodasNaoIniciadas = async function(){
     return d && !d.iniciou && !d.concluido;
   });
   var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
-  await _finalizarRotasEmMassa(alvos, 'btn-finalizar-naoiniciadas',
-    'Iniciar e finalizar automaticamente TODAS as ' + alvos.length + ' rota(s) não iniciada(s)?\n\n' + lista + '\n\nElas vão ser marcadas como iniciadas e concluídas ao mesmo tempo, e vão direto pra "Concluídos" — mesmo sem o motorista nunca ter aberto o link.');
+  await _rodarAcaoEmMassa(alvos, 'btn-finalizar-naoiniciadas',
+    'Iniciar e finalizar automaticamente TODAS as ' + alvos.length + ' rota(s) não iniciada(s)?\n\n' + lista + '\n\nElas vão ser marcadas como iniciadas e concluídas ao mesmo tempo, e vão direto pra "Concluídos" — mesmo sem o motorista nunca ter aberto o link.',
+    _gravarConclusaoForcada, '⏳ Finalizando...', 'rota(s) finalizada(s) e confirmada(s) no Firebase.');
+};
+
+// Desfaz início e conclusão de uma rota, devolvendo ao estado "não iniciada"
+// original — inverso de _gravarConclusaoForcada. Não mexe nas confirmações
+// de entrega já registradas (d.confirmacoes), só no status iniciou/concluido
+// e nos carimbos/flags que vêm junto.
+async function _gravarReversaoParaNaoIniciada(t){
+  await update(ref(_db, 'despachos/' + t), {
+    concluido: false,
+    iniciou: false,
+    tsConclusao: null,
+    tsInicio: null,
+    gpsInicio: null,
+    concluido_forcado: null,
+    concluido_forcado_por: null
+  });
+  var snap = await get(ref(_db, 'despachos/' + t + '/iniciou'));
+  if (snap.val() !== false) throw new Error('reversão não confirmada no Firebase (leitura retornou ' + JSON.stringify(snap.val()) + ')');
+}
+
+// Retorna TODAS as rotas concluídas (de qualquer jeito — normal ou forçada)
+// pra "Não iniciadas", como se o motorista nunca tivesse aberto o link.
+window.retornarTodasConcluidasParaNaoIniciadas = async function(){
+  var alvos = Object.keys(despachos).filter(function(t){
+    var d = despachos[t];
+    return d && d.concluido;
+  });
+  var lista = alvos.map(function(t){ return '• ' + (despachos[t].nomeRota||'—') + ' — ' + (despachos[t].motoristaNome||'—'); }).join('\n');
+  await _rodarAcaoEmMassa(alvos, 'btn-reverter-concluidas',
+    'Retornar TODAS as ' + alvos.length + ' rota(s) concluída(s) para "Não iniciadas"?\n\n' + lista + '\n\nIsso desfaz o início e a conclusão de cada uma — voltam ao estado original, como se o motorista nunca tivesse aberto o link. As confirmações de entrega já registradas não são apagadas.',
+    _gravarReversaoParaNaoIniciada, '⏳ Revertendo...', 'rota(s) revertida(s) para "Não iniciadas".');
 };
 
 // Atualiza TODAS as NFs pendentes de TODAS as rotas (útil pra colocar em dia
