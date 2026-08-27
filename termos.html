@@ -816,206 +816,240 @@ async function _gerarTermoPDFInterno() {
   const tableW = W - ml - mr;
   let y = 20;
 
+  // Layout compacto pra caber numa folha só em rotas com um número normal
+  // de paradas — checarQuebra ainda adiciona página se realmente faltar
+  // espaço (rota muito grande), mas nunca corta dado do documento.
   function checarQuebra(altura) {
     if (y + altura > 283) { doc.addPage(); y = 20; }
   }
   function tituloSec(txt) {
-    checarQuebra(12);
-    y += 3.5;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    checarQuebra(9);
+    y += 2.6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(0, 0, 0);
     doc.text(txt.toUpperCase(), ml, y);
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6);
-    doc.line(ml, y + 1.5, W - mr, y + 1.5);
-    y += 6;
+    doc.line(ml, y + 1.3, W - mr, y + 1.3);
+    y += 4.6;
   }
   function campoBox(label, valor, x, y0, largura, altura) {
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2);
     doc.rect(x, y0, largura, altura, 'S');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(5.8); doc.setTextColor(80, 80, 80);
-    doc.text(label.toUpperCase(), x + 2, y0 + 3.2);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-    doc.text(String(valor == null || valor === '' ? '' : valor), x + 2, y0 + altura - 2.4, { maxWidth: largura - 4 });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(5.6); doc.setTextColor(80, 80, 80);
+    doc.text(label.toUpperCase(), x + 2, y0 + 2.8);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(0, 0, 0);
+    doc.text(String(valor == null || valor === '' ? '' : valor), x + 2, y0 + altura - 1.8, { maxWidth: largura - 4 });
   }
   function linhaBox(campos, altura) {
-    altura = altura || 10;
-    checarQuebra(altura + 1.2);
+    altura = altura || 8;
+    checarQuebra(altura + 1);
     const largura = tableW / campos.length;
     campos.forEach((c, i) => campoBox(c[0], c[1], ml + i * largura, y, largura, altura));
-    y += altura + 1.2;
+    y += altura + 1;
   }
   function caixaAlerta(txt) {
-    checarQuebra(10);
+    checarQuebra(8.5);
     doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
     doc.setLineDashPattern([1.2, 1], 0);
-    doc.rect(ml, y, tableW, 9, 'S');
+    doc.rect(ml, y, tableW, 7.5, 'S');
     doc.setLineDashPattern([], 0);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.3); doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(0, 0, 0);
     const prefixo = 'ATENÇÃO: ';
-    doc.text(prefixo, ml + 3, y + 5.5);
+    doc.text(prefixo, ml + 3, y + 4.8);
     const lp = doc.getTextWidth(prefixo);
     doc.setFont('helvetica', 'normal');
-    doc.text(txt, ml + 3 + lp, y + 5.5, { maxWidth: tableW - 6 - lp });
-    y += 13;
+    doc.text(txt, ml + 3 + lp, y + 4.8, { maxWidth: tableW - 6 - lp });
+    y += 10;
   }
   const fmtMoeda = v => v == null ? '—' : ('R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const fmtData = v => v ? String(v).split('-').reverse().join('/') : '';
 
-  // Cabeçalho — texto preto, sem faixas coloridas
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(0, 0, 0);
-  doc.text('GRUPO MF PARIS', ml, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 60, 60);
-  doc.text('TERMO DE TRANSPORTE DE CARGA', ml, y + 5.5);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-  doc.text('Rota: ' + (r.rotaNome || '—'), W - mr, y, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(60, 60, 60);
-  doc.text('Emitido em ' + new Date().toLocaleString('pt-BR'), W - mr, y + 5.5, { align: 'right' });
-  y += 6;
-  doc.setDrawColor(0, 0, 0); doc.setLineWidth(1);
-  doc.line(ml, y, W - mr, y);
-  y += 5;
-
   const ehPJ = !!(m && m.ehTransportadora);
 
-  // 1. Transportador (PJ) ou Identificação do Motorista (PF)
-  tituloSec(ehPJ ? '1. Transportadora Contratada' : '1. Identificação do Motorista');
-  if (ehPJ) {
-    linhaBox([['Razão social', m.transpRazao], ['CNPJ', m.transpCnpj]]);
-    linhaBox([['Situação cadastral', m.transpSituacao], ['Endereço', m.transpEndereco]]);
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(7.3); doc.setTextColor(70, 70, 70);
-    doc.text('Motorista e veículo designados pela transportadora para esta viagem — preencher à mão no embarque:', ml, y + 3);
-    y += 6.5;
-    linhaBox([['Nome do motorista', ''], ['CPF', ''], ['CNH', '']]);
-    linhaBox([['Placa do veículo', ''], ['Modelo do veículo', ''], ['UF', '']]);
-  } else {
-    linhaBox([['Nome completo', (m && m.nome) || r.motoristaNome], ['CPF', m && m.cpf]]);
-    linhaBox([['Data de nascimento', fmtData(m && m.nascimento)], ['Telefone', (m && m.telefone) || r.motoristaTel]]);
-    linhaBox([['Endereço', m && m.endereco]], 12);
-  }
-
-  // 2. Habilitação (apenas pessoa física — para transportadora, fica a critério do motorista designado à mão)
-  if (!ehPJ) {
-    tituloSec('2. Habilitação (CNH)');
-    linhaBox([
-      ['Nº CNH', m && m.cnh], ['Categoria', m && m.catCnh], ['Validade', fmtData(m && m.vencCnh)],
-    ]);
-  }
-
-  // 3. Veículo (apenas pessoa física — para transportadora já ficou como campo manual acima)
-  if (!ehPJ) {
-    tituloSec('3. Dados do Veículo');
-    linhaBox([
-      ['Placa', (m && m.placa) || r.motoristaPlaca], ['UF', m && m.ufVeiculo], ['Modelo', (m && m.veiculo) || r.motoristaVeiculo],
-    ]);
-    linhaBox([
-      ['RENAVAM', m && m.renavan], ['Propriedade', (m && m.veiculoTerceiro) ? 'De terceiro' : 'Próprio'],
-    ]);
-    if (m && m.veiculoTerceiro) {
-      linhaBox([['Proprietário no CRLV', m.terceiroNome], ['CPF/CNPJ proprietário', m.terceiroDoc]]);
-    }
-  }
-
-  // 4. TAC/RNTRC/ANTT
-  tituloSec('4. TAC / RNTRC / ANTT');
-  if (ehPJ) {
-    linhaBox([['RNTRC', m && m.transpRntrc], ['Categoria', m && m.transpCategoria], ['Referente a', 'Transportadora']]);
-  } else {
-    const rntrcValor = (m && m.veiculoTerceiro) ? m.terceiroRntrc : (m && m.rntrc);
-    const rntrcOrigem = (m && m.veiculoTerceiro) ? 'Proprietário do veículo' : 'Motorista autônomo';
-    linhaBox([['RNTRC', rntrcValor], ['ANTT / Registro', m && m.antt], ['Referente a', rntrcOrigem]]);
-  }
-
-  // 5. Pagamento
-  tituloSec('5. Dados para Pagamento (PIX)');
-  linhaBox([['Chave PIX', (m && m.pix) || r.motoristaPix], ['Beneficiário', (m && m.pixNome) || r.motoristaPixNome]]);
-
-  // 6. Remetente(s) — resumo numa linha só (compacto); a relação completa
-  // por pedido/cliente já está na tabela da seção 8, então aqui não repete
-  // um item por linha.
-  const empresasEnvolvidas = [...new Set(pedidosAtual.map(p => p.empresa))];
-  tituloSec('6. Remetente(s)');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-  const linhasRem = doc.splitTextToSize(empresasEnvolvidas.join('   •   ') || '—', tableW);
-  checarQuebra(linhasRem.length * 5);
-  doc.text(linhasRem, ml, y);
-  y += linhasRem.length * 5 + 2;
-
-  // 7. Destinatário(s) — idem, resumo compacto (detalhe completo na tabela abaixo)
-  const clientesUnicos = [...new Map(pedidosAtual.map(p => [p.cliente, p])).values()].map(c => c.cliente || '—');
-  tituloSec('7. Destinatário(s) (' + clientesUnicos.length + ')');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-  const linhasDest = doc.splitTextToSize(clientesUnicos.join('   •   ') || '—', tableW);
-  checarQuebra(linhasDest.length * 4.6);
-  doc.text(linhasDest, ml, y);
-  y += linhasDest.length * 4.6 + 2;
-
-  // 8. Relação de notas fiscais, pesos e valores
-  tituloSec('8. Relação de Notas Fiscais, Pesos e Valores');
-  const cols = [
-    { l: 'Empresa', w: 22 }, { l: 'Pedido', w: 16 }, { l: 'NF', w: 16 },
-    { l: 'Cliente', w: 60 }, { l: 'Peso (kg)', w: 22 }, { l: 'Vol.', w: 14 }, { l: 'Valor (R$)', w: 28 },
-  ];
-  let cx = ml;
-  const colX = cols.map(c => { const x = cx; cx += c.w; return x; });
-  checarQuebra(7);
-  doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
-  doc.rect(ml, y, tableW, 6, 'S');
-  colX.forEach((x, i) => { if (i > 0) doc.line(x, y, x, y + 6); });
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(0, 0, 0);
-  cols.forEach((c, i) => doc.text(c.l.toUpperCase(), colX[i] + 1.5, y + 4));
-  y += 6;
-
-  let totPeso = 0, totVol = 0, totValor = 0, temValorFaltando = false, temAlertaPeso = false, temPendencia = false;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2);
+  // Totais consolidados da rota — calculados uma vez só, usados no resumo
+  // do topo (bem visível) e reaproveitados na linha de TOTAL da tabela mais
+  // abaixo, sem recalcular duas vezes.
+  let totPeso = 0, totVol = 0, totValor = 0;
+  let temValorFaltando = false, temAlertaPeso = false, temPendencia = false;
   pedidosAtual.forEach(it => {
-    checarQuebra(6.5);
     const peso = it.pesoBruto || it.pesoRoteirizador || 0;
     totPeso += peso;
     totVol += (it.volumes || (it.status === 'ok' ? 1 : 0));
     if (it.valor != null) totValor += it.valor; else if (it.status === 'ok') temValorFaltando = true;
     if (it.status !== 'ok') temPendencia = true;
     if (it.status === 'ok' && (it.pesoBruto <= 0 || it.pesoEstimado)) temAlertaPeso = true;
-    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2);
-    doc.rect(ml, y, tableW, 6.5, 'S');
-    colX.forEach((x, i) => { if (i > 0) doc.line(x, y, x, y + 6.5); });
-    doc.setTextColor(0, 0, 0);
-    doc.text(String(it.empresa || '—'), colX[0] + 1.5, y + 4.3, { maxWidth: cols[0].w - 3 });
-    doc.text(String(it.pedido || '—'), colX[1] + 1.5, y + 4.3, { maxWidth: cols[1].w - 3 });
-    doc.text(String(it.nf || (it.status === 'sem' ? 'pend.' : '—')), colX[2] + 1.5, y + 4.3, { maxWidth: cols[2].w - 3 });
-    doc.text(String(it.cliente || '—'), colX[3] + 1.5, y + 4.3, { maxWidth: cols[3].w - 3 });
-    doc.text(peso.toFixed(1), colX[4] + 1.5, y + 4.3, { maxWidth: cols[4].w - 3 });
-    doc.text(String(it.volumes || (it.status === 'ok' ? 1 : '—')), colX[5] + 1.5, y + 4.3, { maxWidth: cols[5].w - 3 });
-    doc.text(it.valor != null ? it.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', colX[6] + 1.5, y + 4.3, { maxWidth: cols[6].w - 3 });
-    y += 6.5;
   });
-  checarQuebra(7);
+
+  // Cabeçalho — texto preto, sem faixas coloridas. Data/hora de emissão em
+  // destaque (fonte grande e em negrito) pra ficar visível de cara.
+  const agora = new Date();
+  const dataEmissaoStr = agora.toLocaleDateString('pt-BR');
+  const horaEmissaoStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(0, 0, 0);
+  doc.text('GRUPO MF PARIS', ml, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 60, 60);
+  doc.text('TERMO DE TRANSPORTE DE CARGA', ml, y + 5);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+  doc.text('Rota: ' + (r.rotaNome || '—'), W - mr, y - 2.5, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.3); doc.setTextColor(90, 90, 90);
+  doc.text('DATA DE EMISSÃO', W - mr, y + 2, { align: 'right' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
+  doc.text(dataEmissaoStr + '  ' + horaEmissaoStr, W - mr, y + 8, { align: 'right' });
+  y += 11;
+  doc.setDrawColor(0, 0, 0); doc.setLineWidth(1);
+  doc.line(ml, y, W - mr, y);
+  y += 4.5;
+
+  // Resumo consolidado da rota — visão rápida logo no topo, com os totais
+  // que antes só apareciam escondidos na última linha da tabela lá embaixo.
+  (function resumoConsolidado() {
+    const alturaBox = 15.5;
+    checarQuebra(alturaBox + 4);
+    doc.setFillColor(240, 240, 240);
+    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4);
+    doc.rect(ml, y, tableW, alturaBox, 'FD');
+    const itens = [
+      ['DATA DE EMISSÃO', dataEmissaoStr],
+      ['Nº DE PEDIDOS', String(pedidosAtual.length)],
+      ['PESO TOTAL', totPeso.toFixed(1) + ' kg'],
+      ['VOLUMES', String(totVol)],
+      ['VALOR TOTAL', fmtMoeda(totValor)],
+    ];
+    const largCol = tableW / itens.length;
+    itens.forEach((it, i) => {
+      const x0 = ml + i * largCol;
+      if (i > 0) { doc.setLineWidth(0.2); doc.line(x0, y, x0, y + alturaBox); }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.2); doc.setTextColor(90, 90, 90);
+      doc.text(it[0], x0 + largCol / 2, y + 5, { align: 'center' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+      doc.text(it[1], x0 + largCol / 2, y + 11.5, { align: 'center', maxWidth: largCol - 3 });
+    });
+    y += alturaBox + 4.5;
+  })();
+
+  // 1. Transportador (PJ) ou Identificação do Motorista (PF)
+  tituloSec(ehPJ ? '1. Transportadora Contratada' : '1. Identificação do Motorista');
+  if (ehPJ) {
+    linhaBox([['Razão social', m.transpRazao], ['CNPJ', m.transpCnpj]]);
+    linhaBox([['Situação cadastral', m.transpSituacao], ['Endereço', m.transpEndereco]]);
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(6.8); doc.setTextColor(70, 70, 70);
+    doc.text('Motorista e veículo designados pela transportadora para esta viagem — preencher à mão no embarque:', ml, y + 2.5);
+    y += 5.5;
+    linhaBox([['Nome do motorista', ''], ['CPF', ''], ['CNH', '']]);
+    linhaBox([['Placa do veículo', ''], ['Modelo do veículo', ''], ['UF', '']]);
+  } else {
+    linhaBox([['Nome completo', (m && m.nome) || r.motoristaNome], ['CPF', m && m.cpf]]);
+    linhaBox([['Data de nascimento', fmtData(m && m.nascimento)], ['Telefone', (m && m.telefone) || r.motoristaTel]]);
+    linhaBox([['Endereço', m && m.endereco]], 9);
+  }
+
+  // 2. Habilitação, veículo e registro (ANTT/RNTRC) — pessoa física reúne o
+  // que antes eram 3 seções separadas (CNH, Veículo, ANTT); transportadora
+  // (PJ) só traz o próprio RNTRC/categoria, já que o veículo é preenchido à
+  // mão acima.
+  tituloSec(ehPJ ? '2. Registro da Transportadora (ANTT/RNTRC)' : '2. Habilitação, Veículo e Registro (ANTT)');
+  if (ehPJ) {
+    linhaBox([['RNTRC', m && m.transpRntrc], ['Categoria', m && m.transpCategoria]]);
+  } else {
+    linhaBox([['Nº CNH', m && m.cnh], ['Categoria', m && m.catCnh], ['Validade CNH', fmtData(m && m.vencCnh)]]);
+    linhaBox([['Placa', (m && m.placa) || r.motoristaPlaca], ['UF', m && m.ufVeiculo], ['Modelo do veículo', (m && m.veiculo) || r.motoristaVeiculo]]);
+    const rntrcValor = (m && m.veiculoTerceiro) ? m.terceiroRntrc : (m && m.rntrc);
+    linhaBox([['RENAVAM', m && m.renavan], ['RNTRC', rntrcValor], ['ANTT / Registro', m && m.antt]]);
+    if (m && m.veiculoTerceiro) {
+      linhaBox([['Veículo de terceiro', 'Sim'], ['Proprietário no CRLV', m.terceiroNome], ['CPF/CNPJ proprietário', m.terceiroDoc]]);
+    }
+  }
+
+  // 3. Pagamento
+  tituloSec('3. Dados para Pagamento (PIX)');
+  linhaBox([['Chave PIX', (m && m.pix) || r.motoristaPix], ['Beneficiário', (m && m.pixNome) || r.motoristaPixNome]]);
+
+  // 4. Remetente(s) e Destinatário(s) — resumo compacto; a relação completa
+  // por pedido/cliente já está na tabela logo abaixo, então aqui não repete
+  // um item por linha.
+  const empresasEnvolvidas = [...new Set(pedidosAtual.map(p => p.empresa))];
+  const clientesUnicos = [...new Map(pedidosAtual.map(p => [p.cliente, p])).values()].map(c => c.cliente || '—');
+  tituloSec('4. Remetente(s) e Destinatário(s)');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.6); doc.setTextColor(90, 90, 90);
+  doc.text('REMETENTE(S)', ml, y);
+  y += 3.8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+  let linhas = doc.splitTextToSize(empresasEnvolvidas.join('   •   ') || '—', tableW);
+  checarQuebra(linhas.length * 4);
+  doc.text(linhas, ml, y);
+  y += linhas.length * 4 + 2.5;
+
+  checarQuebra(3.8);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.6); doc.setTextColor(90, 90, 90);
+  doc.text('DESTINATÁRIO(S) — ' + clientesUnicos.length + ' cliente(s)', ml, y);
+  y += 3.8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+  linhas = doc.splitTextToSize(clientesUnicos.join('   •   ') || '—', tableW);
+  checarQuebra(linhas.length * 4);
+  doc.text(linhas, ml, y);
+  y += linhas.length * 4 + 2;
+
+  // 5. Relação de notas fiscais, pesos e valores
+  tituloSec('5. Relação de Notas Fiscais, Pesos e Valores');
+  const cols = [
+    { l: 'Empresa', w: 22 }, { l: 'Pedido', w: 16 }, { l: 'NF', w: 16 },
+    { l: 'Cliente', w: 60 }, { l: 'Peso (kg)', w: 22 }, { l: 'Vol.', w: 14 }, { l: 'Valor (R$)', w: 28 },
+  ];
+  let cx = ml;
+  const colX = cols.map(c => { const x = cx; cx += c.w; return x; });
+  checarQuebra(6);
+  doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
+  doc.rect(ml, y, tableW, 5.5, 'S');
+  colX.forEach((x, i) => { if (i > 0) doc.line(x, y, x, y + 5.5); });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.3); doc.setTextColor(0, 0, 0);
+  cols.forEach((c, i) => doc.text(c.l.toUpperCase(), colX[i] + 1.5, y + 3.7));
+  y += 5.5;
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8);
+  pedidosAtual.forEach(it => {
+    checarQuebra(5.5);
+    const peso = it.pesoBruto || it.pesoRoteirizador || 0;
+    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2);
+    doc.rect(ml, y, tableW, 5.5, 'S');
+    colX.forEach((x, i) => { if (i > 0) doc.line(x, y, x, y + 5.5); });
+    doc.setTextColor(0, 0, 0);
+    doc.text(String(it.empresa || '—'), colX[0] + 1.5, y + 3.7, { maxWidth: cols[0].w - 3 });
+    doc.text(String(it.pedido || '—'), colX[1] + 1.5, y + 3.7, { maxWidth: cols[1].w - 3 });
+    doc.text(String(it.nf || (it.status === 'sem' ? 'pend.' : '—')), colX[2] + 1.5, y + 3.7, { maxWidth: cols[2].w - 3 });
+    doc.text(String(it.cliente || '—'), colX[3] + 1.5, y + 3.7, { maxWidth: cols[3].w - 3 });
+    doc.text(peso.toFixed(1), colX[4] + 1.5, y + 3.7, { maxWidth: cols[4].w - 3 });
+    doc.text(String(it.volumes || (it.status === 'ok' ? 1 : '—')), colX[5] + 1.5, y + 3.7, { maxWidth: cols[5].w - 3 });
+    doc.text(it.valor != null ? it.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', colX[6] + 1.5, y + 3.7, { maxWidth: cols[6].w - 3 });
+    y += 5.5;
+  });
+  checarQuebra(6.5);
   doc.setLineWidth(0.5);
-  doc.rect(ml, y, tableW, 7, 'S');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
-  doc.text('TOTAL', ml + 2, y + 4.8);
-  doc.text(totPeso.toFixed(1) + ' kg', colX[4] + 1.5, y + 4.8);
-  doc.text(String(totVol) + ' vol.', colX[5] + 1.5, y + 4.8);
-  doc.text(fmtMoeda(totValor), colX[6] + 1.5, y + 4.8);
-  y += 9;
+  doc.rect(ml, y, tableW, 6.5, 'S');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2);
+  doc.text('TOTAL', ml + 2, y + 4.3);
+  doc.text(totPeso.toFixed(1) + ' kg', colX[4] + 1.5, y + 4.3);
+  doc.text(String(totVol) + ' vol.', colX[5] + 1.5, y + 4.3);
+  doc.text(fmtMoeda(totValor), colX[6] + 1.5, y + 4.3);
+  y += 8.5;
 
   if (temPendencia) caixaAlerta('Este termo contém pedido(s) sem NF-e localizada no momento da emissão — confira antes de assinar.');
   if (temAlertaPeso) caixaAlerta('Peso bruto/líquido de uma ou mais notas está fora do padrão ou foi estimado — confira antes de assinar.');
   if (temValorFaltando) caixaAlerta('Valor de uma ou mais notas não foi localizado no Omie — confira antes de assinar.');
 
-  // 9. Declaração de recebimento (sem canhoto de assinatura por NF — quem
+  // 6. Declaração de recebimento (sem canhoto de assinatura por NF — quem
   // recebe a carga assina a via impressa da própria NF, anexada a seguir)
-  checarQuebra(12 + 14);
-  tituloSec('9. Declaração de Recebimento da Carga');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
+  checarQuebra(9 + 12);
+  tituloSec('6. Declaração de Recebimento da Carga');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
   const declTexto = 'Declaro, para os devidos fins, que recebi a carga discriminada acima em perfeitas condições, ' +
     'nas quantidades, pesos e valores indicados, comprometendo-me a transportá-la e entregá-la aos respectivos ' +
     'destinatários, respondendo por quaisquer avarias, extravios ou atrasos que der causa durante o transporte.';
   doc.text(doc.splitTextToSize(declTexto, tableW), ml, y);
-  y += 12;
+  y += 10.5;
 
-  // 10. Assinaturas
-  checarQuebra(12 + 15);
-  tituloSec('10. Assinaturas');
-  y += 8;
+  // 7. Assinaturas
+  checarQuebra(9 + 13);
+  tituloSec('7. Assinaturas');
+  y += 7;
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
   doc.line(ml, y, ml + 78, y);
   doc.line(W - mr - 78, y, W - mr, y);
