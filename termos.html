@@ -178,7 +178,6 @@ tr:hover td{background:rgba(184,134,74,.04);}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
 <script type="module">
   try {
@@ -478,29 +477,6 @@ async function buscarBoletosPorNF(numeroNF, chaveNF, numeroPedido, empCod) {
     log('Boletos (NF ' + numeroNF + '): ' + (e.message || e));
   }
   return links;
-}
-
-/* Gera um QR code (PNG data URL) a partir de um texto, desenhando módulo a
-   módulo num <canvas> — usa a biblioteca qrcode-generator (window.qrcode),
-   que só sabe gerar GIF/SVG/tabela HTML prontos; desenhar em canvas e
-   exportar como PNG garante compatibilidade com jsPDF.addImage(). */
-function _gerarQrCodeDataUrl(texto, tamanhoPx) {
-  const qr = qrcode(0, 'M');
-  qr.addData(texto);
-  qr.make();
-  const n = qr.getModuleCount();
-  const escala = Math.max(1, Math.floor(tamanhoPx / n));
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = n * escala;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000';
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      if (qr.isDark(r, c)) ctx.fillRect(c * escala, r * escala, escala, escala);
-    }
-  }
-  return canvas.toDataURL('image/png');
 }
 
 /* Busca o arquivo pelo proxy (evita bloqueio de CORS ao ler o PDF do Omie). */
@@ -1050,62 +1026,6 @@ async function _gerarTermoPDFInterno() {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
     doc.text((m && m.nome) || r.motoristaNome || '', ml, y + 10);
   }
-
-  // 11. Página de envio de canhotos assinados — QR code que leva direto pro
-  // link do motorista (o mesmo já usado no despacho/torre/WhatsApp), onde
-  // ele confirma cada entrega e anexa a foto do canhoto assinado — sem
-  // precisar mandar nada separado por WhatsApp/e-mail.
-  doc.addPage();
-  y = 20;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(0, 0, 0);
-  doc.text('GRUPO MF PARIS', ml, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 60, 60);
-  doc.text('ENVIO DE CANHOTOS ASSINADOS', ml, y + 5.5);
-  y += 7;
-  doc.setDrawColor(0, 0, 0); doc.setLineWidth(1);
-  doc.line(ml, y, W - mr, y);
-  y += 6;
-
-  linhaBox([['Rota', r.rotaNome], ['Motorista', (m && m.nome) || r.motoristaNome], ['Placa', (m && m.placa) || r.motoristaPlaca]]);
-
-  tituloSec('Como enviar os canhotos desta rota');
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-  [
-    '1. Aponte a câmera do celular para o QR code abaixo (ou digite o link impresso no navegador).',
-    '2. A página abre direto nesta rota — não precisa digitar nada nem fazer login.',
-    '3. Em cada parada, toque em "Confirmar entrega" e tire a foto do canhoto assinado pelo cliente.',
-    '4. Pronto: o comprovante já fica registrado no sistema na hora, sem precisar enviar por WhatsApp ou e-mail à parte.',
-  ].forEach(linha => {
-    const linhasQuebradas = doc.splitTextToSize(linha, tableW);
-    checarQuebra(linhasQuebradas.length * 4.6 + 1.5);
-    doc.text(linhasQuebradas, ml, y);
-    y += linhasQuebradas.length * 4.6 + 1.5;
-  });
-  y += 6;
-
-  const linkMotorista = location.origin + '/motorista.html?token=' + rotaAtual.token;
-  try {
-    const qrDataUrl = _gerarQrCodeDataUrl(linkMotorista, 320);
-    const qrTamanhoMm = 68;
-    const qrX = (W - qrTamanhoMm) / 2;
-    checarQuebra(qrTamanhoMm + 8);
-    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3);
-    doc.rect(qrX - 3, y - 3, qrTamanhoMm + 6, qrTamanhoMm + 6, 'S');
-    doc.addImage(qrDataUrl, 'PNG', qrX, y, qrTamanhoMm, qrTamanhoMm);
-    y += qrTamanhoMm + 8;
-  } catch (e) {
-    console.error('[Termo] Falha ao gerar QR code de canhotos:', e);
-    log('QR code de envio de canhotos não pôde ser gerado: ' + (e.message || e));
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(150, 50, 50);
-    doc.text('(QR code não pôde ser gerado — use o link abaixo)', W / 2, y, { align: 'center' });
-    y += 8;
-  }
-
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(70, 70, 70);
-  doc.text('Ou acesse direto pelo link:', W / 2, y, { align: 'center' });
-  y += 4.5;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
-  doc.text(linkMotorista, W / 2, y, { align: 'center', maxWidth: tableW });
 
   // Rodapé em todas as páginas do termo em si (antes de anexar as NFs)
   const totalPaginasTermo = doc.internal.getNumberOfPages();
