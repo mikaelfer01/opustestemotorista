@@ -76,6 +76,30 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="diagnosticarBoletoPedido()">Diagnosticar boleto do pedido</button>
 <div id="res-boleto"></div>
 
+<h2>Diagnóstico — Etapa "Coletados" no Kanban do Omie</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Pra mover pedido pra "Coletados" automaticamente (ex.: quando o termo é gerado), preciso saber o
+  código exato dessa etapa no Kanban de vocês — só existe um jeito confiável de descobrir isso: olhar
+  o que já está gravado nos pedidos reais. <b>Ferramenta 1</b> lista as etapas (<code>cabecalho.etapa</code>)
+  que aparecem nos pedidos recentes, com um pedido de exemplo de cada uma — abra esse pedido no Omie e
+  veja em qual coluna do Kanban ele está, pra identificar o código de "Coletados". <b>Ferramenta 2</b>
+  testa mudar a etapa de UM pedido de teste pra confirmar que o Omie aceita a escrita antes de eu
+  automatizar isso de verdade.
+</p>
+<select id="kb-empresa">
+  <option value="MFP">MF Paris</option>
+  <option value="DMS">DMS</option>
+  <option value="PRF">Profi</option>
+</select>
+<br><br>
+<button onclick="listarEtapasEmUso()">1. Listar etapas em uso (últimas ~10 páginas)</button>
+<div id="res-etapas"></div>
+<br>
+<input id="kb-pedido" placeholder="Número do pedido de TESTE (ex.: 12171)"/>
+<input id="kb-etapa-alvo" placeholder="Código da etapa alvo (ex.: 65)"/>
+<button onclick="testarMudarEtapa()">2. Testar mudança de etapa nesse pedido</button>
+<div id="res-mudar-etapa"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -346,6 +370,89 @@ async function omie(ep, call, param, empresa) {
     body: JSON.stringify({endpoint:ep, call, param, empresa: empresa || 'MFP'})
   });
   return r.json();
+}
+
+// Varre páginas recentes de ListarPedidos (sem filtro de etapa) e tabula os
+// valores distintos de cabecalho.etapa, com um exemplo de pedido/cliente de
+// cada um — não dá pra saber o código de "Coletados" sem olhar o Kanban do
+// Omie de verdade, então aqui só reunimos os candidatos.
+const EP_PEDIDO_DIAG = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+async function listarEtapasEmUso() {
+  const empresa = document.getElementById('kb-empresa').value;
+  const div = document.getElementById('res-etapas');
+  div.innerHTML = '<pre>Varrendo pedidos recentes...</pre>';
+  const etapas = {}; // etapa -> { qtd, exemplo: {numero_pedido, cliente} }
+  const TETO_PAGINAS = 10;
+  try {
+    for (let pag = 1; pag <= TETO_PAGINAS; pag++) {
+      const data = await omie(EP_PEDIDO_DIAG, 'ListarPedidos', [{
+        pagina: pag, registros_por_pagina: 50, apenas_importado_api: 'N'
+      }], empresa);
+      if (data.faultstring) { div.innerHTML += '<pre>Parou na página ' + pag + ': ' + data.faultstring + '</pre>'; break; }
+      const lista = data.pedido_venda_produto || [];
+      lista.forEach(p => {
+        const et = String((p.cabecalho||{}).etapa ?? '—');
+        if (!etapas[et]) {
+          etapas[et] = {
+            qtd: 0,
+            exemplo: {
+              numero_pedido: p.cabecalho?.numero_pedido,
+              cliente: (p.informacoes_adicionais && p.informacoes_adicionais.contato) || '',
+              faturado: (p.infoCadastro||{}).faturado || '—'
+            }
+          };
+        }
+        etapas[et].qtd++;
+      });
+      const totalPag = data.total_de_paginas || 1;
+      if (pag >= totalPag) break;
+      await new Promise(r => setTimeout(r, 350));
+    }
+    const linhas = Object.keys(etapas).sort().map(et => {
+      const e = etapas[et];
+      return 'Etapa ' + et + '  ·  ' + e.qtd + ' pedido(s) nesta amostra  ·  faturado=' + e.exemplo.faturado +
+        '  ·  exemplo: pedido ' + (e.exemplo.numero_pedido || '—') + ' — ' + (e.exemplo.cliente || '—');
+    });
+    div.innerHTML = '<pre>' + (linhas.join('\n') || 'Nenhum pedido encontrado.') +
+      '\n\nAbra um dos pedidos de exemplo no Omie e veja em qual coluna do Kanban ele aparece — isso identifica o código de "Coletados".</pre>';
+  } catch (e) {
+    div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
+}
+
+// Testa se o Omie aceita mudar cabecalho.etapa via AlterarPedidoVenda — não
+// está confirmado que esse campo é gravável por essa chamada (só vimos
+// observacoes/det sendo alterados neste projeto até agora). Rode com um
+// pedido de TESTE antes de confiar nisso em produção.
+async function testarMudarEtapa() {
+  const empresa = document.getElementById('kb-empresa').value;
+  const numero = document.getElementById('kb-pedido').value.trim();
+  const etapaAlvo = document.getElementById('kb-etapa-alvo').value.trim();
+  const div = document.getElementById('res-mudar-etapa');
+  if (!numero || !etapaAlvo) { div.innerHTML = '<pre style="color:#f87171">Informe o número do pedido e a etapa alvo.</pre>'; return; }
+  div.innerHTML = '<pre>Buscando o pedido...</pre>';
+  try {
+    const n = parseInt(numero, 10) || 0;
+    const busca = await omie(EP_PEDIDO_DIAG, 'ListarPedidos', [{
+      pagina: 1, registros_por_pagina: 5, numero_pedido_de: n, numero_pedido_ate: n, apenas_importado_api: 'N'
+    }], empresa);
+    const achado = (busca.pedido_venda_produto || [])[0];
+    if (!achado) { div.innerHTML = '<pre style="color:#f87171">Pedido não encontrado em ' + empresa + '.</pre>'; return; }
+    const codigoPedido = achado.cabecalho.codigo_pedido;
+    const etapaAtual = achado.cabecalho.etapa;
+    div.innerHTML = '<pre>Pedido ' + numero + ' (codigo_pedido ' + codigoPedido + ') — etapa atual: ' + etapaAtual + '\nTentando mudar para etapa ' + etapaAlvo + '...</pre>';
+    const resp = await omie(EP_PEDIDO_DIAG, 'AlterarPedidoVenda', [{
+      cabecalho: { codigo_pedido: codigoPedido, etapa: etapaAlvo }
+    }], empresa);
+    div.innerHTML += '<pre>Resposta do Omie:\n' + JSON.stringify(resp, null, 2) + '</pre>';
+    if (resp.faultstring) {
+      div.innerHTML += '<pre style="color:#f87171">Omie recusou — o campo etapa provavelmente não é gravável direto por AlterarPedidoVenda desse jeito. Pode ser necessário outro campo/endpoint.</pre>';
+    } else {
+      div.innerHTML += '<pre style="color:#22c55e">Sem erro retornado — confira no Omie se o pedido ' + numero + ' realmente mudou de coluna no Kanban.</pre>';
+    }
+  } catch (e) {
+    div.innerHTML += '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
 }
 
 // Busca um pedido pelo número em MF Paris, DMS e Profi (nessa ordem) e
