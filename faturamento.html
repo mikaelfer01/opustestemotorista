@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faturamento ao Vivo — OPUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1500px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px;}
+.controls select,.controls input{height:34px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 10px;font-size:12px;background:#fff;font-family:inherit;outline:none;color:var(--navy);}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.btn-primary{padding:8px 18px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-secondary{padding:0 14px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary.on{border-color:var(--green);background:var(--green-l);color:var(--green);}
+.hint{font-size:11px;color:var(--muted);line-height:1.6;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr);}}
+.kcard{background:var(--card);border:0.5px solid var(--gold-b);border-radius:12px;padding:14px 16px;}
+.kcard .label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kcard .val{font-size:20px;font-weight:600;color:var(--navy);}
+.kcard .sub{font-size:10px;color:var(--div);margin-top:2px;}
+.progress-bar{height:3px;background:var(--icon);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s;width:0;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:110px;overflow-y:auto;margin-bottom:12px;display:none;line-height:1.7;}
+.erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px;display:none;}
+.table-wrap{overflow-x:auto;border:0.5px solid var(--gold-b);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{padding:9px 10px;text-align:left;background:var(--navy);font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+td{padding:7px 10px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--cream);}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);}
+td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
+.emp{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.e-MFP{background:var(--blue-l);color:var(--blue);}
+.e-DMS{background:var(--green-l);color:var(--green);}
+.e-PROFI{background:var(--amber-l);color:var(--amber);}
+.rodape{font-size:10px;color:var(--muted);margin-top:8px;text-align:right;}
+.toast{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:fadeUp .25s ease;}
+.toast-ok{background:var(--green);color:#fff;}
+.toast-err{background:var(--red);color:#fff;}
+.toast-info{background:var(--navy);color:#fff;}
+.live-indicator{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted);}
+.live-indicator .dot{width:8px;height:8px;border-radius:50%;background:var(--div);flex-shrink:0;}
+.live-indicator.st-live .dot{background:var(--green);animation:pulseLive 1.6s ease-in-out infinite;}
+.live-indicator.st-checking .dot{background:var(--blue);animation:pulseLive .8s ease-in-out infinite;}
+.live-indicator.st-paused .dot{background:var(--div);}
+@keyframes pulseLive{0%,100%{box-shadow:0 0 0 0 rgba(46,125,82,.35);}50%{box-shadow:0 0 0 6px rgba(46,125,82,0);}}
+@keyframes flashNovo{0%{background:var(--gold-l);}100%{background:transparent;}}
+tr.row-novo td{animation:flashNovo 3.5s ease-out;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="sec">
+    <div class="sec-title">
+      <span>Faturamento ao vivo</span>
+      <span class="live-indicator st-paused" id="live-dot"><span class="dot"></span><span id="live-label">Parado</span></span>
+    </div>
+    <div class="controls">
+      <label class="fld">Data
+        <input type="date" id="f-data">
+      </label>
+      <label class="fld">Empresa
+        <select id="f-empresa">
+          <option value="">Todas</option>
+          <option value="MFP">MF Paris</option>
+          <option value="DMS">DMS</option>
+          <option value="PROFI">Profi</option>
+        </select>
+      </label>
+      <label class="fld">Verificar a cada
+        <select id="f-intervalo">
+          <option value="15">15 segundos</option>
+          <option value="30" selected>30 segundos</option>
+          <option value="60">1 minuto</option>
+          <option value="120">2 minutos</option>
+        </select>
+      </label>
+      <button class="btn-primary" id="btn-pausar">⏸ Pausar</button>
+      <button class="btn-secondary" id="btn-agora">🔄 Verificar agora</button>
+      <button class="btn-secondary on" id="btn-som">🔔 Som: ligado</button>
+      <button class="btn-secondary" id="btn-notif">🔕 Notificação: desligada</button>
+    </div>
+    <div class="hint">
+      Consulta direto a API do Omie (produtos/pedido → ListarPedidos) — não existe webhook de faturamento
+      disponível aqui, então "ao vivo" é uma verificação automática recorrente enquanto esta página estiver
+      aberta no navegador, no intervalo escolhido acima (mínimo 15s pra não estourar o limite de chamadas do
+      Omie). Um pedido é considerado faturado no dia quando <code>infoCadastro.dFat</code> bate com a data
+      selecionada.
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="kcard"><div class="label">Faturado no dia</div><div class="val" id="k-valor" style="color:var(--green)">—</div><div class="sub">valor total dos pedidos</div></div>
+    <div class="kcard"><div class="label">Pedidos faturados</div><div class="val" id="k-qtd">—</div><div class="sub">no dia selecionado</div></div>
+    <div class="kcard"><div class="label">Última verificação</div><div class="val" id="k-hora" style="font-size:16px">—</div><div class="sub" id="k-status">parado</div></div>
+    <div class="kcard"><div class="label">Novos desde que abriu</div><div class="val" id="k-novos" style="color:var(--gold)">0</div><div class="sub">detectados ao vivo</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title"><span>Pedidos faturados</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="log" id="log"></div>
+    <div class="erro" id="erro"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:70px">Empresa</th>
+          <th style="width:100px">Pedido</th>
+          <th>Cliente</th>
+          <th style="width:100px">Faturado em</th>
+          <th style="width:130px">Valor</th>
+          <th style="width:80px">Detectado</th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="rodape" id="rodape"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Controle de acesso: mesmo auth.js do resto do sistema. -->
+<script type="module">
+  try {
+    const m = await import('/js/auth.js');
+    m.exigirPerfis(['admin', 'logistica', 'comercial']);
+  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
+</script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG — key/secret NÃO ficam aqui, /api/omie-seguro resolve no servidor.
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = { MFP: { nome: 'MF Paris' }, DMS: { nome: 'DMS' }, PROFI: { nome: 'Profi' } };
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+// Etapas que já foram faturadas no fluxo do Omie usado neste projeto (mesma
+// classificação já usada em roteirizador.html: infoCadastro.faturado==='S'
+// OU etapa 70/80/90/100 == "Faturado").
+const ETAPAS_FATURADO = ['70', '80', '90', '100'];
+// Janela de inclusão do pedido escaneada a cada verificação — não é a data de
+// faturamento (essa vem de infoCadastro.dFat, conferida linha a linha), é só
+// até onde voltamos pra não perder pedido incluído há um tempo mas faturado
+// só depois. 45 dias cobre folgado o caso comum sem pesar demais a consulta.
+const JANELA_DIAS = 45;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. ESTADO
+   ══════════════════════════════════════════════════════════════════════════ */
+let resultadosAtuais = [];      // lista completa (sem filtro de empresa) do último ciclo
+let vistos = new Set();         // chave "EMP|codigo_pedido" já visto nesta sessão/data
+const detectadoEm = {};         // chave -> hora (HH:MM:SS) de quando foi detectado
+let primeiraCarga = true;       // não alerta nada no 1º carregamento da data
+let contadorNovos = 0;
+let pausado = false;
+let rodando = false;            // guarda contra ciclo sobreposto
+let pollTimer = null;
+let ultimaAtualizacao = null;
+let somAtivo = true;
+let notifAtivo = false;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. UTILITÁRIOS
+   ══════════════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-' + (tipo || 'info');
+  el.textContent = msg;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function erro(msg) {
+  const el = $('erro');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg; el.style.display = 'block';
+}
+function progresso(pct) { $('progress').style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+function fmtBr(d) { return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
+function fmtMoeda(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function hojeLocalISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. CHAMADA À API DO OMIE (via proxy /api/omie-seguro já existente no projeto)
+   ══════════════════════════════════════════════════════════════════════════ */
+async function omieCall(endpoint, call, empCod, param, tentativa) {
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) {
+    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      log('Limite da API atingido — aguardando ' + seg + 's…');
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, true);
+    }
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    throw err;
+  }
+  return data;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. BUSCA DOS PEDIDOS FATURADOS NO DIA
+   ══════════════════════════════════════════════════════════════════════════ */
+async function buscarFaturadosDoDia(dataISO) {
+  const dtAlvoBr = dataISO.split('-').reverse().join('/');
+  const hoje = new Date();
+  const dtCorte = new Date(); dtCorte.setDate(dtCorte.getDate() - JANELA_DIAS);
+  const dtDe = fmtBr(dtCorte), dtAte = fmtBr(hoje);
+  const empresas = Object.keys(EMPRESAS);
+  const totalPasso = empresas.length * ETAPAS_FATURADO.length;
+  let passo = 0;
+  const resultados = [];
+
+  for (const empCod of empresas) {
+    for (const etapa of ETAPAS_FATURADO) {
+      let pag = 1, totalPag = 1;
+      while (pag <= totalPag) {
+        let data;
+        try {
+          data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+            pagina: pag, registros_por_pagina: 50, apenas_importado_api: 'N',
+            etapa, filtrar_por_data_de: dtDe, filtrar_por_data_ate: dtAte
+          }]);
+        } catch (e) {
+          log(EMPRESAS[empCod].nome + ' · etapa ' + etapa + ': ' + (e.message || e));
+          break; // pula essa combinação empresa/etapa, segue nas outras
+        }
+        const lista = data.pedido_venda_produto || [];
+        totalPag = data.total_de_paginas || 1;
+        lista.forEach(p => {
+          const info = p.infoCadastro || {};
+          const cab = p.cabecalho || {};
+          if (info.cancelado === 'S') return;
+          const faturado = info.faturado === 'S' || ETAPAS_FATURADO.includes(String(cab.etapa));
+          if (!faturado) return;
+          const dFat = info.dFat || cab.data_previsao || '';
+          if (dFat !== dtAlvoBr) return;
+          resultados.push({
+            empresa: empCod,
+            codigo_pedido: cab.codigo_pedido,
+            numero_pedido: cab.numero_pedido,
+            cliente: (p.informacoes_adicionais && p.informacoes_adicionais.contato) || '',
+            valor: (p.total_pedido && p.total_pedido.valor_total_pedido) || 0,
+            dFat
+          });
+        });
+        pag++;
+        if (pag <= totalPag) await sleep(320);
+      }
+      passo++;
+      progresso((passo / totalPasso) * 100);
+    }
+  }
+
+  // de-duplica (o mesmo pedido pode aparecer em mais de uma etapa se ele
+  // mudou de status entre uma consulta e outra dentro do mesmo ciclo)
+  const vistosLocal = new Set();
+  return resultados.filter(it => {
+    const k = it.empresa + '|' + it.codigo_pedido;
+    if (vistosLocal.has(k)) return false;
+    vistosLocal.add(k);
+    return true;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. ALERTA (som + notificação do navegador + toast)
+   ══════════════════════════════════════════════════════════════════════════ */
+function tocarBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.16, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.45);
+  } catch (e) { /* navegador sem WebAudio ou sem interação prévia — ignora */ }
+}
+function notificarNovos(novos) {
+  const totalValor = novos.reduce((s, n) => s + (n.valor || 0), 0);
+  toast('🔔 ' + novos.length + ' novo(s) pedido(s) faturado(s) — ' + fmtMoeda(totalValor), 'ok');
+  if (somAtivo) tocarBeep();
+  if (notifAtivo && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('Faturamento OPUS', {
+        body: novos.length + ' pedido(s) faturado(s) agora — ' + fmtMoeda(totalValor)
+      });
+    } catch (e) { /* alguns navegadores bloqueiam fora de contexto seguro */ }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. RENDER
+   ══════════════════════════════════════════════════════════════════════════ */
+function setLiveDot(estado) {
+  const el = $('live-dot');
+  el.className = 'live-indicator st-' + estado;
+  $('live-label').textContent = estado === 'checking' ? 'Verificando…' : estado === 'paused' ? 'Pausado' : 'Ao vivo';
+}
+function renderTabela(chavesNovas) {
+  chavesNovas = chavesNovas || [];
+  const empFiltro = $('f-empresa').value;
+  const lista = resultadosAtuais
+    .filter(it => !empFiltro || it.empresa === empFiltro)
+    .slice()
+    .sort((a, b) => (b.valor || 0) - (a.valor || 0));
+  if (!lista.length) {
+    $('tbody').innerHTML = '<tr><td colspan="6" class="empty">Nenhum pedido faturado encontrado para essa data (ainda).</td></tr>';
+    return;
+  }
+  $('tbody').innerHTML = lista.map(it => {
+    const chave = it.empresa + '|' + it.codigo_pedido;
+    const novo = chavesNovas.indexOf(chave) !== -1;
+    return '<tr class="' + (novo ? 'row-novo' : '') + '">'
+      + '<td><span class="emp e-' + esc(it.empresa) + '">' + esc(it.empresa) + '</span></td>'
+      + '<td class="mono">' + esc(it.numero_pedido || it.codigo_pedido) + '</td>'
+      + '<td>' + esc(it.cliente || '—') + '</td>'
+      + '<td class="mono">' + esc(it.dFat || '—') + '</td>'
+      + '<td class="mono">' + fmtMoeda(it.valor) + '</td>'
+      + '<td class="mono">' + esc(detectadoEm[chave] || '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+function atualizarKPIs() {
+  const empFiltro = $('f-empresa').value;
+  const lista = resultadosAtuais.filter(it => !empFiltro || it.empresa === empFiltro);
+  const totalValor = lista.reduce((s, it) => s + (it.valor || 0), 0);
+  $('k-valor').textContent = fmtMoeda(totalValor);
+  $('k-qtd').textContent = String(lista.length);
+}
+function atualizarRodape() {
+  $('rodape').textContent = ultimaAtualizacao
+    ? 'Verificado às ' + ultimaAtualizacao.toLocaleTimeString('pt-BR') + ' · janela de inclusão escaneada: últimos ' + JANELA_DIAS + ' dias'
+    : '';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. CICLO DE VERIFICAÇÃO / AGENDAMENTO
+   ══════════════════════════════════════════════════════════════════════════ */
+async function verificarAgora() {
+  if (rodando) return;
+  rodando = true;
+  erro('');
+  setLiveDot('checking');
+  $('k-status').textContent = 'verificando…';
+  try {
+    const dataISO = $('f-data').value || hojeLocalISO();
+    const lista = await buscarFaturadosDoDia(dataISO);
+    const novos = lista.filter(it => !vistos.has(it.empresa + '|' + it.codigo_pedido));
+    const horaAgora = new Date().toLocaleTimeString('pt-BR');
+    novos.forEach(it => {
+      const chave = it.empresa + '|' + it.codigo_pedido;
+      vistos.add(chave);
+      detectadoEm[chave] = horaAgora;
+    });
+    resultadosAtuais = lista;
+    const chavesNovas = novos.map(n => n.empresa + '|' + n.codigo_pedido);
+    renderTabela(chavesNovas);
+    atualizarKPIs();
+    if (novos.length && !primeiraCarga) {
+      contadorNovos += novos.length;
+      $('k-novos').textContent = String(contadorNovos);
+      notificarNovos(novos);
+    }
+    primeiraCarga = false;
+    ultimaAtualizacao = new Date();
+    $('k-hora').textContent = ultimaAtualizacao.toLocaleTimeString('pt-BR');
+    atualizarRodape();
+  } catch (e) {
+    log('Erro: ' + (e.message || e));
+    erro('Erro ao consultar Omie: ' + (e.message || e) + ' — vai tentar de novo no próximo ciclo.');
+    toast('❌ Erro ao verificar faturamento', 'err');
+  } finally {
+    rodando = false;
+    progresso(0);
+    $('k-status').textContent = pausado ? 'pausado' : 'ao vivo';
+    setLiveDot(pausado ? 'paused' : 'live');
+  }
+}
+
+function agendarProximo() {
+  clearTimeout(pollTimer);
+  if (pausado) return;
+  const seg = parseInt($('f-intervalo').value, 10) || 30;
+  pollTimer = setTimeout(async () => { await verificarAgora(); agendarProximo(); }, seg * 1000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. EVENTOS / BOOT
+   ══════════════════════════════════════════════════════════════════════════ */
+$('f-data').addEventListener('change', () => {
+  vistos = new Set();
+  Object.keys(detectadoEm).forEach(k => delete detectadoEm[k]);
+  contadorNovos = 0;
+  primeiraCarga = true;
+  resultadosAtuais = [];
+  $('k-novos').textContent = '0';
+  $('tbody').innerHTML = '<tr><td colspan="6" class="empty">Carregando…</td></tr>';
+  verificarAgora();
+});
+$('f-empresa').addEventListener('change', () => { renderTabela([]); atualizarKPIs(); });
+$('f-intervalo').addEventListener('change', () => { if (!pausado) agendarProximo(); });
+$('btn-pausar').addEventListener('click', () => {
+  pausado = !pausado;
+  $('btn-pausar').textContent = pausado ? '▶ Retomar' : '⏸ Pausar';
+  $('k-status').textContent = pausado ? 'pausado' : 'ao vivo';
+  setLiveDot(pausado ? 'paused' : 'live');
+  if (pausado) clearTimeout(pollTimer); else agendarProximo();
+});
+$('btn-agora').addEventListener('click', async () => { await verificarAgora(); if (!pausado) agendarProximo(); });
+$('btn-som').addEventListener('click', () => {
+  somAtivo = !somAtivo;
+  $('btn-som').textContent = somAtivo ? '🔔 Som: ligado' : '🔕 Som: desligado';
+  $('btn-som').classList.toggle('on', somAtivo);
+  if (somAtivo) tocarBeep(); // feedback imediato + "destrava" o AudioContext num navegador que exige interação
+});
+$('btn-notif').addEventListener('click', async () => {
+  if (!notifAtivo) {
+    if (!('Notification' in window)) { toast('Este navegador não suporta notificações do sistema.', 'info'); return; }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Permissão de notificação negada pelo navegador.', 'info'); return; }
+    notifAtivo = true;
+  } else {
+    notifAtivo = false;
+  }
+  $('btn-notif').textContent = notifAtivo ? '🔔 Notificação: ligada' : '🔕 Notificação: desligada';
+  $('btn-notif').classList.toggle('on', notifAtivo);
+});
+
+(function boot() {
+  $('f-data').value = hojeLocalISO();
+  verificarAgora().then(() => { if (!pausado) agendarProximo(); });
+})();
+</script>
+
+<script src="js/sidebar.js?v=3" defer></script>
+</body>
+</html>
