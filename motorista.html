@@ -14,6 +14,9 @@
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Anexo do canhoto no Omie (mesma técnica de anexo-ar.js): zip + base64 + md5 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
 <style>
 :root{
   --azul:#1e40af;--azul-d:#0a1f6b;--verde:#16a34a;--vm:#dc2626;
@@ -817,6 +820,105 @@ function comprimirImagem(dataUrl,cb){
 }
 function verFoto(src){ document.getElementById('modal-foto-img').src=src; document.getElementById('modal-foto').classList.add('on'); }
 function fecharFoto(){ document.getElementById('modal-foto').classList.remove('on'); }
+
+// ── ANEXO DO CANHOTO NO OMIE ──────────────────────────────────────────────────
+// Depois que a confirmação já está salva no Firebase (fonte de verdade — isso
+// nunca é bloqueado nem desfeito por causa do Omie), tenta também anexar a
+// foto do canhoto no pedido correspondente lá. Mesma técnica já usada e
+// testada em anexo-ar.js: zip do arquivo + base64 + md5 dos bytes do zip,
+// endpoint geral/anexo, chamada IncluirAnexo. Roda em segundo plano — se
+// faltar sinal, o pedido não tiver codigo_pedido salvo (rota antiga) ou o
+// Omie recusar, só grava o status da tentativa em
+// despachos/{token}/confirmacoes/{idx}/omieAnexo pra dar pra conferir e
+// reenviar depois; nunca impede o motorista de seguir pra próxima parada.
+function omieCallCanhoto(empresa, param, retry){
+  return fetch('/api/omie-seguro', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ endpoint:'https://app.omie.com.br/api/v1/geral/anexo/', call:'IncluirAnexo', param:[param], empresa: empresa })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    if (data && data.faultstring){
+      if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !retry){
+        var m = data.faultstring.match(/(\d+)\s*segundo/i);
+        var seg = m ? (parseInt(m[1],10)+3) : 35;
+        return new Promise(function(res){ setTimeout(res, seg*1000); }).then(function(){ return omieCallCanhoto(empresa, param, true); });
+      }
+      throw new Error(data.faultstring);
+    }
+    return data;
+  });
+}
+// Estampa "Recebido por / Documento / Data-hora" na própria foto — garante
+// que essa informação viaja junto com o anexo no Omie, já que IncluirAnexo
+// só aceita o arquivo em si (sem campo de observação confirmado pra isso).
+function estamparCanhoto(dataUrlFoto, nomeRecebedor, docRecebedor, dataHoraTxt, cb){
+  var img = new Image();
+  img.onload = function(){
+    var c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img,0,0);
+    var linhas = ['Recebido por: '+nomeRecebedor, 'Documento: '+docRecebedor, dataHoraTxt];
+    var alturaFaixa = 20*linhas.length + 10;
+    ctx.fillStyle = 'rgba(0,0,0,.62)';
+    ctx.fillRect(0, c.height-alturaFaixa, c.width, alturaFaixa);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    linhas.forEach(function(linha, i){ ctx.fillText(linha, 10, c.height-alturaFaixa+22+i*20); });
+    cb(c.toDataURL('image/jpeg', 0.82));
+  };
+  img.src = dataUrlFoto;
+}
+function dataUrlParaArrayBuffer(dataUrl){
+  var base64 = dataUrl.split(',')[1];
+  var bin = atob(base64);
+  var buf = new Uint8Array(bin.length);
+  for (var i=0;i<bin.length;i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+function arrayBufferParaBase64(buf){
+  var bytes = new Uint8Array(buf);
+  var bin = '';
+  for (var i=0;i<bytes.byteLength;i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function anexarCanhotoNoOmie(idx, conf){
+  var p = rotaData.paradas[idx];
+  var codigoPedido = p && p._codigo_pedido;
+  var empresa = (p && (p._emp_key || p.empresa || p._empresa)) || '';
+  if (!codigoPedido || !empresa){
+    db.ref('despachos/'+token+'/confirmacoes/'+idx+'/omieAnexo').set({ status:'sem_codigo_pedido', ts:Date.now() });
+    return;
+  }
+  var fotoOriginal = conf.fotos.canhoto[0];
+  new Promise(function(res){ estamparCanhoto(fotoOriginal, conf.nomeRecebedor, conf.docRecebedor, conf.data+' '+conf.hora, res); })
+    .then(function(estampada){
+      var arrBuf = dataUrlParaArrayBuffer(estampada);
+      var zip = new JSZip();
+      zip.file('canhoto_'+codigoPedido+'.jpg', arrBuf);
+      return zip.generateAsync({ type:'arraybuffer' });
+    })
+    .then(function(zipBuf){
+      var md5hex = SparkMD5.ArrayBuffer.hash(zipBuf);
+      var base64 = arrayBufferParaBase64(zipBuf);
+      return omieCallCanhoto(empresa, {
+        cCodIntAnexo: ('CANH-'+codigoPedido+'-'+idx).slice(0,20),
+        cTabela: 'pedido-venda',
+        nId: codigoPedido,
+        cNomeArquivo: 'canhoto_'+codigoPedido+'.jpg',
+        cTipoArquivo: 'jpg',
+        cArquivo: base64,
+        cMd5: md5hex
+      });
+    })
+    .then(function(){
+      db.ref('despachos/'+token+'/confirmacoes/'+idx+'/omieAnexo').set({ status:'ok', ts:Date.now() });
+    })
+    .catch(function(e){
+      console.warn('[Canhoto->Omie] falhou:', e.message||e);
+      db.ref('despachos/'+token+'/confirmacoes/'+idx+'/omieAnexo').set({ status:'erro', erro:String(e.message||e), ts:Date.now() });
+    });
+}
+
 // ── CONFIRMAR ─────────────────────────────────────────────────────────────────
 function confirmarParada(idx){
   var acao = acoesTemp[idx]||{};
@@ -878,6 +980,7 @@ function confirmarParada(idx){
     verificarConcluido();
     renderConteudo();
     atualizarMarcadoresMapa();
+    anexarCanhotoNoOmie(idx, conf); // segundo plano — não bloqueia a confirmação
   }).catch(function(){ showToast('❌ Erro ao salvar. Tente novamente.'); });
 }
 function verificarConcluido(){
