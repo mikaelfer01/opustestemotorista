@@ -100,6 +100,24 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="testarMudarEtapa()">2. Testar mudança de etapa nesse pedido</button>
 <div id="res-mudar-etapa"></div>
 
+<h2>Diagnóstico — Campo do transportador em "Fretes e Outras Despesas"</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Pra associar automaticamente o pedido faturado à transportadora certa (BHT, TG, Camilo dos Santos,
+  Pajuçara, Eureka) na Torre de Transportadoras, preciso ver o nome EXATO do campo que o Omie usa pra
+  guardar o nome do transportador dentro do bloco de frete do pedido — no código deste projeto hoje só
+  usamos <code>frete.modalidade</code>, nunca lemos o nome do transportador em si. Digite um pedido
+  FATURADO que já tenha transportador preenchido em "Fretes e Outras Despesas" e clique — isso mostra o
+  bloco <code>frete</code> inteiro, cru, pra eu enxergar o campo certo.
+</p>
+<select id="kb2-empresa">
+  <option value="MFP">MF Paris</option>
+  <option value="DMS">DMS</option>
+  <option value="PRF">Profi</option>
+</select>
+<input id="kb2-pedido" placeholder="Número do pedido faturado com transportador (ex.: 12171)"/>
+<button onclick="verCampoFrete()">Ver bloco "frete" cru desse pedido</button>
+<div id="res-frete"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -452,6 +470,33 @@ async function testarMudarEtapa() {
     }
   } catch (e) {
     div.innerHTML += '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
+}
+
+// Mostra o bloco "frete" cru de um pedido — pra descobrir qual campo o Omie
+// usa pro nome do transportador (nunca lido neste projeto até agora, só
+// frete.modalidade). Também mostra informacoes_adicionais, caso o nome do
+// motorista/transportador esteja ali em vez de dentro de frete.
+async function verCampoFrete() {
+  const empresa = document.getElementById('kb2-empresa').value;
+  const numero = document.getElementById('kb2-pedido').value.trim();
+  const div = document.getElementById('res-frete');
+  if (!numero) { div.innerHTML = '<pre style="color:#f87171">Informe o número do pedido.</pre>'; return; }
+  div.innerHTML = '<pre>Buscando...</pre>';
+  try {
+    const n = parseInt(numero, 10) || 0;
+    const busca = await omie(EP_PEDIDO_DIAG, 'ListarPedidos', [{
+      pagina: 1, registros_por_pagina: 5, numero_pedido_de: n, numero_pedido_ate: n, apenas_importado_api: 'N'
+    }], empresa);
+    const achado = (busca.pedido_venda_produto || [])[0];
+    if (!achado) { div.innerHTML = '<pre style="color:#f87171">Pedido não encontrado em ' + empresa + '.</pre>'; return; }
+    div.innerHTML = '<pre>' +
+      'cabecalho.etapa: ' + achado.cabecalho.etapa + '   |   faturado: ' + ((achado.infoCadastro||{}).faturado || '—') + '\n\n' +
+      'BLOCO "frete":\n' + JSON.stringify(achado.frete || {}, null, 2) + '\n\n' +
+      'BLOCO "informacoes_adicionais":\n' + JSON.stringify(achado.informacoes_adicionais || {}, null, 2) +
+      '</pre>';
+  } catch (e) {
+    div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
   }
 }
 
