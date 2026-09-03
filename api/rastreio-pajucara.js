@@ -17,11 +17,32 @@
 // esse cookie junto.
 const PAJUCARA_PAGE = 'https://cliente.viapajucara.com.br/rastrear/resultado';
 const PAJUCARA_ENDPOINT = 'https://cliente.viapajucara.com.br/api/rastreamento/cnpj/remetente';
+// Cabeçalhos completos copiados da requisição real capturada no DevTools —
+// a primeira tentativa (só User-Agent/Origin/Referer) levou um 403, sinal
+// de bloqueio por WAF/anti-bot; muita proteção desse tipo checa
+// especificamente a ausência de sec-fetch-*/sec-ch-ua, que navegador de
+// verdade sempre manda e um fetch() simples não manda por padrão.
+const NAVEGADOR_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36';
+const NAVEGADOR_HEADERS_BASE = {
+  'User-Agent': NAVEGADOR_UA,
+  'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+  'sec-ch-ua': '"Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"'
+};
 
 async function obterCookieSessao(cnpj, numero) {
   const url = PAJUCARA_PAGE + '?cnpj=' + cnpj + '&tipo=remetente&notaFiscal=' + numero;
   const resp = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OPUS-Rastreio/1.0)' }
+    headers: {
+      ...NAVEGADOR_HEADERS_BASE,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Upgrade-Insecure-Requests': '1'
+    }
   });
   let setCookies = [];
   if (typeof resp.headers.getSetCookie === 'function') {
@@ -59,10 +80,15 @@ module.exports = async function handler(req, res) {
     const pajResp = await fetch(PAJUCARA_ENDPOINT, {
       method: 'POST',
       headers: {
+        ...NAVEGADOR_HEADERS_BASE,
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Content-Type': 'application/json',
         'Origin': 'https://cliente.viapajucara.com.br',
         'Referer': PAJUCARA_PAGE + '?cnpj=' + cnpjDigits + '&tipo=remetente&notaFiscal=' + numero,
-        'User-Agent': 'Mozilla/5.0 (compatible; OPUS-Rastreio/1.0)',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
         ...(cookie ? { 'Cookie': cookie } : {})
       },
       body: JSON.stringify({ cnpj: cnpjDigits, notaFiscal: numero })
