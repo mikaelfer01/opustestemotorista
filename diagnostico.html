@@ -118,6 +118,20 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="verCampoFrete()">Ver bloco "frete" cru desse pedido</button>
 <div id="res-frete"></div>
 
+<h2>Diagnóstico — Rastreio SSW (TG, Camilo dos Santos, e possivelmente outras)</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Testa o proxy novo (<code>/api/rastreio-ssw</code>), que consulta o mesmo sistema SSW que o site da TG e
+  da Camilo dos Santos usam pro rastreamento — confirmado contra uma resposta real do SSW. Coloca o CNPJ
+  do remetente (MFP/DMS/PROFI) e o número da NF/pedido de uma entrega que você sabe que foi transportada,
+  e testa. Como essa consulta não informa qual transportadora foi — só o CNPJ do remetente — se achar
+  resultado pra entrega de QUALQUER uma das transportadoras que usam SSW, já confirma que dá pra usar essa
+  mesma consulta pra todas elas.
+</p>
+<input id="ssw-cnpj" placeholder="CNPJ do remetente (só números ou formatado)"/>
+<input id="ssw-numero" placeholder="Número da NF/pedido"/>
+<button onclick="testarRastreioSSW()">Testar rastreio SSW</button>
+<div id="res-ssw"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -470,6 +484,30 @@ async function testarMudarEtapa() {
     }
   } catch (e) {
     div.innerHTML += '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
+}
+
+// Testa o proxy /api/rastreio-ssw (novo) contra o SSW de verdade.
+async function testarRastreioSSW() {
+  const cnpj = document.getElementById('ssw-cnpj').value.trim();
+  const numero = document.getElementById('ssw-numero').value.trim();
+  const div = document.getElementById('res-ssw');
+  if (!cnpj || !numero) { div.innerHTML = '<pre style="color:#f87171">Informe o CNPJ e o número.</pre>'; return; }
+  div.innerHTML = '<pre>Consultando...</pre>';
+  try {
+    const r = await fetch('/api/rastreio-ssw', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cnpj, numero })
+    });
+    const data = await r.json();
+    div.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    if (data.encontrado) {
+      div.innerHTML += '<pre style="color:#22c55e">✅ Achou resultado! Se essa entrega foi de uma transportadora diferente da TG, confirma que a consulta funciona pra várias.</pre>';
+    } else if (data.ok) {
+      div.innerHTML += '<pre style="color:#f59e0b">⚠️ Não achou nada — pode ser CNPJ/número errado, ou essa entrega não passou pelo SSW.</pre>';
+    }
+  } catch (e) {
+    div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
   }
 }
 
