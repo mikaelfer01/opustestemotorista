@@ -243,6 +243,7 @@ function hojeLocalISO() {
    4. CHAMADA À API DO OMIE (via proxy /api/omie-seguro já existente no projeto)
    ══════════════════════════════════════════════════════════════════════════ */
 async function omieCall(endpoint, call, empCod, param, tentativa) {
+  tentativa = tentativa || 0;
   const resp = await fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -250,12 +251,19 @@ async function omieCall(endpoint, call, empCod, param, tentativa) {
   });
   const data = await resp.json().catch(() => ({}));
   if (data && data.faultstring) {
-    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+    // Cobre tanto o limite de chamadas por minuto (REDUNDANT/CONSUMO/Aguarde)
+    // quanto o lock de "já existe uma requisição desse método em execução"
+    // (mensagem em português, sem nenhuma dessas palavras — batia direto no
+    // throw antes e derrubava silenciosamente a combinação empresa/etapa
+    // inteira, fazendo pedido faturado sumir da lista).
+    const trava = /j[aá] existe uma requisi[cç][ãa]o/i.test(data.faultstring);
+    const limiteApi = /REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring);
+    if ((trava || limiteApi) && tentativa < 4) {
       const m = data.faultstring.match(/(\d+)\s*segundo/i);
-      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
-      log('Limite da API atingido — aguardando ' + seg + 's…');
+      const seg = m ? (parseInt(m[1], 10) + 3) : (trava ? 8 : 35);
+      log('Limite da API atingido — aguardando ' + seg + 's… (tentativa ' + (tentativa + 1) + ')');
       await sleep(seg * 1000);
-      return omieCall(endpoint, call, empCod, param, true);
+      return omieCall(endpoint, call, empCod, param, tentativa + 1);
     }
     const err = new Error(data.faultstring);
     err.omie = true;
