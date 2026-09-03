@@ -118,7 +118,7 @@ const TRANSPORTADORAS_CADASTRADAS = [
   { regex: /\bTG\b|TG TRANSPORTES/i, nome: 'TG', backend: 'ssw' },
   { regex: /\bBHT\b|BH TRANSPORTES/i, nome: 'BHT', backend: null },
   { regex: /EUREKA/i, nome: 'Eureka', backend: 'eureka' },
-  { regex: /PAJU/i, nome: 'Pajuçara', backend: null },
+  { regex: /PAJU/i, nome: 'Pajuçara', backend: 'pajucara' },
 ];
 function identificarTransportadoraPorNome(nome) {
   return TRANSPORTADORAS_CADASTRADAS.find(t => t.regex.test(nome || '')) || null;
@@ -163,6 +163,13 @@ async function rastrearSSW(cnpj, numero) {
 }
 async function rastrearEureka(cnpj, numero) {
   const r = await fetch('/api/rastreio-eureka', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cnpj, numero })
+  });
+  return r.json();
+}
+async function rastrearPajucara(cnpj, numero) {
+  const r = await fetch('/api/rastreio-pajucara', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cnpj, numero })
   });
@@ -264,7 +271,9 @@ async function buscarPedidoUnico() {
       return;
     }
 
-    const r = cadastrada.backend === 'ssw' ? await rastrearSSW(cnpjRemetente, nf) : await rastrearEureka(cnpjRemetente, nf);
+    const r = cadastrada.backend === 'ssw' ? await rastrearSSW(cnpjRemetente, nf)
+      : cadastrada.backend === 'eureka' ? await rastrearEureka(cnpjRemetente, nf)
+      : await rastrearPajucara(cnpjRemetente, nf);
     if (r.encontrado && r.resultados && r.resultados.length) {
       const res0 = r.resultados[0];
       div.innerHTML = montarResultadoUnico({
