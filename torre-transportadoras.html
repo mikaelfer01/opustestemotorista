@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torre das Transportadoras — OPUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1500px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px;}
+.controls select,.controls input{height:34px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 10px;font-size:12px;background:#fff;font-family:inherit;outline:none;color:var(--navy);}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.chk-grupo{display:flex;gap:10px;align-items:center;height:34px;font-size:12px;}
+.chk-grupo label{display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:600;}
+.btn-primary{padding:8px 18px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 14px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;height:34px;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.hint{font-size:11px;color:var(--muted);line-height:1.6;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr);}}
+.kcard{background:var(--card);border:0.5px solid var(--gold-b);border-radius:12px;padding:14px 16px;}
+.kcard .label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kcard .val{font-size:20px;font-weight:600;color:var(--navy);}
+.kcard .sub{font-size:10px;color:var(--div);margin-top:2px;}
+.progress-bar{height:3px;background:var(--icon);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s;width:0;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:110px;overflow-y:auto;margin-bottom:12px;display:none;line-height:1.7;}
+.table-wrap{overflow-x:auto;border:0.5px solid var(--gold-b);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{padding:9px 10px;text-align:left;background:var(--navy);font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+td{padding:7px 10px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--cream);}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);}
+td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
+.emp{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.e-MFP{background:var(--blue-l);color:var(--blue);}
+.e-DMS{background:var(--green-l);color:var(--green);}
+.e-PROFI{background:var(--amber-l);color:var(--amber);}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.st-entregue{background:var(--green-l);color:var(--green);}
+.st-transito{background:var(--blue-l);color:var(--blue);}
+.st-sem{background:var(--icon);color:var(--muted);}
+.st-erro{background:var(--red-l);color:var(--red);}
+.rodape{font-size:10px;color:var(--muted);margin-top:8px;text-align:right;}
+.toast{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:fadeUp .25s ease;}
+.toast-ok{background:var(--green);color:#fff;}
+.toast-err{background:var(--red);color:#fff;}
+.toast-info{background:var(--navy);color:#fff;}
+a.link-det{color:var(--blue);text-decoration:none;font-size:11px;}
+a.link-det:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="sec">
+    <div class="sec-title"><span>Torre das Transportadoras</span></div>
+    <div class="controls">
+      <label class="fld">Rotas despachadas de
+        <input type="date" id="f-de">
+      </label>
+      <label class="fld">até
+        <input type="date" id="f-ate">
+      </label>
+      <label class="fld">Empresas
+        <div class="chk-grupo">
+          <label><input type="checkbox" class="chk-emp" value="MFP" checked> MFP</label>
+          <label><input type="checkbox" class="chk-emp" value="DMS" checked> DMS</label>
+          <label><input type="checkbox" class="chk-emp" value="PROFI" checked> Profi</label>
+        </div>
+      </label>
+      <label class="fld">Transportadora
+        <select id="f-transp"><option value="">Todas</option></select>
+      </label>
+      <button class="btn-primary" id="btn-buscar" onclick="buscarRastreios()">🔎 Buscar rastreios</button>
+      <button class="btn-secondary" id="btn-csv" onclick="exportarCsv()" disabled>⬇ Exportar CSV</button>
+    </div>
+    <div class="hint">
+      Pega as rotas despachadas no período, junta as paradas que já têm NF e consulta o rastreio de cada
+      uma via <a href="https://ssw.inf.br/" target="_blank" style="color:var(--blue)">SSW Sistemas</a> —
+      o mesmo sistema usado pelo site da TG Transportes e da Camilo dos Santos (e possivelmente outras).
+      Essa consulta usa o CNPJ da empresa remetente + o número da NF — não distingue a transportadora, então
+      funciona pra qualquer uma que use SSW, sem precisar de integração separada por transportadora. A BHT
+      não usa SSW, então não vai aparecer rastreio pra ela por aqui.
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="kcard"><div class="label">Consultadas</div><div class="val" id="k-total">—</div><div class="sub">NFs com rastreio tentado</div></div>
+    <div class="kcard"><div class="label">Entregues</div><div class="val" id="k-entregues" style="color:var(--green)">—</div><div class="sub">confirmadas pelo SSW</div></div>
+    <div class="kcard"><div class="label">Em trânsito / outro status</div><div class="val" id="k-transito" style="color:var(--blue)">—</div><div class="sub">ainda não entregue</div></div>
+    <div class="kcard"><div class="label">Sem rastreio</div><div class="val" id="k-sem" style="color:var(--muted)">—</div><div class="sub">não achado no SSW (ou outra transportadora)</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title"><span>Entregas</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="log" id="log"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:70px">Empresa</th>
+          <th style="width:120px">Rota</th>
+          <th>Cliente</th>
+          <th style="width:80px">Pedido</th>
+          <th style="width:80px">NF</th>
+          <th style="width:120px">Status</th>
+          <th>Situação (SSW)</th>
+          <th style="width:70px"></th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="8" class="empty">Escolha o período e clique em "Buscar rastreios".</td></tr></tbody>
+      </table>
+    </div>
+    <div class="rodape" id="rodape"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Controle de acesso: mesmo auth.js do resto do sistema. -->
+<script type="module">
+  try {
+    const m = await import('/js/auth.js');
+    m.exigirPerfis(['admin', 'logistica', 'comercial']);
+  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
+</script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = { MFP: 'MF Paris', DMS: 'DMS', PROFI: 'Profi' };
+// CNPJ da empresa remetente — precisa pra consultar o SSW (rastreamento
+// "pelo remetente"). O da DMS foi confirmado direto contra uma consulta SSW
+// real (a NF testada era da DMS Alimentos); MFP e Profi vieram do usuário.
+const CNPJ_EMPRESAS = {
+  MFP: '26855558000142',
+  DMS: '33174960000127',
+  PROFI: '52139016000183'
+};
+// Mesmo critério já usado em cte.html pra identificar a transportadora pelo
+// prefixo do nome da rota (as rotas são nomeadas "TG 3", "Camilo dos Santos
+// 1", etc. pelo roteirizador).
+const PREFIXOS_TRANSPORTADORA = [
+  { regex: /CAMILO/i, nome: 'Camilo dos Santos' },
+  { regex: /\bTG\b/i, nome: 'TG' },
+  { regex: /\bBHT\b/i, nome: 'BHT' },
+  { regex: /EUREKA/i, nome: 'Eureka' },
+  { regex: /PAJU/i, nome: 'Pajuçara' },
+];
+function identificarTransportadora(rotaNome) {
+  const t = PREFIXOS_TRANSPORTADORA.find(t => t.regex.test(rotaNome || ''));
+  return t ? t.nome : (rotaNome || '').split(' ')[0] || '—';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. ESTADO / UTILITÁRIOS
+   ══════════════════════════════════════════════════════════════════════════ */
+let _entregasAtuais = [];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function toast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 'toast-item toast-' + (tipo || 'info');
+  el.textContent = msg;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function progresso(pct) { $('progress').style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+
+async function fbRead(path) {
+  const r = await fetch('/api/firebase-read', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  return r.json();
+}
+async function rastrearSSW(cnpj, numero) {
+  const r = await fetch('/api/rastreio-ssw', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cnpj, numero })
+  });
+  return r.json();
+}
+function classificarSituacao(situacao) {
+  const s = (situacao || '').toUpperCase();
+  if (s.includes('ENTREGUE')) return 'entregue';
+  if (!s) return 'sem';
+  return 'transito';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. BUSCA
+   ══════════════════════════════════════════════════════════════════════════ */
+async function buscarRastreios() {
+  const btn = $('btn-buscar');
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> Buscando...';
+  $('log').innerHTML = ''; $('log').style.display = 'none';
+  $('tbody').innerHTML = '<tr><td colspan="8" class="empty">Carregando rotas...</td></tr>';
+  $('btn-csv').disabled = true;
+  progresso(0);
+
+  const empresasSel = Array.from(document.querySelectorAll('.chk-emp:checked')).map(c => c.value);
+  if (!empresasSel.length) { toast('Selecione ao menos uma empresa.', 'err'); btn.disabled = false; btn.innerHTML = '🔎 Buscar rastreios'; return; }
+  const dataDe = $('f-de').value;
+  const dataAte = $('f-ate').value;
+
+  try {
+    const historico = await fbRead('historico_roteirizados') || {};
+    const alvos = []; // { rotaNome, transportadora, empresa, cliente, pedido, nf }
+    Object.keys(historico).forEach(dataKey => {
+      if (dataDe && dataKey < dataDe) return;
+      if (dataAte && dataKey > dataAte) return;
+      const registros = historico[dataKey] || {};
+      Object.keys(registros).forEach(token => {
+        const reg = registros[token];
+        if (!reg) return;
+        const transp = identificarTransportadora(reg.rotaNome);
+        (reg.paradas || []).forEach(p => {
+          if (!p.nf) return;
+          const empKey = (p._emp_key || p.empresa || '').toUpperCase();
+          const empNorm = empKey === 'PRF' ? 'PROFI' : empKey;
+          if (!empresasSel.includes(empNorm)) return;
+          alvos.push({
+            rotaNome: reg.rotaNome || '—', transportadora: transp, empresa: empNorm,
+            cliente: p.cliente || '—', pedido: p.pedido || '—', nf: String(p.nf).replace(/\D/g, '')
+          });
+        });
+      });
+    });
+
+    // de-duplica (mesma NF/empresa pode aparecer em mais de uma parada por engano de dado)
+    const vistos = new Set();
+    const alvosUnicos = alvos.filter(a => {
+      const k = a.empresa + '|' + a.nf;
+      if (vistos.has(k)) return false;
+      vistos.add(k);
+      return true;
+    });
+
+    if (!alvosUnicos.length) {
+      $('tbody').innerHTML = '<tr><td colspan="8" class="empty">Nenhuma parada com NF encontrada nesse período/empresas.</td></tr>';
+      toast('Nenhuma NF encontrada pra rastrear.', 'info');
+      return;
+    }
+
+    const resultados = [];
+    for (let i = 0; i < alvosUnicos.length; i++) {
+      const a = alvosUnicos[i];
+      const cnpj = CNPJ_EMPRESAS[a.empresa];
+      if (!cnpj) {
+        resultados.push({ ...a, status: 'sem', situacao: 'CNPJ da ' + EMPRESAS[a.empresa] + ' não configurado', local: '', link: null });
+      } else {
+        try {
+          const r = await rastrearSSW(cnpj, a.nf);
+          if (r.encontrado && r.resultados && r.resultados.length) {
+            const res0 = r.resultados[0];
+            resultados.push({ ...a, status: classificarSituacao(res0.situacao), situacao: res0.situacao || res0.detalhe, local: (res0.cidadeUf + ' ' + res0.dataHora).trim(), link: res0.link });
+          } else {
+            resultados.push({ ...a, status: 'sem', situacao: 'Não encontrado no SSW', local: '', link: null });
+          }
+        } catch (e) {
+          resultados.push({ ...a, status: 'erro', situacao: 'Erro: ' + (e.message || e), local: '', link: null });
+        }
+        await sleep(250); // não martela o SSW
+      }
+      progresso(((i + 1) / alvosUnicos.length) * 100);
+    }
+
+    _entregasAtuais = resultados;
+    popularFiltroTransportadora();
+    renderTabela();
+    atualizarKPIs();
+    $('btn-csv').disabled = false;
+    $('rodape').textContent = 'Consultado em ' + new Date().toLocaleString('pt-BR') + ' · ' + resultados.length + ' NF(s)';
+  } catch (e) {
+    log('Erro: ' + (e.message || e));
+    toast('❌ Erro ao buscar rastreios: ' + (e.message || e), 'err');
+    $('tbody').innerHTML = '<tr><td colspan="8" class="empty">Erro ao buscar.</td></tr>';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔎 Buscar rastreios';
+    progresso(0);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. RENDER
+   ══════════════════════════════════════════════════════════════════════════ */
+function popularFiltroTransportadora() {
+  const sel = $('f-transp');
+  const atual = sel.value;
+  const nomes = [...new Set(_entregasAtuais.map(e => e.transportadora))].sort();
+  sel.innerHTML = '<option value="">Todas</option>' + nomes.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  sel.value = nomes.includes(atual) ? atual : '';
+}
+function statusLabel(status) {
+  return { entregue: '✅ Entregue', transito: '🚚 Em trânsito', sem: '⏳ Sem rastreio', erro: '❌ Erro' }[status] || status;
+}
+function renderTabela() {
+  const transpFiltro = $('f-transp').value;
+  const lista = _entregasAtuais.filter(e => !transpFiltro || e.transportadora === transpFiltro);
+  if (!lista.length) {
+    $('tbody').innerHTML = '<tr><td colspan="8" class="empty">Nenhum resultado com esse filtro.</td></tr>';
+    return;
+  }
+  $('tbody').innerHTML = lista.map(e => {
+    return '<tr>'
+      + '<td><span class="emp e-' + esc(e.empresa) + '">' + esc(e.empresa) + '</span></td>'
+      + '<td>' + esc(e.rotaNome) + '<div style="font-size:10px;color:var(--muted)">' + esc(e.transportadora) + '</div></td>'
+      + '<td>' + esc(e.cliente) + '</td>'
+      + '<td class="mono">' + esc(e.pedido) + '</td>'
+      + '<td class="mono">' + esc(e.nf) + '</td>'
+      + '<td><span class="st st-' + e.status + '">' + statusLabel(e.status) + '</span></td>'
+      + '<td>' + esc(e.situacao) + (e.local ? '<div style="font-size:10px;color:var(--muted)">' + esc(e.local) + '</div>' : '') + '</td>'
+      + '<td>' + (e.link ? '<a class="link-det" href="' + esc(e.link) + '" target="_blank">Ver ↗</a>' : '') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+function atualizarKPIs() {
+  $('k-total').textContent = String(_entregasAtuais.length);
+  $('k-entregues').textContent = String(_entregasAtuais.filter(e => e.status === 'entregue').length);
+  $('k-transito').textContent = String(_entregasAtuais.filter(e => e.status === 'transito').length);
+  $('k-sem').textContent = String(_entregasAtuais.filter(e => e.status === 'sem' || e.status === 'erro').length);
+}
+function exportarCsv() {
+  if (!_entregasAtuais.length) return;
+  const cols = ['empresa', 'rotaNome', 'transportadora', 'cliente', 'pedido', 'nf', 'status', 'situacao', 'local', 'link'];
+  const linhas = [cols.join(';')].concat(_entregasAtuais.map(e => cols.map(c => '"' + String(e[c] || '').replace(/"/g, '""') + '"').join(';')));
+  const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'rastreio_transportadoras_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. BOOT
+   ══════════════════════════════════════════════════════════════════════════ */
+$('f-transp').addEventListener('change', renderTabela);
+(function initDatas() {
+  const hoje = new Date();
+  const d15 = new Date(); d15.setDate(d15.getDate() - 15);
+  const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  $('f-de').value = fmt(d15);
+  $('f-ate').value = fmt(hoje);
+})();
+</script>
+
+<script src="js/sidebar.js?v=3" defer></script>
+</body>
+</html>

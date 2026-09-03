@@ -54,6 +54,7 @@ export const PERMISSOES = {
   'carteira.html':            ['admin', 'logistica', 'comercial'],
   'cte.html':                  ['admin', 'logistica'],
   'faturamento.html':          ['admin', 'logistica', 'comercial'],
+  'torre-transportadoras.html': ['admin', 'logistica', 'comercial'],
   
   // Simuladores
   'simulador.html':           ['admin', 'logistica', 'comercial'],
