@@ -26,7 +26,11 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const cnpj = String(body.cnpj || '').replace(/\D/g, '');
-    const numero = String(body.numero || '').replace(/\D/g, '');
+    // NF sem zero à esquerda — o Omie devolve numero_nfe com 8 dígitos
+    // zero-padded (ex.: "00012243"), mas o campo NR do SSW espera o número
+    // puro (a requisição real capturada usava NR=12225, não 00012225) —
+    // com zero à esquerda o SSW simplesmente não acha o resultado.
+    const numero = String(body.numero || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
     const chave = String(body.chave || '').replace(/\D/g, '');
     if (!cnpj || (!numero && !chave)) {
       return res.status(400).json({ error: 'cnpj e (numero ou chave) são obrigatórios' });
