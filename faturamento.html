@@ -204,7 +204,7 @@ let pollTimer = null;
 let ultimaAtualizacao = null;
 let somAtivo = true;
 let notifAtivo = false;
-const _cacheTransportadora = {}; // codigo_transportadora -> nome resolvido (ou null)
+const _cacheClienteOmie = {}; // codigo_cliente_omie (cliente OU transportadora, mesmo cadastro) -> {nome} ou null
 
 /* ══════════════════════════════════════════════════════════════════════════
    3. UTILITÁRIOS
@@ -271,25 +271,29 @@ async function fbWrite(path, data, method) {
   return r.json();
 }
 
-// Resolve frete.codigo_transportadora (código interno do Omie) pra nome de
+// Resolve um codigo_cliente_omie (usado tanto pra cabecalho.codigo_cliente
+// quanto pra frete.codigo_transportadora — transportadora também é um
+// cadastro de cliente/fornecedor no Omie, mesmo endpoint) pro nome de
 // verdade via geral/clientes/ConsultarCliente — mesma chamada já comprovada
-// em carteira.js pra resolver nome de cliente (transportadora também é um
-// cadastro de cliente/fornecedor no Omie). Cacheado por código, já que a
-// mesma transportadora se repete em muitos pedidos.
-async function resolverTransportadora(codigoTransp, empCod) {
-  if (!codigoTransp) return null;
-  if (codigoTransp in _cacheTransportadora) return _cacheTransportadora[codigoTransp];
+// em carteira.js. Cacheado por código (o mesmo cliente/transportadora se
+// repete em muitos pedidos) e com uma pausa depois de toda consulta nova
+// pra não estourar o limite de chamadas do Omie quando aparecem vários
+// cadastros diferentes no mesmo ciclo.
+async function resolverClienteOmie(codigo, empCod) {
+  if (!codigo) return null;
+  if (codigo in _cacheClienteOmie) return _cacheClienteOmie[codigo];
   try {
-    const cliente = await omieCall(EP_CLIENTES, 'ConsultarCliente', empCod, [{ codigo_cliente_omie: codigoTransp }]);
-    const nomeResolvido = cliente.razao_social || cliente.nome_fantasia || null;
-    const cadastrada = identificarTransportadoraPorNome(nomeResolvido) || identificarTransportadoraPorNome(cliente.nome_fantasia);
-    const resultado = nomeResolvido ? { nomeOmie: nomeResolvido, cadastrada } : null;
-    _cacheTransportadora[codigoTransp] = resultado;
+    const cliente = await omieCall(EP_CLIENTES, 'ConsultarCliente', empCod, [{ codigo_cliente_omie: codigo }]);
+    const nome = cliente.razao_social || cliente.nome_fantasia || null;
+    const resultado = nome ? { nome } : null;
+    _cacheClienteOmie[codigo] = resultado;
     return resultado;
   } catch (e) {
-    log('Erro ao resolver transportadora ' + codigoTransp + ': ' + (e.message || e));
-    _cacheTransportadora[codigoTransp] = null;
+    log('Erro ao resolver cadastro ' + codigo + ': ' + (e.message || e));
+    _cacheClienteOmie[codigo] = null;
     return null;
+  } finally {
+    await sleep(300);
   }
 }
 
@@ -367,17 +371,19 @@ async function buscarFaturadosDoDia(dataISO) {
           if (!faturado) continue;
           const dFat = info.dFat || cab.data_previsao || '';
           if (dFat !== dtAlvoBr) continue;
+          const clienteInfo = cab.codigo_cliente ? await resolverClienteOmie(cab.codigo_cliente, empCod) : null;
           const codigoTransp = p.frete && p.frete.codigo_transportadora;
-          const transp = codigoTransp ? await resolverTransportadora(codigoTransp, empCod) : null;
+          const transpInfo = codigoTransp ? await resolverClienteOmie(codigoTransp, empCod) : null;
+          const transportadoraCadastrada = transpInfo ? identificarTransportadoraPorNome(transpInfo.nome) : null;
           resultados.push({
             empresa: empCod,
             codigo_pedido: cab.codigo_pedido,
             numero_pedido: cab.numero_pedido,
-            cliente: (p.informacoes_adicionais && p.informacoes_adicionais.contato) || '',
+            cliente: clienteInfo ? clienteInfo.nome : ((p.informacoes_adicionais && p.informacoes_adicionais.contato) || ''),
             valor: (p.total_pedido && p.total_pedido.valor_total_pedido) || 0,
             dFat,
-            transportadoraNome: transp ? transp.nomeOmie : '',
-            transportadoraCadastrada: transp ? transp.cadastrada : null
+            transportadoraNome: transpInfo ? transpInfo.nome : '',
+            transportadoraCadastrada
           });
         }
         pag++;
