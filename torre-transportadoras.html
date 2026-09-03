@@ -78,6 +78,29 @@ a.link-det:hover{text-decoration:underline;}
 <div class="wrap">
 
   <div class="sec">
+    <div class="sec-title"><span>Consulta rápida por pedido</span></div>
+    <div class="controls">
+      <label class="fld">Empresa
+        <select id="q-empresa">
+          <option value="MFP">MF Paris</option>
+          <option value="DMS">DMS</option>
+          <option value="PROFI">Profi</option>
+        </select>
+      </label>
+      <label class="fld">Número do pedido
+        <input type="text" id="q-pedido" placeholder="ex.: 12256">
+      </label>
+      <button class="btn-primary" id="btn-buscar-unico" onclick="buscarPedidoUnico()">🔎 Rastrear</button>
+    </div>
+    <div class="hint">
+      Só o número do pedido e a empresa — o sistema busca o pedido no Omie, pega a NF (StatusPedido) e a
+      transportadora (frete.codigo_transportadora) automaticamente e já consulta o rastreio certo de acordo
+      com quem entrega, sem precisar saber NF nem CNPJ de cor.
+    </div>
+    <div id="res-unico"></div>
+  </div>
+
+  <div class="sec">
     <div class="sec-title"><span>Torre das Transportadoras</span></div>
     <div class="controls">
       <label class="fld">Rotas despachadas de
@@ -178,6 +201,22 @@ function identificarTransportadora(rotaNome) {
   const t = PREFIXOS_TRANSPORTADORA.find(t => t.regex.test(rotaNome || ''));
   return t ? t.nome : (rotaNome || '').split(' ')[0] || '—';
 }
+// Mesmas 5 transportadoras, agora casadas pelo NOME resolvido no Omie (não
+// pelo nome da rota) — usado na consulta rápida por pedido, que não depende
+// de o pedido ter passado pelo roteirizador. "backend" diz qual API de
+// rastreio usar; null = sem integração automática ainda pra essa.
+const EP_PEDIDO_OMIE = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+const EP_CLIENTES_OMIE = 'https://app.omie.com.br/api/v1/geral/clientes/';
+const TRANSPORTADORAS_CADASTRADAS = [
+  { regex: /CAMILO/i, nome: 'Camilo dos Santos', backend: 'ssw' },
+  { regex: /\bTG\b|TG TRANSPORTES/i, nome: 'TG', backend: 'ssw' },
+  { regex: /\bBHT\b|BH TRANSPORTES/i, nome: 'BHT', backend: null },
+  { regex: /EUREKA/i, nome: 'Eureka', backend: 'eureka' },
+  { regex: /PAJU/i, nome: 'Pajuçara', backend: null },
+];
+function identificarTransportadoraPorNome(nome) {
+  return TRANSPORTADORAS_CADASTRADAS.find(t => t.regex.test(nome || '')) || null;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. ESTADO / UTILITÁRIOS
@@ -216,6 +255,40 @@ async function rastrearSSW(cnpj, numero) {
   });
   return r.json();
 }
+async function rastrearEureka(cnpj, numero) {
+  const r = await fetch('/api/rastreio-eureka', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cnpj, numero })
+  });
+  return r.json();
+}
+// Mesma lógica de retry já corrigida em faturamento.html: cobre tanto o
+// limite de chamadas por minuto (REDUNDANT/CONSUMO/Aguarde) quanto o lock de
+// "já existe uma requisição desse método em execução" (mensagem em
+// português, sem nenhuma dessas palavras).
+async function omieCall(endpoint, call, empCod, param, tentativa) {
+  tentativa = tentativa || 0;
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) {
+    const trava = /j[aá] existe uma requisi[cç][ãa]o/i.test(data.faultstring);
+    const limiteApi = /REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring);
+    if ((trava || limiteApi) && tentativa < 4) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : (trava ? 8 : 35);
+      log('Limite da API atingido — aguardando ' + seg + 's… (tentativa ' + (tentativa + 1) + ')');
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, tentativa + 1);
+    }
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    throw err;
+  }
+  return data;
+}
 function classificarSituacao(situacao) {
   const s = (situacao || '').toUpperCase();
   if (s.includes('ENTREGUE')) return 'entregue';
@@ -224,7 +297,92 @@ function classificarSituacao(situacao) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3. BUSCA
+   3. CONSULTA RÁPIDA POR PEDIDO (número + empresa, o resto é automático)
+   ══════════════════════════════════════════════════════════════════════════ */
+function montarResultadoUnico(r) {
+  return '<div class="table-wrap"><table><tbody>'
+    + '<tr><td style="width:150px;font-weight:700">Transportadora</td><td>' + esc(r.nomeTransp || '—') + '</td></tr>'
+    + '<tr><td style="font-weight:700">NF</td><td class="mono">' + esc(r.nf || '—') + '</td></tr>'
+    + '<tr><td style="font-weight:700">Status</td><td><span class="st st-' + r.status + '">' + statusLabel(r.status) + '</span></td></tr>'
+    + '<tr><td style="font-weight:700">Situação</td><td>' + esc(r.situacao || '—')
+      + (r.local ? '<div style="font-size:10px;color:var(--muted)">' + esc(r.local) + '</div>' : '') + '</td></tr>'
+    + (r.link ? '<tr><td style="font-weight:700">Link</td><td><a class="link-det" href="' + esc(r.link) + '" target="_blank">Ver mais detalhes ↗</a></td></tr>' : '')
+    + '</tbody></table></div>';
+}
+async function buscarPedidoUnico() {
+  const empresa = $('q-empresa').value;
+  const numero = $('q-pedido').value.trim();
+  const div = $('res-unico');
+  if (!numero) { toast('Informe o número do pedido.', 'err'); return; }
+  const btn = $('btn-buscar-unico');
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> Buscando...';
+  div.innerHTML = '<div class="hint">Buscando pedido ' + esc(numero) + ' na ' + esc(EMPRESAS[empresa]) + '...</div>';
+  try {
+    const n = parseInt(numero, 10) || 0;
+    const busca = await omieCall(EP_PEDIDO_OMIE, 'ListarPedidos', empresa, [{
+      pagina: 1, registros_por_pagina: 5, numero_pedido_de: n, numero_pedido_ate: n, apenas_importado_api: 'N'
+    }]);
+    const achado = (busca.pedido_venda_produto || [])[0];
+    if (!achado) {
+      div.innerHTML = '<div class="hint" style="color:var(--red)">Pedido ' + esc(numero) + ' não encontrado na ' + esc(EMPRESAS[empresa]) + '.</div>';
+      return;
+    }
+    const codigoPedido = achado.cabecalho.codigo_pedido;
+    const codigoTransp = achado.frete && achado.frete.codigo_transportadora;
+    div.innerHTML = '<div class="hint">Pedido encontrado — buscando NF e transportadora...</div>';
+
+    const [status, clienteTransp] = await Promise.all([
+      omieCall(EP_PEDIDO_OMIE, 'StatusPedido', empresa, [{ codigo_pedido: codigoPedido }]),
+      codigoTransp
+        ? omieCall(EP_CLIENTES_OMIE, 'ConsultarCliente', empresa, [{ codigo_cliente_omie: codigoTransp }]).catch(() => null)
+        : Promise.resolve(null)
+    ]);
+
+    const nfs = ((status && status.ListaNfe) || []).map(nf => nf.numero_nfe).filter(Boolean);
+    const nf = nfs[0] || '';
+    const nomeTransp = clienteTransp ? (clienteTransp.razao_social || clienteTransp.nome_fantasia || '') : '';
+    const cadastrada = identificarTransportadoraPorNome(nomeTransp);
+    const cnpjRemetente = CNPJ_EMPRESAS[empresa];
+
+    if (!nf) {
+      div.innerHTML = montarResultadoUnico({ nomeTransp: nomeTransp || '—', nf: '', status: 'sem', situacao: 'Esse pedido ainda não tem NF emitida.' });
+      return;
+    }
+    if (!cadastrada) {
+      div.innerHTML = montarResultadoUnico({
+        nomeTransp: nomeTransp || '(não identificada)', nf, status: 'sem',
+        situacao: nomeTransp ? 'Transportadora "' + nomeTransp + '" não está entre as 5 cadastradas pro rastreio automático.' : 'Não foi possível resolver a transportadora desse pedido no Omie.'
+      });
+      return;
+    }
+    if (!cadastrada.backend) {
+      div.innerHTML = montarResultadoUnico({ nomeTransp: cadastrada.nome, nf, status: 'sem', situacao: cadastrada.nome + ' ainda não tem rastreio automático integrado.' });
+      return;
+    }
+    if (!cnpjRemetente) {
+      div.innerHTML = montarResultadoUnico({ nomeTransp: cadastrada.nome, nf, status: 'sem', situacao: 'CNPJ da ' + EMPRESAS[empresa] + ' não configurado.' });
+      return;
+    }
+
+    const r = cadastrada.backend === 'ssw' ? await rastrearSSW(cnpjRemetente, nf) : await rastrearEureka(cnpjRemetente, nf);
+    if (r.encontrado && r.resultados && r.resultados.length) {
+      const res0 = r.resultados[0];
+      div.innerHTML = montarResultadoUnico({
+        nomeTransp: cadastrada.nome, nf, status: classificarSituacao(res0.situacao),
+        situacao: res0.situacao || res0.detalhe, local: (res0.cidadeUf + ' ' + res0.dataHora).trim(), link: res0.link
+      });
+    } else {
+      div.innerHTML = montarResultadoUnico({ nomeTransp: cadastrada.nome, nf, status: 'sem', situacao: 'Não encontrado no rastreio da ' + cadastrada.nome + '.' });
+    }
+  } catch (e) {
+    div.innerHTML = '<div class="hint" style="color:var(--red)">Erro: ' + esc(e.message || e) + '</div>';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔎 Rastrear';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. BUSCA EM MASSA POR PERÍODO
    ══════════════════════════════════════════════════════════════════════════ */
 async function buscarRastreios() {
   const btn = $('btn-buscar');
@@ -339,7 +497,7 @@ async function buscarRastreios() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   4. RENDER
+   5. RENDER
    ══════════════════════════════════════════════════════════════════════════ */
 function popularFiltroTransportadora() {
   const sel = $('f-transp');
@@ -389,7 +547,7 @@ function exportarCsv() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   5. BOOT
+   6. BOOT
    ══════════════════════════════════════════════════════════════════════════ */
 $('f-transp').addEventListener('change', renderTabela);
 (function initDatas() {
