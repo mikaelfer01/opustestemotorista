@@ -133,6 +133,17 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 <button onclick="testarRastreioSSW()">Testar rastreio SSW</button>
 <div id="res-ssw"></div>
 
+<h2>Diagnóstico — Login no painel interno da SSW (comprovante de entrega)</h2>
+<p style="font-size:12px;color:#555;max-width:640px">
+  Testa <code>/api/ssw-diag</code>, que faz login de verdade no sistema interno da SSW
+  (sistema.ssw.inf.br, domínio RCS/Camilo dos Santos) usando os campos exatos do formulário real
+  (f1=domínio, f2=CPF, f3=usuário, f4=senha, act=L) e devolve status, cookies recebidos e um trecho
+  do HTML de resposta — pra confirmar se o login funciona antes de automatizar a busca do
+  comprovante de entrega (menu 396 - Arquivo DACTEs, RPS/NSes e Comprovantes de Entrega).
+</p>
+<button onclick="testarSswLogin()">Testar login SSW</button>
+<div id="res-ssw-login"></div>
+
 <h2>Diagnóstico Lista Técnica v2</h2>
 <input id="sku" value="123058" placeholder="Código SKU"/>
 <input id="omie_id" value="4991859892" placeholder="ID interno OMIE"/>
@@ -506,6 +517,24 @@ async function testarRastreioSSW() {
       div.innerHTML += '<pre style="color:#22c55e">✅ Achou resultado! Se essa entrega foi de uma transportadora diferente da TG, confirma que a consulta funciona pra várias.</pre>';
     } else if (data.ok) {
       div.innerHTML += '<pre style="color:#f59e0b">⚠️ Não achou nada — pode ser CNPJ/número errado, ou essa entrega não passou pelo SSW.</pre>';
+    }
+  } catch (e) {
+    div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
+}
+
+// Testa /api/ssw-diag: login de verdade no painel interno da SSW.
+async function testarSswLogin() {
+  const div = document.getElementById('res-ssw-login');
+  div.innerHTML = '<pre>Fazendo login na SSW...</pre>';
+  try {
+    const r = await fetch('/api/ssw-diag?dominio=RCS');
+    const data = await r.json();
+    div.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    if (data.sucesso) {
+      div.innerHTML += '<pre style="color:#22c55e">✅ Login funcionou — achou "Menu Principal" na resposta. Próximo passo: automatizar o menu 396.</pre>';
+    } else {
+      div.innerHTML += '<pre style="color:#f87171">❌ Login não confirmado — olha o bodySnippet acima pra ver o que a SSW respondeu de verdade (mensagem de erro, tela diferente, etc.).</pre>';
     }
   } catch (e) {
     div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
