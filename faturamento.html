@@ -134,11 +134,12 @@ tr.row-novo td{animation:flashNovo 3.5s ease-out;}
           <th style="width:70px">Empresa</th>
           <th style="width:100px">Pedido</th>
           <th>Cliente</th>
+          <th style="width:130px">Transportadora</th>
           <th style="width:100px">Faturado em</th>
           <th style="width:130px">Valor</th>
           <th style="width:80px">Detectado</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="7" class="empty">Carregando…</td></tr></tbody>
       </table>
     </div>
     <div class="rodape" id="rodape"></div>
@@ -165,13 +166,29 @@ const EMPRESAS = { MFP: { nome: 'MF Paris' }, DMS: { nome: 'DMS' }, PROFI: { nom
 const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
 // Etapas que já foram faturadas no fluxo do Omie usado neste projeto (mesma
 // classificação já usada em roteirizador.html: infoCadastro.faturado==='S'
-// OU etapa 70/80/90/100 == "Faturado").
-const ETAPAS_FATURADO = ['70', '80', '90', '100'];
+// OU etapa 70/80/90 == "Faturado"). "100" NÃO entra aqui — o Omie confirmou
+// (erro real, em produção) que o campo etapa aceita no máximo 2 caracteres
+// como filtro, então "100" nunca poderia ser um valor de etapa válido.
+const ETAPAS_FATURADO = ['70', '80', '90'];
 // Janela de inclusão do pedido escaneada a cada verificação — não é a data de
 // faturamento (essa vem de infoCadastro.dFat, conferida linha a linha), é só
 // até onde voltamos pra não perder pedido incluído há um tempo mas faturado
 // só depois. 45 dias cobre folgado o caso comum sem pesar demais a consulta.
 const JANELA_DIAS = 45;
+const EP_CLIENTES = 'https://app.omie.com.br/api/v1/geral/clientes/';
+// Transportadoras cadastradas — casamento pelo nome (razão social/fantasia),
+// mesmo critério de prefixo já usado em cte.html/torre.html.
+const TRANSPORTADORAS_CADASTRADAS = [
+  { regex: /CAMILO/i, nome: 'Camilo dos Santos' },
+  { regex: /\bTG\b|TG TRANSPORTES/i, nome: 'TG' },
+  { regex: /\bBHT\b|BH TRANSPORTES/i, nome: 'BHT' },
+  { regex: /EUREKA/i, nome: 'Eureka' },
+  { regex: /PAJU/i, nome: 'Pajuçara' },
+];
+function identificarTransportadoraPorNome(nome) {
+  const t = TRANSPORTADORAS_CADASTRADAS.find(t => t.regex.test(nome || ''));
+  return t ? t.nome : null;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. ESTADO
@@ -187,6 +204,7 @@ let pollTimer = null;
 let ultimaAtualizacao = null;
 let somAtivo = true;
 let notifAtivo = false;
+const _cacheTransportadora = {}; // codigo_transportadora -> nome resolvido (ou null)
 
 /* ══════════════════════════════════════════════════════════════════════════
    3. UTILITÁRIOS
@@ -245,6 +263,65 @@ async function omieCall(endpoint, call, empCod, param, tentativa) {
   }
   return data;
 }
+async function fbWrite(path, data, method) {
+  const r = await fetch('/api/firebase-write', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, data, method: method || 'update' })
+  });
+  return r.json();
+}
+
+// Resolve frete.codigo_transportadora (código interno do Omie) pra nome de
+// verdade via geral/clientes/ConsultarCliente — mesma chamada já comprovada
+// em carteira.js pra resolver nome de cliente (transportadora também é um
+// cadastro de cliente/fornecedor no Omie). Cacheado por código, já que a
+// mesma transportadora se repete em muitos pedidos.
+async function resolverTransportadora(codigoTransp, empCod) {
+  if (!codigoTransp) return null;
+  if (codigoTransp in _cacheTransportadora) return _cacheTransportadora[codigoTransp];
+  try {
+    const cliente = await omieCall(EP_CLIENTES, 'ConsultarCliente', empCod, [{ codigo_cliente_omie: codigoTransp }]);
+    const nomeResolvido = cliente.razao_social || cliente.nome_fantasia || null;
+    const cadastrada = identificarTransportadoraPorNome(nomeResolvido) || identificarTransportadoraPorNome(cliente.nome_fantasia);
+    const resultado = nomeResolvido ? { nomeOmie: nomeResolvido, cadastrada } : null;
+    _cacheTransportadora[codigoTransp] = resultado;
+    return resultado;
+  } catch (e) {
+    log('Erro ao resolver transportadora ' + codigoTransp + ': ' + (e.message || e));
+    _cacheTransportadora[codigoTransp] = null;
+    return null;
+  }
+}
+
+// Alimenta a Torre das Transportadoras: pra cada pedido recém-detectado cuja
+// transportadora bateu com uma das cadastradas, busca o número da NF
+// (StatusPedido -> ListaNfe, mesmo padrão já usado em torre.html) e grava
+// em despachos/rastreio_transportadoras — torre-transportadoras.html lê
+// esse nó pra já ter a NF pronta pra consultar o SSW, sem precisar que a
+// rota tenha sido roteirizada no OPUS.
+async function alimentarTorreTransportadoras(itens) {
+  for (const it of itens) {
+    if (!it.transportadoraCadastrada) continue;
+    try {
+      const status = await omieCall(EP_PEDIDO, 'StatusPedido', it.empresa, [{ codigo_pedido: it.codigo_pedido }]);
+      const nfs = ((status && status.ListaNfe) || []).map(nf => nf.numero_nfe).filter(Boolean);
+      await fbWrite('rastreio_transportadoras/' + it.empresa + '_' + it.codigo_pedido, {
+        empresa: it.empresa,
+        codigo_pedido: it.codigo_pedido,
+        numero_pedido: it.numero_pedido,
+        cliente: it.cliente,
+        transportadora: it.transportadoraCadastrada,
+        transportadoraNomeOmie: it.transportadoraNome,
+        nf: nfs[0] || '',
+        valor: it.valor,
+        dFat: it.dFat,
+        ts: Date.now()
+      }, 'set');
+    } catch (e) {
+      log('Torre de Transportadoras (pedido ' + it.numero_pedido + '): ' + (e.message || e));
+    }
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    5. BUSCA DOS PEDIDOS FATURADOS NO DIA
@@ -270,28 +347,39 @@ async function buscarFaturadosDoDia(dataISO) {
             etapa, filtrar_por_data_de: dtDe, filtrar_por_data_ate: dtAte
           }]);
         } catch (e) {
-          log(EMPRESAS[empCod].nome + ' · etapa ' + etapa + ': ' + (e.message || e));
+          // "Não existem registros para a página" é o jeito do Omie dizer
+          // "nada encontrado" nessa combinação empresa/etapa/período — não é
+          // falha nenhuma, é o caso normal na maioria dos ciclos (nem toda
+          // etapa tem pedido faturado todo dia). Só loga o que for erro de
+          // verdade.
+          if (!/existem registros/i.test(e.message || '')) {
+            log(EMPRESAS[empCod].nome + ' · etapa ' + etapa + ': ' + (e.message || e));
+          }
           break; // pula essa combinação empresa/etapa, segue nas outras
         }
         const lista = data.pedido_venda_produto || [];
         totalPag = data.total_de_paginas || 1;
-        lista.forEach(p => {
+        for (const p of lista) {
           const info = p.infoCadastro || {};
           const cab = p.cabecalho || {};
-          if (info.cancelado === 'S') return;
+          if (info.cancelado === 'S') continue;
           const faturado = info.faturado === 'S' || ETAPAS_FATURADO.includes(String(cab.etapa));
-          if (!faturado) return;
+          if (!faturado) continue;
           const dFat = info.dFat || cab.data_previsao || '';
-          if (dFat !== dtAlvoBr) return;
+          if (dFat !== dtAlvoBr) continue;
+          const codigoTransp = p.frete && p.frete.codigo_transportadora;
+          const transp = codigoTransp ? await resolverTransportadora(codigoTransp, empCod) : null;
           resultados.push({
             empresa: empCod,
             codigo_pedido: cab.codigo_pedido,
             numero_pedido: cab.numero_pedido,
             cliente: (p.informacoes_adicionais && p.informacoes_adicionais.contato) || '',
             valor: (p.total_pedido && p.total_pedido.valor_total_pedido) || 0,
-            dFat
+            dFat,
+            transportadoraNome: transp ? transp.nomeOmie : '',
+            transportadoraCadastrada: transp ? transp.cadastrada : null
           });
-        });
+        }
         pag++;
         if (pag <= totalPag) await sleep(320);
       }
@@ -355,16 +443,20 @@ function renderTabela(chavesNovas) {
     .slice()
     .sort((a, b) => (b.valor || 0) - (a.valor || 0));
   if (!lista.length) {
-    $('tbody').innerHTML = '<tr><td colspan="6" class="empty">Nenhum pedido faturado encontrado para essa data (ainda).</td></tr>';
+    $('tbody').innerHTML = '<tr><td colspan="7" class="empty">Nenhum pedido faturado encontrado para essa data (ainda).</td></tr>';
     return;
   }
   $('tbody').innerHTML = lista.map(it => {
     const chave = it.empresa + '|' + it.codigo_pedido;
     const novo = chavesNovas.indexOf(chave) !== -1;
+    const transpTxt = it.transportadoraCadastrada
+      ? it.transportadoraCadastrada
+      : (it.transportadoraNome ? it.transportadoraNome + ' (não cadastrada)' : '—');
     return '<tr class="' + (novo ? 'row-novo' : '') + '">'
       + '<td><span class="emp e-' + esc(it.empresa) + '">' + esc(it.empresa) + '</span></td>'
       + '<td class="mono">' + esc(it.numero_pedido || it.codigo_pedido) + '</td>'
       + '<td>' + esc(it.cliente || '—') + '</td>'
+      + '<td>' + esc(transpTxt) + '</td>'
       + '<td class="mono">' + esc(it.dFat || '—') + '</td>'
       + '<td class="mono">' + fmtMoeda(it.valor) + '</td>'
       + '<td class="mono">' + esc(detectadoEm[chave] || '—') + '</td>'
@@ -407,6 +499,7 @@ async function verificarAgora() {
     const chavesNovas = novos.map(n => n.empresa + '|' + n.codigo_pedido);
     renderTabela(chavesNovas);
     atualizarKPIs();
+    if (novos.length) alimentarTorreTransportadoras(novos); // segundo plano, não trava o ciclo
     if (novos.length && !primeiraCarga) {
       contadorNovos += novos.length;
       $('k-novos').textContent = String(contadorNovos);
@@ -445,7 +538,7 @@ $('f-data').addEventListener('change', () => {
   primeiraCarga = true;
   resultadosAtuais = [];
   $('k-novos').textContent = '0';
-  $('tbody').innerHTML = '<tr><td colspan="6" class="empty">Carregando…</td></tr>';
+  $('tbody').innerHTML = '<tr><td colspan="7" class="empty">Carregando…</td></tr>';
   verificarAgora();
 });
 $('f-empresa').addEventListener('change', () => { renderTabela([]); atualizarKPIs(); });

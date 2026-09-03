@@ -240,9 +240,14 @@ async function buscarRastreios() {
   const dataAte = $('f-ate').value;
 
   try {
-    const historico = await fbRead('historico_roteirizados') || {};
+    const [historico, feedFaturamento] = await Promise.all([
+      fbRead('historico_roteirizados'),
+      fbRead('rastreio_transportadoras')
+    ]);
     const alvos = []; // { rotaNome, transportadora, empresa, cliente, pedido, nf }
-    Object.keys(historico).forEach(dataKey => {
+
+    // Fonte 1: rotas roteirizadas no OPUS (paradas com NF já preenchida).
+    Object.keys(historico || {}).forEach(dataKey => {
       if (dataDe && dataKey < dataDe) return;
       if (dataAte && dataKey > dataAte) return;
       const registros = historico[dataKey] || {};
@@ -260,6 +265,22 @@ async function buscarRastreios() {
             cliente: p.cliente || '—', pedido: p.pedido || '—', nf: String(p.nf).replace(/\D/g, '')
           });
         });
+      });
+    });
+
+    // Fonte 2: pedidos que faturamento.html detectou e já casou com uma
+    // transportadora cadastrada (via frete.codigo_transportadora) — não
+    // depende de a rota ter sido roteirizada no OPUS.
+    Object.keys(feedFaturamento || {}).forEach(chave => {
+      const it = feedFaturamento[chave];
+      if (!it || !it.nf) return;
+      if (!empresasSel.includes(it.empresa)) return;
+      const dataKeyIso = it.dFat ? it.dFat.split('/').reverse().join('-') : '';
+      if (dataDe && dataKeyIso && dataKeyIso < dataDe) return;
+      if (dataAte && dataKeyIso && dataKeyIso > dataAte) return;
+      alvos.push({
+        rotaNome: 'Faturamento (sem rota no OPUS)', transportadora: it.transportadora, empresa: it.empresa,
+        cliente: it.cliente || '—', pedido: it.numero_pedido || '—', nf: String(it.nf).replace(/\D/g, '')
       });
     });
 
