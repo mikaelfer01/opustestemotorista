@@ -70,12 +70,12 @@ module.exports = async function handler(req, res) {
     if (!pajResp.ok) {
       // Pedido/NF não encontrado costuma vir como erro HTTP aqui (não como
       // um corpo de sucesso vazio) — trata como "não encontrado", não como
-      // falha real.
-      return res.status(200).json({ ok: true, resultados: [], encontrado: false });
+      // falha real. _debug fica temporário pra diagnosticar em produção.
+      return res.status(200).json({ ok: true, resultados: [], encontrado: false, _debug: { teveCookie: !!cookie, statusPajucara: pajResp.status } });
     }
     const data = await pajResp.json().catch(() => null);
     if (!data || !data.ocorrenciaMaisRecente) {
-      return res.status(200).json({ ok: true, resultados: [], encontrado: false });
+      return res.status(200).json({ ok: true, resultados: [], encontrado: false, _debug: { teveCookie: !!cookie, statusPajucara: pajResp.status, corpo: data } });
     }
 
     const ocorrencia = data.ocorrenciaMaisRecente.ocorrencia || {};

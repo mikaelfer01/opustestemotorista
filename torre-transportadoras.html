@@ -214,6 +214,7 @@ function montarResultadoUnico(r) {
     + '<tr><td style="font-weight:700">Situação</td><td>' + esc(r.situacao || '—')
       + (r.local ? '<div style="font-size:10px;color:var(--muted)">' + esc(r.local) + '</div>' : '') + '</td></tr>'
     + (r.link ? '<tr><td style="font-weight:700">Link</td><td><a class="link-det" href="' + esc(r.link) + '" target="_blank">Ver mais detalhes ↗</a></td></tr>' : '')
+    + (r.debug ? '<tr><td style="font-weight:700">Debug</td><td class="mono" style="font-size:10px">' + esc(JSON.stringify(r.debug)) + '</td></tr>' : '')
     + '</tbody></table></div>';
 }
 async function buscarPedidoUnico() {
@@ -281,7 +282,7 @@ async function buscarPedidoUnico() {
         situacao: res0.situacao || res0.detalhe, local: (res0.cidadeUf + ' ' + res0.dataHora).trim(), link: res0.link
       });
     } else {
-      div.innerHTML = montarResultadoUnico({ nomeTransp: cadastrada.nome, nf, status: 'sem', situacao: 'Não encontrado no rastreio da ' + cadastrada.nome + '.' });
+      div.innerHTML = montarResultadoUnico({ nomeTransp: cadastrada.nome, nf, status: 'sem', situacao: 'Não encontrado no rastreio da ' + cadastrada.nome + '.', debug: r._debug });
     }
   } catch (e) {
     div.innerHTML = '<div class="hint" style="color:var(--red)">Erro: ' + esc(e.message || e) + '</div>';
