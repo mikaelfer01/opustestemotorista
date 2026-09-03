@@ -54,8 +54,7 @@ export const PERMISSOES = {
   'carteira.html':            ['admin', 'logistica', 'comercial'],
   'cte.html':                  ['admin', 'logistica'],
   'faturamento.html':          ['admin', 'logistica', 'comercial'],
-  'torre-transportadoras.html': ['admin', 'logistica', 'comercial'],
-  
+
   // Simuladores
   'simulador.html':           ['admin', 'logistica', 'comercial'],
   'simulador-producao.html':  ['admin', 'logistica', 'comercial'],
@@ -76,6 +75,7 @@ export const PAGINAS_PUBLICAS = new Set([
   'login.html',
   'motorista.html',
   'traccar-setup.html', // guia de configuracao do rastreio, acessado pelo motorista
+  'torre-transportadoras.html', // consulta de rastreio por link direto, sem exigir login
 ]);
 
 /**

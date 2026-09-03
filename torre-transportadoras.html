@@ -100,13 +100,8 @@ a.link-det:hover{text-decoration:underline;}
 
 <div class="toast" id="toast"></div>
 
-<!-- Controle de acesso: mesmo auth.js do resto do sistema. -->
-<script type="module">
-  try {
-    const m = await import('/js/auth.js');
-    m.exigirPerfis(['admin', 'logistica', 'comercial']);
-  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
-</script>
+<!-- Página pública: acessível direto por link, sem login do OPUS
+     (mesmo padrão de motorista.html/traccar-setup.html). -->
 
 <script>
 'use strict';
