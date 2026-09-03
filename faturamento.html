@@ -305,15 +305,26 @@ async function resolverClienteOmie(codigo, empCod) {
   }
 }
 
-// Alimenta a Torre das Transportadoras: pra cada pedido recém-detectado cuja
-// transportadora bateu com uma das cadastradas, busca o número da NF
-// (StatusPedido -> ListaNfe, mesmo padrão já usado em torre.html) e grava
-// em despachos/rastreio_transportadoras — torre-transportadoras.html lê
-// esse nó pra já ter a NF pronta pra consultar o SSW, sem precisar que a
-// rota tenha sido roteirizada no OPUS.
+// Alimenta a Torre das Transportadoras: pra cada pedido cuja transportadora
+// bateu com uma das cadastradas, busca o número da NF (StatusPedido ->
+// ListaNfe, mesmo padrão já usado em torre.html) e grava em
+// rastreio_transportadoras — torre-transportadoras.html lê esse nó pra já
+// ter a NF pronta pra consultar o SSW, sem precisar que a rota tenha sido
+// roteirizada no OPUS.
+// Recebe a lista COMPLETA do ciclo (não só os "novos" recém-detectados):
+// "novos" só existe uma vez por pedido na sessão do navegador (o Set
+// `vistos` não esquece), então um pedido cuja transportadora falhou em
+// resolver num ciclo anterior (rate limit, erro passageiro etc.) nunca mais
+// seria re-tentado sem recarregar a página. _sincronizadosTorre garante que,
+// dentro da mesma aba, cada pedido só gera uma chamada real (StatusPedido +
+// firebase-write) — mas todo ciclo tenta de novo qualquer pedido que ainda
+// não tenha sincronizado, cobrindo o que ficou pra trás antes desse fix.
+const _sincronizadosTorre = new Set();
 async function alimentarTorreTransportadoras(itens) {
   for (const it of itens) {
     if (!it.transportadoraCadastrada) continue;
+    const chaveSync = it.empresa + '|' + it.codigo_pedido;
+    if (_sincronizadosTorre.has(chaveSync)) continue;
     try {
       const status = await omieCall(EP_PEDIDO, 'StatusPedido', it.empresa, [{ codigo_pedido: it.codigo_pedido }]);
       const nfs = ((status && status.ListaNfe) || []).map(nf => nf.numero_nfe).filter(Boolean);
@@ -329,6 +340,7 @@ async function alimentarTorreTransportadoras(itens) {
         dFat: it.dFat,
         ts: Date.now()
       }, 'set');
+      _sincronizadosTorre.add(chaveSync); // só marca como feito se realmente gravou
     } catch (e) {
       log('Torre de Transportadoras (pedido ' + it.numero_pedido + '): ' + (e.message || e));
     }
@@ -513,7 +525,7 @@ async function verificarAgora() {
     const chavesNovas = novos.map(n => n.empresa + '|' + n.codigo_pedido);
     renderTabela(chavesNovas);
     atualizarKPIs();
-    if (novos.length) alimentarTorreTransportadoras(novos); // segundo plano, não trava o ciclo
+    if (lista.length) alimentarTorreTransportadoras(lista); // segundo plano, não trava o ciclo — lista completa, não só os novos (ver comentário na função)
     if (novos.length && !primeiraCarga) {
       contadorNovos += novos.length;
       $('k-novos').textContent = String(contadorNovos);
