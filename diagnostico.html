@@ -116,6 +116,7 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 </select>
 <input id="kb2-pedido" placeholder="Número do pedido faturado com transportador (ex.: 12171)"/>
 <button onclick="verCampoFrete()">Ver bloco "frete" cru desse pedido</button>
+<button onclick="resolverTransportadora()">Resolver nome da transportadora (codigo_transportadora)</button>
 <div id="res-frete"></div>
 
 <h2>Diagnóstico — Rastreio SSW (TG, Camilo dos Santos, e possivelmente outras)</h2>
@@ -533,6 +534,41 @@ async function verCampoFrete() {
       'BLOCO "frete":\n' + JSON.stringify(achado.frete || {}, null, 2) + '\n\n' +
       'BLOCO "informacoes_adicionais":\n' + JSON.stringify(achado.informacoes_adicionais || {}, null, 2) +
       '</pre>';
+  } catch (e) {
+    div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
+  }
+}
+
+// Resolve o codigo_transportadora (código interno do Omie, não o nome) pra
+// nome de verdade — mesma chamada já usada e comprovada em carteira.js pra
+// resolver nome de cliente (geral/clientes/ConsultarCliente), já que
+// transportadora no Omie também é um cadastro de cliente/fornecedor.
+async function resolverTransportadora() {
+  const empresa = document.getElementById('kb2-empresa').value;
+  const numero = document.getElementById('kb2-pedido').value.trim();
+  const div = document.getElementById('res-frete');
+  if (!numero) { div.innerHTML = '<pre style="color:#f87171">Informe o número do pedido.</pre>'; return; }
+  div.innerHTML = '<pre>Buscando pedido e resolvendo transportadora...</pre>';
+  try {
+    const n = parseInt(numero, 10) || 0;
+    const busca = await omie(EP_PEDIDO_DIAG, 'ListarPedidos', [{
+      pagina: 1, registros_por_pagina: 5, numero_pedido_de: n, numero_pedido_ate: n, apenas_importado_api: 'N'
+    }], empresa);
+    const achado = (busca.pedido_venda_produto || [])[0];
+    if (!achado) { div.innerHTML = '<pre style="color:#f87171">Pedido não encontrado em ' + empresa + '.</pre>'; return; }
+    const codigoTransp = achado.frete && achado.frete.codigo_transportadora;
+    if (!codigoTransp) { div.innerHTML = '<pre style="color:#f87171">Esse pedido não tem codigo_transportadora preenchido em frete.</pre>'; return; }
+    const cliente = await omie('https://app.omie.com.br/api/v1/geral/clientes/', 'ConsultarCliente',
+      [{ codigo_cliente_omie: codigoTransp }], empresa);
+    div.innerHTML = '<pre>' +
+      'codigo_transportadora: ' + codigoTransp + '\n\n' +
+      'Resposta do ConsultarCliente (cru):\n' + JSON.stringify(cliente, null, 2) +
+      '</pre>';
+    if (cliente.razao_social || cliente.nome_fantasia) {
+      div.innerHTML += '<pre style="color:#22c55e">✅ Nome resolvido: ' + (cliente.razao_social || '') + (cliente.nome_fantasia ? ' (' + cliente.nome_fantasia + ')' : '') + '</pre>';
+    } else if (cliente.faultstring) {
+      div.innerHTML += '<pre style="color:#f87171">Omie recusou: ' + cliente.faultstring + '</pre>';
+    }
   } catch (e) {
     div.innerHTML = '<pre style="color:#f87171">Erro: ' + (e.message || e) + '</pre>';
   }
