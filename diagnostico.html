@@ -121,7 +121,7 @@ h3{margin-top:14px;color:#1A2B4A;font-size:13px;}
 
 <h2>Diagnóstico — Rastreio SSW (TG, Camilo dos Santos, e possivelmente outras)</h2>
 <p style="font-size:12px;color:#555;max-width:640px">
-  Testa o proxy novo (<code>/api/rastreio-ssw</code>), que consulta o mesmo sistema SSW que o site da TG e
+  Testa o proxy (<code>/api/rastreio-transportadora</code>), que consulta o mesmo sistema SSW que o site da TG e
   da Camilo dos Santos usam pro rastreamento — confirmado contra uma resposta real do SSW. Coloca o CNPJ
   do remetente (MFP/DMS/PROFI) e o número da NF/pedido de uma entrega que você sabe que foi transportada,
   e testa. Como essa consulta não informa qual transportadora foi — só o CNPJ do remetente — se achar
@@ -499,7 +499,7 @@ async function testarMudarEtapa() {
   }
 }
 
-// Testa o proxy /api/rastreio-ssw (novo) contra o SSW de verdade.
+// Testa o proxy /api/rastreio-transportadora (consolidado) contra o SSW de verdade.
 async function testarRastreioSSW() {
   const cnpj = document.getElementById('ssw-cnpj').value.trim();
   const numero = document.getElementById('ssw-numero').value.trim();
@@ -507,9 +507,9 @@ async function testarRastreioSSW() {
   if (!cnpj || !numero) { div.innerHTML = '<pre style="color:#f87171">Informe o CNPJ e o número.</pre>'; return; }
   div.innerHTML = '<pre>Consultando...</pre>';
   try {
-    const r = await fetch('/api/rastreio-ssw', {
+    const r = await fetch('/api/rastreio-transportadora', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cnpj, numero })
+      body: JSON.stringify({ transportadora: 'ssw', cnpj, numero })
     });
     const data = await r.json();
     div.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
