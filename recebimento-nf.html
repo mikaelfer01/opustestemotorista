@@ -97,10 +97,10 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
 <div class="wrap">
   <div class="sec">
     <h1>Recebimento de Notas Fiscais (Fornecedor)</h1>
-    <p class="sub">Lista as notas fiscais de compra recebidas das 3 empresas, direto do Omie (módulo DF-e), com os itens e valores. Permite classificar cada item por departamento, CFOP e produto do catálogo.</p>
+    <p class="sub">Lista os pedidos de compra recebidos das 3 empresas, direto do Kanban "Compras" do Omie (Requisição → Pedido de Compra → Aprovação → Faturado pelo Fornecedor → Recebido → Conferido), com os itens e valores. Permite classificar cada item por departamento, CFOP e produto do catálogo.</p>
 
     <div class="aviso" id="aviso-endpoint">
-      ⚠ Este módulo usa endpoints do Omie (documentos DF-e de entrada) que nunca tinham sido usados neste sistema antes.
+      ⚠ Este módulo usa o endpoint de Pedido de Compra do Omie (produtos/pedidocompra), que nunca tinha sido usado neste sistema antes.
       Se a busca ou a gravação não funcionar de primeira, abra o painel "Retorno bruto do Omie" no fim da página — a resposta real
       ajuda a corrigir com precisão em vez de continuar chutando o formato.
     </div>
@@ -137,7 +137,7 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
             <th style="width:90px">NF</th>
             <th style="width:90px">Emissão</th>
             <th style="width:110px">Valor</th>
-            <th style="width:130px">Situação</th>
+            <th style="width:170px">Fase (Kanban Compras)</th>
             <th style="width:100px">Classificação</th>
           </tr>
         </thead>
@@ -232,7 +232,7 @@ const EMPRESAS = {
   DMS: { nome: 'DMS Alimentos' },
   PRF: { nome: 'Profi Comércio' },
 };
-const EP_DFE = 'https://app.omie.com.br/api/v1/produtos/dfedocs/';
+const EP_PEDCOMPRA = 'https://app.omie.com.br/api/v1/produtos/pedidocompra/';
 const EP_DEPTO = 'https://app.omie.com.br/api/v1/geral/departamentos/';
 const EP_PRODUTO = 'https://app.omie.com.br/api/v1/geral/produtos/';
 
@@ -390,32 +390,37 @@ async function cadastrarProduto(empCod, dados) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   5. NOTAS FISCAIS DE ENTRADA (DF-e) — chutado, sem uso confirmado neste
-   projeto ainda. Se a chamada abaixo falhar, o erro do Omie aparece direto
-   na tela e no painel de retorno bruto, pra corrigir com precisão.
+   5. PEDIDO DE COMPRA (produtos/pedidocompra) — é aqui que vive o Kanban
+   "Compras" do Omie (Requisição → Pedido de Compra → Aprovação → Faturado
+   pelo Fornecedor → Recebido → Conferido), confirmado por print da tela real
+   do Omie. Os nomes de call/campo abaixo seguem o mesmo padrão já confirmado
+   do módulo de pedido de VENDA (produtos/pedido — ListarPedidos/
+   StatusPedido), mas nunca foram usados neste projeto pro lado de COMPRA —
+   se a chamada abaixo falhar ou vier vazia, o erro/retorno bruto aparece na
+   tela pra corrigir com precisão.
    ══════════════════════════════════════════════════════════════════════════ */
 async function listarDocumentosRecebidos(empCod, dataDe, dataAte) {
   const param = { pagina: 1, registros_por_pagina: 50 };
-  if (dataDe) param.dEmiInicial = dataDe;
-  if (dataAte) param.dEmiFinal = dataAte;
-  const primeira = await omieCall(EP_DFE, 'ListarDocumentos', empCod, [param]);
+  if (dataDe) param.filtrar_por_data_de = dataDe;
+  if (dataAte) param.filtrar_por_data_ate = dataAte;
+  const primeira = await omieCall(EP_PEDCOMPRA, 'ListarPedidosCompra', empCod, [param]);
   mostrarRaw(primeira);
   const lista = extrairListaGenerica(primeira);
   const totalPaginas = primeira.total_de_paginas || 1;
   const todos = lista.slice();
   for (let p = 2; p <= Math.min(totalPaginas, 10); p++) {
     await sleep(350);
-    const dados = await omieCall(EP_DFE, 'ListarDocumentos', empCod, [{ ...param, pagina: p }]);
+    const dados = await omieCall(EP_PEDCOMPRA, 'ListarPedidosCompra', empCod, [{ ...param, pagina: p }]);
     todos.push.apply(todos, extrairListaGenerica(dados));
   }
   return todos;
 }
 
 async function obterDocumentoCompleto(doc, empCod) {
-  const chave = buscarCampoProfundo(doc, ['chave_nfe', 'cChaveNFe', 'chNFe', 'chaveAcesso', 'chave']);
-  const nIdDoc = buscarCampoProfundo(doc, ['nIdDocumento', 'nIdNF', 'nIdDfe', 'codigo']);
-  const param = [{ nIdDocumento: nIdDoc || 0, cChaveAcesso: chave || '', cChaveNFe: chave || '' }];
-  const d = await omieCall(EP_DFE, 'ObterDocumento', empCod, param);
+  const codigoPedido = buscarCampoProfundo(doc, ['codigo_pedido', 'nCodPed', 'codigo']);
+  const numeroPedido = buscarCampoProfundo(doc, ['numero_pedido', 'nNumero', 'numero']);
+  const param = [{ codigo_pedido: codigoPedido || 0, numero_pedido: numeroPedido || '' }];
+  const d = await omieCall(EP_PEDCOMPRA, 'ConsultarPedCompra', empCod, param);
   mostrarRaw(d);
   return d;
 }
@@ -449,7 +454,7 @@ async function buscar() {
 
   try {
     for (const empCod of empresas) {
-      log('Buscando documentos recebidos — ' + EMPRESAS[empCod].nome + '…');
+      log('Buscando pedidos de compra — ' + EMPRESAS[empCod].nome + '…');
       try {
         const docs = await listarDocumentosRecebidos(empCod, dataDe, dataAte);
         log('  → ' + docs.length + ' documento(s) encontrados em ' + EMPRESAS[empCod].nome + '.');
@@ -457,11 +462,15 @@ async function buscar() {
           notas.push({
             empCod,
             bruto: doc,
-            fornecedor: buscarCampoProfundo(doc, ['razao_social', 'xNome', 'nome_fornecedor', 'razaoSocial']) || 'Fornecedor não identificado',
-            numero: buscarCampoProfundo(doc, ['numero_nfe', 'nNF', 'numero', 'nfe_numero']) || '—',
-            emissao: buscarCampoProfundo(doc, ['data_emissao', 'dEmi', 'dhEmi']) || '',
-            valor: buscarCampoProfundo(doc, ['valor_nf', 'vNF', 'valor_total_nota', 'valorTotal']) || 0,
-            situacao: buscarCampoProfundo(doc, ['situacao', 'cSitDfe', 'status']) || '—',
+            fornecedor: buscarCampoProfundo(doc, ['razao_social', 'nome_fornecedor', 'fornecedor', 'razaoSocial']) || 'Fornecedor não identificado',
+            numero: buscarCampoProfundo(doc, ['numero_pedido', 'numero_nfe', 'nNF', 'numero']) || '—',
+            emissao: buscarCampoProfundo(doc, ['data_previsao', 'data_inclusao', 'dEmi', 'data']) || '',
+            valor: buscarCampoProfundo(doc, ['valor_total_pedido', 'valor_nf', 'valorTotal', 'valor']) || 0,
+            // "fase" é o nome de campo que o Omie deve usar pro estágio do Kanban
+            // (Requisição/Pedido de Compra/Aprovação/Faturado pelo Fornecedor/
+            // Recebido/Conferido) — mostrado cru (sem tradução) até confirmar o
+            // valor real, pra não inventar um rótulo errado por cima do dado certo.
+            situacao: buscarCampoProfundo(doc, ['fase', 'etapa', 'situacao', 'status', 'cEtapa']) || '—',
             classificado: false
           });
         });
@@ -591,11 +600,10 @@ async function salvarClassificacao() {
   }
 
   try {
-    const chave = buscarCampoProfundo(notaAtual.bruto, ['chave_nfe', 'cChaveNFe', 'chNFe', 'chaveAcesso', 'chave']);
-    const nIdDoc = buscarCampoProfundo(notaAtual.bruto, ['nIdDocumento', 'nIdNF', 'nIdDfe', 'codigo']);
+    const codigoPedido = buscarCampoProfundo(notaAtual.bruto, ['codigo_pedido', 'nCodPed', 'codigo']);
+    const numeroPedido = buscarCampoProfundo(notaAtual.bruto, ['numero_pedido', 'nNumero', 'numero']);
     const payload = [{
-      nIdDocumento: nIdDoc || 0,
-      cChaveAcesso: chave || '',
+      cabecalho: { codigo_pedido: codigoPedido || 0, numero_pedido: numeroPedido || '' },
       itens: itensAtuais.map(it => ({
         descricao: it.descricao,
         codigo_departamento: it.departamento,
@@ -603,7 +611,7 @@ async function salvarClassificacao() {
         codigo_produto: it.produtoCodigo || ''
       }))
     }];
-    const resp = await omieCall(EP_DFE, 'AlterarDocumento', notaAtual.empCod, payload);
+    const resp = await omieCall(EP_PEDCOMPRA, 'AlterarPedCompra', notaAtual.empCod, payload);
     mostrarRaw(resp);
     notaAtual.classificado = true;
     render();
