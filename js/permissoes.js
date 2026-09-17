@@ -76,6 +76,7 @@ export const PAGINAS_PUBLICAS = new Set([
   'motorista.html',
   'traccar-setup.html', // guia de configuracao do rastreio, acessado pelo motorista
   'torre-transportadoras.html', // consulta de rastreio por link direto, sem exigir login
+  'nf-boleto.html', // consulta de NF + boletos por link direto, sem exigir login
 ]);
 
 /**

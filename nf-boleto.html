@@ -90,13 +90,8 @@ label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 
-<!-- Controle de acesso: usa o mesmo auth.js do resto do sistema, se existir. -->
-<script type="module">
-  try {
-    const m = await import('/js/auth.js');
-    m.exigirPerfis(['admin', 'logistica', 'comercial']);
-  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
-</script>
+<!-- Página pública (sem login) — registrada em js/permissoes.js/PAGINAS_PUBLICAS,
+     mesmo padrão de torre-transportadoras.html. -->
 
 <script>
 'use strict';
