@@ -142,6 +142,12 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
       <button class="btn-primary" id="btn-gerar-pdf" disabled>Gerar PDF único (DANFEs + boletos)</button>
       <button class="btn-secondary" id="btn-imprimir" disabled>Abrir e imprimir</button>
     </div>
+
+    <details style="margin-top:12px;border:0.5px dashed var(--gold-b);border-radius:10px;padding:10px 12px;">
+      <summary style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;">Retorno bruto do Omie (para conferência e ajuste)</summary>
+      <pre id="raw" style="margin-top:10px;background:var(--navy-d);color:#a0c0e0;padding:12px;border-radius:8px;font-size:10px;line-height:1.6;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-all;">Nada carregado ainda.</pre>
+    </details>
+
     <div class="rodape" id="rodape"></div>
   </div>
 </div>
@@ -231,18 +237,60 @@ function extrairLinks(obj) {
 /* Resposta de listagem do Omie sempre embrulha o array de registros numa
    única propriedade (nome varia por módulo: pedido_venda_produto,
    conta_receber_cadastro, etc.) — como não sabemos o nome exato usado por
-   produtos/nfconsultar/ListarNF, pegamos genericamente o primeiro array
-   encontrado no objeto de resposta. */
+   produtos/nfconsultar/ListarNF, pegamos genericamente o MAIOR array
+   encontrado em qualquer nível do objeto de resposta (não só no topo —
+   algumas listagens do Omie embrulham o array um nível mais fundo). */
 function extrairListaGenerica(obj) {
-  if (!obj || typeof obj !== 'object') return [];
+  let melhor = [];
+  const visitar = o => {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) { if (o.length > melhor.length) melhor = o; return; }
+    for (const k of Object.keys(o)) visitar(o[k]);
+  };
+  visitar(obj);
+  return melhor;
+}
+
+/* Varre o objeto da NF (em qualquer nível, não só no topo) procurando um
+   campo cujo nome bata com um dos candidatos — o Omie usa nomes de campo
+   diferentes dependendo do endpoint (alguns flat como "numero_nfe", outros
+   aninhados/no padrão da NFe como "nNF" dentro de "ide"), então em vez de
+   apostar num único caminho fixo, procura em profundidade. */
+function buscarCampoProfundo(obj, candidatos, visitados) {
+  visitados = visitados || new Set();
+  if (!obj || typeof obj !== 'object' || visitados.has(obj)) return null;
+  visitados.add(obj);
   for (const k of Object.keys(obj)) {
-    if (Array.isArray(obj[k])) return obj[k];
+    const v = obj[k];
+    if (candidatos.includes(k) && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== '') {
+      return v;
+    }
   }
-  return [];
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === 'object') {
+      const r = buscarCampoProfundo(v, candidatos, visitados);
+      if (r != null) return r;
+    }
+  }
+  return null;
 }
 
 function extrairNumeroNF(nfRaw) {
-  return String(nfRaw.numero_nfe || nfRaw.nNF || nfRaw.cNumero || nfRaw.numero || '').trim();
+  const v = buscarCampoProfundo(nfRaw, ['numero_nfe', 'nNF', 'cNumero', 'numero', 'nfe_numero', 'numeroNFe']);
+  return v == null ? '' : String(v).trim();
+}
+function extrairChaveNF(nfRaw) {
+  const v = buscarCampoProfundo(nfRaw, ['chave_nfe', 'cChaveNFe', 'nfe_chave', 'chaveNFe', 'chNFe', 'chave']);
+  return v == null ? '' : String(v).trim();
+}
+function extrairIdNF(nfRaw) {
+  const v = buscarCampoProfundo(nfRaw, ['nIdNF', 'nIdNf', 'codigo_nf', 'idNfe', 'nCodNF']);
+  return v == null ? 0 : v;
+}
+function extrairEmissaoNF(nfRaw) {
+  const v = buscarCampoProfundo(nfRaw, ['data_emissao', 'dEmi', 'data_nfe', 'dhEmi', 'dataEmissao']);
+  return v == null ? '' : String(v);
 }
 
 /* O Omie NÃO permite filtrar a listagem de notas fiscais por número — mesma
@@ -251,14 +299,25 @@ function extrairNumeroNF(nfRaw) {
    e casa localmente com os números pedidos — mesmo padrão já usado aqui
    para buscar boletos em financas/contareceber. */
 var _cacheNotasRecentes = {}; // empCod -> array de notas (populado uma vez)
+var ultimoRawNF = null; // guarda a última resposta bruta pra depuração na tela
 async function _carregarNotasRecentes(empCod) {
   if (_cacheNotasRecentes[empCod]) return _cacheNotasRecentes[empCod];
   const TETO_PAGINAS = 25; // ~500 notas mais recentes
   const notas = [];
-  const primeira = await omieCall(EP_NF, 'ListarNF', empCod, [{ pagina: 1, registros_por_pagina: 20 }]);
+  let primeira;
+  try {
+    primeira = await omieCall(EP_NF, 'ListarNF', empCod, [{ pagina: 1, registros_por_pagina: 20 }]);
+  } catch (e) {
+    throw new Error('Não foi possível listar as notas fiscais no Omie: ' + (e.message || e));
+  }
+  ultimoRawNF = primeira;
+  mostrarRaw(primeira);
   const totalPaginas = primeira.total_de_paginas || 1;
   const listaP1 = extrairListaGenerica(primeira);
   notas.push.apply(notas, listaP1);
+  if (!listaP1.length) {
+    log('Aviso: a primeira página não trouxe nenhum registro reconhecível — confira o "Retorno bruto do Omie" abaixo do resultado.');
+  }
   for (let p = totalPaginas, vistas = 0; p >= 2 && vistas < TETO_PAGINAS; p--, vistas++) {
     await sleep(350);
     const dados = await omieCall(EP_NF, 'ListarNF', empCod, [{ pagina: p, registros_por_pagina: 20 }]);
@@ -266,6 +325,10 @@ async function _carregarNotasRecentes(empCod) {
   }
   _cacheNotasRecentes[empCod] = notas;
   return notas;
+}
+function mostrarRaw(obj) {
+  const el = $('raw');
+  if (el) el.textContent = JSON.stringify(obj, null, 2);
 }
 
 async function acharNotaPorNumero(numero, empCod) {
@@ -277,11 +340,11 @@ async function acharNotaPorNumero(numero, empCod) {
   });
   if (!achada) return null;
   return {
-    nIdNF:  achada.nIdNF || achada.nIdNf || achada.codigo_nf || 0,
+    nIdNF:  extrairIdNF(achada),
     numero: extrairNumeroNF(achada),
-    serie:  achada.serie_nfe || achada.serie || achada.cSerie || '',
-    chave:  achada.chave_nfe || achada.cChaveNFe || achada.nfe_chave || achada.chaveNFe || '',
-    emissao: achada.data_emissao || achada.dEmi || achada.data_nfe || '',
+    serie:  buscarCampoProfundo(achada, ['serie_nfe', 'serie', 'cSerie']) || '',
+    chave:  extrairChaveNF(achada),
+    emissao: extrairEmissaoNF(achada),
     bruto:  achada
   };
 }
