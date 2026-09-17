@@ -31,8 +31,8 @@ h1{font-family:'Playfair Display',serif;font-style:italic;font-size:26px;color:v
 label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
 .controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:160px;}
 .controls select:focus,.controls input:focus{border-color:var(--gold);}
-.chk-empresas{display:flex;gap:14px;height:38px;align-items:center;}
-.chk-empresas label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;}
+.chk-empresas,.chk-fases{display:flex;gap:14px;flex-wrap:wrap;align-items:center;min-height:38px;}
+.chk-empresas label,.chk-fases label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
 .btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
 .btn-primary:hover{background:var(--navy-d);}
 .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
@@ -65,19 +65,28 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
 
 .overlay{position:fixed;inset:0;background:rgba(15,29,51,.55);z-index:900;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;}
 .overlay.open{display:flex;}
-.modal{background:#fff;border-radius:16px;max-width:1000px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal{background:#fff;border-radius:16px;max-width:1050px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
 .modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;border-bottom:1px solid var(--gold-l);}
 .modal-head h2{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:var(--navy);}
 .modal-head .info{font-size:11px;color:var(--muted);margin-top:4px;}
 .modal-close{background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:4px;}
 .modal-body{padding:20px 24px;max-height:70vh;overflow-y:auto;}
+.modal-body h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px;}
+.modal-body h4:first-child{margin-top:0;}
+.rateio-linha{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+.rateio-linha select{flex:1;height:32px;border:1.5px solid var(--gold-b);border-radius:6px;padding:0 8px;font-size:12px;font-family:inherit;}
+.rateio-linha input{width:80px;height:32px;border:1.5px solid var(--gold-b);border-radius:6px;padding:0 8px;font-size:12px;font-family:inherit;text-align:right;}
+.rateio-linha button{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px;}
+.rateio-total{font-size:11px;margin-top:4px;}
+.rateio-total.ok{color:var(--green);}
+.rateio-total.bad{color:var(--red);}
 table.itens-nf{width:100%;border-collapse:collapse;font-size:11.5px;}
 table.itens-nf th{background:var(--icon);color:var(--navy);padding:7px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;}
 table.itens-nf td{padding:6px 8px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
-table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--gold-b);border-radius:6px;padding:0 8px;font-size:11.5px;font-family:inherit;outline:none;color:var(--navy);width:100%;}
 .produto-cel{display:flex;gap:4px;align-items:center;}
-.produto-cel input{flex:1;}
+.produto-cel input{flex:1;height:30px;border:1.5px solid var(--gold-b);border-radius:6px;padding:0 8px;font-size:11.5px;font-family:inherit;}
 .modal-foot{padding:16px 24px;border-top:1px solid var(--gold-l);display:flex;justify-content:flex-end;gap:10px;}
+.nota-cfop{font-size:11px;color:var(--muted);margin-top:8px;}
 
 .pop-produto{position:fixed;inset:0;background:rgba(15,29,51,.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
 .pop-produto.open{display:flex;}
@@ -97,12 +106,11 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
 <div class="wrap">
   <div class="sec">
     <h1>Recebimento de Notas Fiscais (Fornecedor)</h1>
-    <p class="sub">Lista os pedidos de compra recebidos das 3 empresas, direto do Kanban "Compras" do Omie (Requisição → Pedido de Compra → Aprovação → Faturado pelo Fornecedor → Recebido → Conferido), com os itens e valores. Permite classificar cada item por departamento, CFOP e produto do catálogo.</p>
+    <p class="sub">Lista os pedidos de compra das 3 empresas, direto do Kanban "Compras" do Omie, com itens e valores. Permite vincular cada item a um produto do catálogo (ou cadastrar um novo) e ratear o pedido por departamento.</p>
 
     <div class="aviso" id="aviso-endpoint">
-      ⚠ Este módulo usa o endpoint de Pedido de Compra do Omie (produtos/pedidocompra), que nunca tinha sido usado neste sistema antes.
-      Se a busca ou a gravação não funcionar de primeira, abra o painel "Retorno bruto do Omie" no fim da página — a resposta real
-      ajuda a corrigir com precisão em vez de continuar chutando o formato.
+      ℹ CFOP não é um campo do Pedido de Compra no Omie — ele pertence ao lançamento fiscal da nota em si, então não aparece
+      aqui pra edição. Departamento é um rateio por percentual do pedido inteiro (não por item individual), igual à tela do Omie.
     </div>
 
     <div class="controls">
@@ -113,13 +121,24 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
           <label><input type="checkbox" class="chk-emp" value="PRF" checked> Profi</label>
         </div>
       </label>
+      <label class="fld">Fases (Kanban)
+        <div class="chk-fases">
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosPendentes" checked> Pendentes</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosFaturados" checked> Faturados</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosRecebidos" checked> Recebidos</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosRecParciais" checked> Recebidos parciais</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosFatParciais" checked> Faturados parciais</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosCancelados"> Cancelados</label>
+          <label><input type="checkbox" class="chk-fase" value="lExibirPedidosEncerrados"> Encerrados</label>
+        </div>
+      </label>
       <label class="fld">Data de
         <input type="date" id="f-data-de">
       </label>
       <label class="fld">Data até
         <input type="date" id="f-data-ate">
       </label>
-      <button class="btn-primary" id="btn-buscar">Buscar notas recebidas</button>
+      <button class="btn-primary" id="btn-buscar">Buscar pedidos de compra</button>
     </div>
 
     <div class="log" id="log"></div>
@@ -127,22 +146,22 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
   </div>
 
   <div class="sec">
-    <div class="sec-title"><span>Notas recebidas</span></div>
+    <div class="sec-title"><span>Pedidos de compra</span></div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>Empresa</th>
             <th>Fornecedor</th>
-            <th style="width:90px">NF</th>
-            <th style="width:90px">Emissão</th>
+            <th style="width:90px">Número</th>
+            <th style="width:100px">Previsão</th>
             <th style="width:110px">Valor</th>
-            <th style="width:170px">Fase (Kanban Compras)</th>
-            <th style="width:100px">Classificação</th>
+            <th style="width:140px">Etapa (Omie)</th>
+            <th style="width:100px">Rateio</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="7" class="empty">Escolha o período e clique em "Buscar notas recebidas".</td></tr>
+          <tr><td colspan="7" class="empty">Escolha o período/fases e clique em "Buscar pedidos de compra".</td></tr>
         </tbody>
       </table>
     </div>
@@ -157,39 +176,44 @@ table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--
   </div>
 </div>
 
-<!-- Modal de detalhe / classificação da nota -->
+<!-- Modal de detalhe / classificação do pedido -->
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="modal-head">
       <div>
-        <h2 id="modal-titulo">Nota fiscal</h2>
+        <h2 id="modal-titulo">Pedido de compra</h2>
         <div class="info" id="modal-info"></div>
       </div>
       <button class="modal-close" id="modal-fechar">✕</button>
     </div>
     <div class="modal-body">
+      <h4>Rateio por departamento (deve somar 100%)</h4>
+      <div id="rateio-linhas"></div>
+      <button class="btn-secondary" id="btn-add-depto">+ Adicionar departamento</button>
+      <div class="rateio-total" id="rateio-total"></div>
+
+      <h4>Itens do pedido</h4>
       <div class="table-wrap">
         <table class="itens-nf">
           <thead>
             <tr>
-              <th style="width:80px">CFOP orig.</th>
-              <th>Descrição (fornecedor)</th>
-              <th style="width:60px">Qtd</th>
-              <th style="width:90px">Vlr Unit.</th>
-              <th style="width:90px">Vlr Total</th>
-              <th style="width:140px">Departamento</th>
-              <th style="width:90px">CFOP</th>
-              <th style="width:220px">Produto vinculado</th>
+              <th>Código forn.</th>
+              <th>Descrição</th>
+              <th style="width:55px">Qtd</th>
+              <th style="width:85px">Vlr Unit.</th>
+              <th style="width:85px">Vlr Total</th>
+              <th style="width:240px">Produto vinculado (catálogo Omie)</th>
             </tr>
           </thead>
           <tbody id="modal-itens"></tbody>
         </table>
       </div>
+      <div class="nota-cfop">CFOP e demais dados fiscais ficam no lançamento da nota fiscal, não no pedido de compra — não editável aqui.</div>
       <div class="erro" id="modal-erro" style="margin-top:14px;"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" id="modal-cancelar">Fechar</button>
-      <button class="btn-primary" id="modal-salvar">Salvar classificação no Omie</button>
+      <button class="btn-primary" id="modal-salvar">Salvar no Omie</button>
     </div>
   </div>
 </div>
@@ -235,21 +259,7 @@ const EMPRESAS = {
 const EP_PEDCOMPRA = 'https://app.omie.com.br/api/v1/produtos/pedidocompra/';
 const EP_DEPTO = 'https://app.omie.com.br/api/v1/geral/departamentos/';
 const EP_PRODUTO = 'https://app.omie.com.br/api/v1/geral/produtos/';
-
-// Tabela de CFOP de entrada mais comuns (tabela oficial da Receita — não
-// depende do Omie, é fixa). Cobre os casos mais usuais de compra; qualquer
-// outro código pode ser digitado direto no campo (ele aceita texto livre).
-const CFOP_COMUNS = [
-  ['1102', 'Compra p/ comercialização'],
-  ['1101', 'Compra p/ industrialização'],
-  ['1403', 'Compra p/ comercialização (ST)'],
-  ['1556', 'Compra de material p/ uso/consumo'],
-  ['1949', 'Outra entrada não especificada'],
-  ['2102', 'Compra p/ comercialização (outro estado)'],
-  ['2101', 'Compra p/ industrialização (outro estado)'],
-  ['2403', 'Compra p/ comercialização (ST, outro estado)'],
-  ['2556', 'Compra de material p/ uso/consumo (outro estado)'],
-];
+const EP_CLIENTE = 'https://app.omie.com.br/api/v1/geral/clientes/';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -301,34 +311,6 @@ async function omieCall(endpoint, call, empCod, param, tentativa) {
   return data;
 }
 
-/* Resposta de listagem do Omie embrulha o array de registros numa
-   propriedade cujo nome varia por módulo — pega o maior array encontrado
-   em qualquer nível (mesma estratégia usada em nf-boleto.html). */
-function extrairListaGenerica(obj) {
-  let melhor = [];
-  const visitar = o => {
-    if (!o || typeof o !== 'object') return;
-    if (Array.isArray(o)) { if (o.length > melhor.length) melhor = o; return; }
-    for (const k of Object.keys(o)) visitar(o[k]);
-  };
-  visitar(obj);
-  return melhor;
-}
-function buscarCampoProfundo(obj, candidatos, visitados) {
-  visitados = visitados || new Set();
-  if (!obj || typeof obj !== 'object' || visitados.has(obj)) return null;
-  visitados.add(obj);
-  for (const k of Object.keys(obj)) {
-    const v = obj[k];
-    if (candidatos.includes(k) && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== '') return v;
-  }
-  for (const k of Object.keys(obj)) {
-    const v = obj[k];
-    if (v && typeof v === 'object') { const r = buscarCampoProfundo(v, candidatos, visitados); if (r != null) return r; }
-  }
-  return null;
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
    3. DEPARTAMENTOS (confirmado: geral/departamentos/ListarDepartamentos)
    ══════════════════════════════════════════════════════════════════════════ */
@@ -348,12 +330,33 @@ async function carregarDepartamentos(empCod) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   4. CATÁLOGO DE PRODUTOS (confirmado: geral/produtos/ListarProdutos)
+   4. FORNECEDORES (fornecedor é um cadastro de cliente no Omie — mesmo
+   endpoint geral/clientes já usado em termos.html pra buscar nome de
+   cliente por código)
    ══════════════════════════════════════════════════════════════════════════ */
-var _cacheProdutos = {}; // empCod -> array (cacheado por empresa nesta sessão)
+var _cacheFornecedores = {};
+async function nomeFornecedor(codigo, empCod) {
+  if (!codigo) return '';
+  const chave = empCod + '_' + codigo;
+  if (_cacheFornecedores[chave] !== undefined) return _cacheFornecedores[chave];
+  try {
+    const d = await omieCall(EP_CLIENTE, 'ConsultarCliente', empCod, [{ codigo_cliente_omie: parseInt(codigo, 10) }]);
+    const nome = d.razao_social || d.nome_fantasia || '';
+    _cacheFornecedores[chave] = nome;
+    return nome;
+  } catch (e) {
+    _cacheFornecedores[chave] = '';
+    return '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. CATÁLOGO DE PRODUTOS (confirmado: geral/produtos/ListarProdutos)
+   ══════════════════════════════════════════════════════════════════════════ */
+var _cacheProdutos = {};
 async function carregarProdutos(empCod) {
   if (_cacheProdutos[empCod]) return _cacheProdutos[empCod];
-  const TETO_PAGINAS = 15; // ~7500 produtos — cobre bem o catálogo típico
+  const TETO_PAGINAS = 15;
   const produtos = [];
   try {
     const primeira = await omieCall(EP_PRODUTO, 'ListarProdutos', empCod, [{ pagina: 1, registros_por_pagina: 500, apenas_importado_api: 'N' }]);
@@ -384,53 +387,77 @@ async function cadastrarProduto(empCod, dados) {
     codigo: dados.codigo,
     descricao: dados.descricao,
     unidade: dados.unidade || 'UN',
-    tipoItem: '01', // Mercadoria p/ Revenda — ajustar depois se o catálogo usar outra classificação padrão
+    tipoItem: '01',
     ncm: '00000000'
   }]);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   5. PEDIDO DE COMPRA (produtos/pedidocompra) — é aqui que vive o Kanban
-   "Compras" do Omie (Requisição → Pedido de Compra → Aprovação → Faturado
-   pelo Fornecedor → Recebido → Conferido), confirmado por print da tela real
-   do Omie. Os nomes de call/campo abaixo seguem o mesmo padrão já confirmado
-   do módulo de pedido de VENDA (produtos/pedido — ListarPedidos/
-   StatusPedido), mas nunca foram usados neste projeto pro lado de COMPRA —
-   se a chamada abaixo falhar ou vier vazia, o erro/retorno bruto aparece na
-   tela pra corrigir com precisão.
+   6. PEDIDO DE COMPRA — confirmado direto na documentação oficial do Omie
+   (produtos/pedidocompra): PesquisarPedCompra, ConsultarPedCompra,
+   AlteraPedCompra. Schema real (não é mais chute):
+     cabecalho_consulta: nCodPed, cCodIntPed, cEtapa, cNumero, dDtPrevisao,
+       nCodFor, cNumPedido, cObs, cObsInt, ...
+     produtos_consulta[]: nCodItem, cCodIntItem, nCodProd, cProduto,
+       cDescricao, cNCM, cUnidade, nQtde, nValUnit, nValTot, ...
+     departamentos_consulta[]: cCodDepto, nPerc, nValor
+   CFOP não existe nesse objeto — pertence ao lançamento fiscal da NF, não
+   ao pedido de compra.
    ══════════════════════════════════════════════════════════════════════════ */
-async function listarDocumentosRecebidos(empCod, dataDe, dataAte) {
-  const param = { pagina: 1, registros_por_pagina: 50 };
-  if (dataDe) param.filtrar_por_data_de = dataDe;
-  if (dataAte) param.filtrar_por_data_ate = dataAte;
-  const primeira = await omieCall(EP_PEDCOMPRA, 'ListarPedidosCompra', empCod, [param]);
+function flagsFasesSelecionadas() {
+  const flags = {
+    lExibirPedidosPendentes: 'F', lExibirPedidosFaturados: 'F', lExibirPedidosRecebidos: 'F',
+    lExibirPedidosCancelados: 'F', lExibirPedidosEncerrados: 'F',
+    lExibirPedidosRecParciais: 'F', lExibirPedidosFatParciais: 'F'
+  };
+  document.querySelectorAll('.chk-fase:checked').forEach(chk => { flags[chk.value] = 'T'; });
+  return flags;
+}
+
+async function pesquisarPedidosCompra(empCod, dataDe, dataAte) {
+  const flags = flagsFasesSelecionadas();
+  const paramBase = Object.assign({
+    nPagina: 1, nRegsPorPagina: 50,
+    lApenasImportadoApi: 'F', lApenasAlterados: 'F'
+  }, flags);
+  if (dataDe) paramBase.dDataInicial = dataDe;
+  if (dataAte) paramBase.dDataFinal = dataAte;
+
+  const primeira = await omieCall(EP_PEDCOMPRA, 'PesquisarPedCompra', empCod, [paramBase]);
   mostrarRaw(primeira);
-  const lista = extrairListaGenerica(primeira);
-  const totalPaginas = primeira.total_de_paginas || 1;
+  const lista = primeira.pedidos_pesquisa || [];
+  const totalPaginas = primeira.nTotalPaginas || 1;
   const todos = lista.slice();
   for (let p = 2; p <= Math.min(totalPaginas, 10); p++) {
     await sleep(350);
-    const dados = await omieCall(EP_PEDCOMPRA, 'ListarPedidosCompra', empCod, [{ ...param, pagina: p }]);
-    todos.push.apply(todos, extrairListaGenerica(dados));
+    const dados = await omieCall(EP_PEDCOMPRA, 'PesquisarPedCompra', empCod, [Object.assign({}, paramBase, { nPagina: p })]);
+    todos.push.apply(todos, dados.pedidos_pesquisa || []);
   }
   return todos;
 }
 
-async function obterDocumentoCompleto(doc, empCod) {
-  const codigoPedido = buscarCampoProfundo(doc, ['codigo_pedido', 'nCodPed', 'codigo']);
-  const numeroPedido = buscarCampoProfundo(doc, ['numero_pedido', 'nNumero', 'numero']);
-  const param = [{ codigo_pedido: codigoPedido || 0, numero_pedido: numeroPedido || '' }];
-  const d = await omieCall(EP_PEDCOMPRA, 'ConsultarPedCompra', empCod, param);
+async function consultarPedidoCompra(nCodPed, empCod) {
+  const d = await omieCall(EP_PEDCOMPRA, 'ConsultarPedCompra', empCod, [{ nCodPed: nCodPed || 0 }]);
   mostrarRaw(d);
   return d;
 }
 
+async function salvarPedidoCompra(nCodPed, produtosAlterar, departamentosAlterar, empCod) {
+  const payload = [{
+    cabecalho_alterar: { nCodPed: nCodPed },
+    produtos_alterar: produtosAlterar,
+    departamentos_alterar: departamentosAlterar
+  }];
+  return omieCall(EP_PEDCOMPRA, 'AlteraPedCompra', empCod, payload);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
-   6. ESTADO E FLUXO PRINCIPAL
+   7. ESTADO E FLUXO PRINCIPAL
    ══════════════════════════════════════════════════════════════════════════ */
-let notas = []; // { empCod, bruto, fornecedor, numero, emissao, valor, situacao }
-let notaAtual = null;
-let itensAtuais = []; // itens do documento aberto no modal
+let pedidos = []; // { empCod, bruto (cabecalho_consulta), fornecedor, numero, previsao, valor, etapa }
+let pedidoAtual = null;
+let itensAtuais = []; // itens do pedido aberto no modal
+let rateioAtual = []; // [{codigo, percentual}]
 let itemAlvoPopover = null;
 
 function empresasSelecionadas() {
@@ -447,7 +474,7 @@ async function buscar() {
 
   erro('');
   limparLog();
-  notas = [];
+  pedidos = [];
   $('btn-buscar').disabled = true;
   $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
   render();
@@ -456,164 +483,232 @@ async function buscar() {
     for (const empCod of empresas) {
       log('Buscando pedidos de compra — ' + EMPRESAS[empCod].nome + '…');
       try {
-        const docs = await listarDocumentosRecebidos(empCod, dataDe, dataAte);
-        log('  → ' + docs.length + ' documento(s) encontrados em ' + EMPRESAS[empCod].nome + '.');
-        docs.forEach(doc => {
-          notas.push({
+        const lista = await pesquisarPedidosCompra(empCod, dataDe, dataAte);
+        log('  → ' + lista.length + ' pedido(s) encontrados em ' + EMPRESAS[empCod].nome + '.');
+        for (const p of lista) {
+          const cab = p.cabecalho_consulta || {};
+          const itens = p.produtos_consulta || [];
+          const valorTotal = itens.reduce((s, it) => s + (Number(it.nValTot ?? it.nValMerc) || 0), 0);
+          const rateio = p.departamentos_consulta || [];
+          const fornecedor = await nomeFornecedor(cab.nCodFor, empCod);
+          await sleep(150);
+          pedidos.push({
             empCod,
-            bruto: doc,
-            fornecedor: buscarCampoProfundo(doc, ['razao_social', 'nome_fornecedor', 'fornecedor', 'razaoSocial']) || 'Fornecedor não identificado',
-            numero: buscarCampoProfundo(doc, ['numero_pedido', 'numero_nfe', 'nNF', 'numero']) || '—',
-            emissao: buscarCampoProfundo(doc, ['data_previsao', 'data_inclusao', 'dEmi', 'data']) || '',
-            valor: buscarCampoProfundo(doc, ['valor_total_pedido', 'valor_nf', 'valorTotal', 'valor']) || 0,
-            // "fase" é o nome de campo que o Omie deve usar pro estágio do Kanban
-            // (Requisição/Pedido de Compra/Aprovação/Faturado pelo Fornecedor/
-            // Recebido/Conferido) — mostrado cru (sem tradução) até confirmar o
-            // valor real, pra não inventar um rótulo errado por cima do dado certo.
-            situacao: buscarCampoProfundo(doc, ['fase', 'etapa', 'situacao', 'status', 'cEtapa']) || '—',
-            classificado: false
+            bruto: cab,
+            fornecedor: fornecedor || ('Fornecedor cód. ' + (cab.nCodFor || '—')),
+            numero: cab.cNumero || cab.cNumPedido || '—',
+            previsao: cab.dDtPrevisao || '',
+            valor: valorTotal,
+            etapa: cab.cEtapa || '—',
+            temRateio: rateio.length > 0
           });
-        });
+        }
       } catch (e) {
         log('  → Erro em ' + EMPRESAS[empCod].nome + ': ' + (e.message || e));
         if (e.raw) mostrarRaw(e.raw);
       }
       await sleep(300);
     }
-    if (!notas.length) {
-      erro('Nenhum documento recebido encontrado para o período/empresas selecionados — ou a chamada ao Omie falhou (confira o log acima e o "Retorno bruto do Omie").');
+    if (!pedidos.length) {
+      erro('Nenhum pedido de compra encontrado para o período/filtros selecionados — ou a chamada ao Omie falhou (confira o log acima e o "Retorno bruto do Omie").');
     }
   } finally {
     $('btn-buscar').disabled = false;
-    $('btn-buscar').textContent = 'Buscar notas recebidas';
+    $('btn-buscar').textContent = 'Buscar pedidos de compra';
     render();
   }
 }
 
 function render() {
   const tb = $('tbody');
-  if (!notas.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">Escolha o período e clique em "Buscar notas recebidas".</td></tr>';
+  if (!pedidos.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">Escolha o período/fases e clique em "Buscar pedidos de compra".</td></tr>';
   } else {
-    tb.innerHTML = notas.map((n, i) =>
+    tb.innerHTML = pedidos.map((n, i) =>
       '<tr class="selecionavel" data-i="' + i + '">' +
         '<td><span class="emp e-' + n.empCod + '">' + esc(EMPRESAS[n.empCod].nome) + '</span></td>' +
         '<td>' + esc(n.fornecedor) + '</td>' +
         '<td class="mono">' + esc(n.numero) + '</td>' +
-        '<td class="mono">' + esc(n.emissao) + '</td>' +
+        '<td class="mono">' + esc(n.previsao || '—') + '</td>' +
         '<td class="mono">' + fmtMoeda(n.valor) + '</td>' +
-        '<td>' + esc(n.situacao) + '</td>' +
-        '<td><span class="st ' + (n.classificado ? 'st-ok' : 'st-sem') + '">' + (n.classificado ? 'Classificada' : 'Pendente') + '</span></td>' +
+        '<td class="mono">' + esc(n.etapa) + '</td>' +
+        '<td><span class="st ' + (n.temRateio ? 'st-ok' : 'st-sem') + '">' + (n.temRateio ? 'Rateado' : 'Sem rateio') + '</span></td>' +
       '</tr>'
     ).join('');
     tb.querySelectorAll('tr[data-i]').forEach(tr => {
-      tr.addEventListener('click', () => abrirNota(notas[parseInt(tr.dataset.i, 10)]));
+      tr.addEventListener('click', () => abrirPedido(pedidos[parseInt(tr.dataset.i, 10)]));
     });
   }
-  $('rodape').textContent = notas.length ? notas.length + ' documento(s) encontrado(s)' : '';
+  $('rodape').textContent = pedidos.length ? pedidos.length + ' pedido(s) encontrado(s)' : '';
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   7. MODAL DE DETALHE / CLASSIFICAÇÃO
+   8. MODAL DE DETALHE / CLASSIFICAÇÃO
    ══════════════════════════════════════════════════════════════════════════ */
-async function abrirNota(nota) {
-  notaAtual = nota;
+async function abrirPedido(pedido) {
+  pedidoAtual = pedido;
   erro('', 'modal-erro');
-  $('modal-titulo').textContent = 'NF ' + nota.numero + ' — ' + nota.fornecedor;
-  $('modal-info').textContent = EMPRESAS[nota.empCod].nome + ' · Emitida em ' + (nota.emissao || '—') + ' · ' + fmtMoeda(nota.valor);
-  $('modal-itens').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">Carregando itens…</td></tr>';
+  $('modal-titulo').textContent = 'Pedido ' + pedido.numero + ' — ' + pedido.fornecedor;
+  $('modal-info').textContent = EMPRESAS[pedido.empCod].nome + ' · Previsão ' + (pedido.previsao || '—') + ' · ' + fmtMoeda(pedido.valor) + ' · Etapa ' + pedido.etapa;
+  $('modal-itens').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Carregando itens…</td></tr>';
+  $('rateio-linhas').innerHTML = '';
   $('overlay').classList.add('open');
 
-  const departamentos = await carregarDepartamentos(nota.empCod);
+  const departamentos = await carregarDepartamentos(pedido.empCod);
 
   try {
-    const doc = await obterDocumentoCompleto(nota.bruto, nota.empCod);
-    const itensBrutos = extrairListaGenerica(doc).length ? extrairListaGenerica(doc) : (extrairListaGenerica(nota.bruto) || []);
+    const doc = await consultarPedidoCompra(pedido.bruto.nCodPed, pedido.empCod);
+    const itensBrutos = doc.produtos_consulta || [];
     itensAtuais = itensBrutos.map(it => ({
-      cfopOrig: buscarCampoProfundo(it, ['cfop', 'CFOP']) || '',
-      descricao: buscarCampoProfundo(it, ['descricao', 'xProd', 'descricao_produto']) || '',
-      quantidade: buscarCampoProfundo(it, ['quantidade', 'qCom', 'qtde']) || 0,
-      valorUnit: buscarCampoProfundo(it, ['valor_unitario', 'vUnCom', 'valorUnitario']) || 0,
-      valorTotal: buscarCampoProfundo(it, ['valor_total', 'vProd', 'valorTotal']) || 0,
-      departamento: '',
-      cfop: buscarCampoProfundo(it, ['cfop', 'CFOP']) || '',
-      produtoCodigo: '',
+      bruto: it,
+      codigo: it.cProduto || '',
+      descricao: it.cDescricao || '',
+      quantidade: it.nQtde || 0,
+      valorUnit: it.nValUnit || 0,
+      valorTotal: it.nValTot ?? it.nValMerc ?? 0,
+      produtoCodigo: it.nCodProd || '',
       produtoDescricao: ''
     }));
+    rateioAtual = (doc.departamentos_consulta || []).map(d => ({ codigo: String(d.cCodDepto), percentual: d.nPerc }));
+
     if (!itensAtuais.length) {
-      itensAtuais = [{ cfopOrig: '', descricao: 'Nenhum item retornado pelo Omie para este documento — confira o "Retorno bruto do Omie".', quantidade: '', valorUnit: '', valorTotal: '', departamento: '', cfop: '', produtoCodigo: '', produtoDescricao: '' }];
+      $('modal-itens').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Nenhum item retornado pelo Omie para este pedido — confira o "Retorno bruto do Omie" na página principal.</td></tr>';
+    } else {
+      renderItensModal();
     }
-    renderItensModal(departamentos);
+    renderRateio(departamentos);
   } catch (e) {
-    $('modal-itens').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px;">Erro ao buscar itens: ' + esc(e.message || e) + '</td></tr>';
+    $('modal-itens').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px;">Erro ao buscar itens: ' + esc(e.message || e) + '</td></tr>';
     if (e.raw) mostrarRaw(e.raw);
   }
 }
 
-function renderItensModal(departamentos) {
-  $('modal-itens').innerHTML = itensAtuais.map((it, i) => {
-    const optsDepto = '<option value="">—</option>' + departamentos.map(d => '<option value="' + esc(d.codigo) + '"' + (it.departamento === String(d.codigo) ? ' selected' : '') + '>' + esc(d.descricao) + '</option>').join('');
-    const optsCfop = '<option value="">—</option>' + CFOP_COMUNS.map(c => '<option value="' + c[0] + '"' + (it.cfop === c[0] ? ' selected' : '') + '>' + c[0] + ' — ' + c[1] + '</option>').join('');
-    return '<tr data-i="' + i + '">' +
-      '<td class="mono">' + esc(it.cfopOrig || '—') + '</td>' +
+function renderItensModal() {
+  $('modal-itens').innerHTML = itensAtuais.map((it, i) =>
+    '<tr data-i="' + i + '">' +
+      '<td class="mono">' + esc(it.codigo || '—') + '</td>' +
       '<td>' + esc(it.descricao || '—') + '</td>' +
       '<td class="mono">' + esc(it.quantidade) + '</td>' +
-      '<td class="mono">' + (it.valorUnit === '' ? '—' : fmtMoeda(it.valorUnit)) + '</td>' +
-      '<td class="mono">' + (it.valorTotal === '' ? '—' : fmtMoeda(it.valorTotal)) + '</td>' +
-      '<td><select class="sel-depto" data-i="' + i + '">' + optsDepto + '</select></td>' +
-      '<td><input class="inp-cfop" data-i="' + i + '" list="cfop-list-' + i + '" value="' + esc(it.cfop) + '" placeholder="CFOP">' +
-        '<datalist id="cfop-list-' + i + '">' + CFOP_COMUNS.map(c => '<option value="' + c[0] + '">' + c[1] + '</option>').join('') + '</datalist></td>' +
-      '<td><div class="produto-cel"><input class="inp-produto" data-i="' + i + '" readonly placeholder="Nenhum produto vinculado" value="' + esc(it.produtoDescricao ? (it.produtoCodigo + ' — ' + it.produtoDescricao) : '') + '">' +
+      '<td class="mono">' + fmtMoeda(it.valorUnit) + '</td>' +
+      '<td class="mono">' + fmtMoeda(it.valorTotal) + '</td>' +
+      '<td><div class="produto-cel"><input class="inp-produto" data-i="' + i + '" readonly placeholder="Nenhum produto vinculado" value="' + esc(it.produtoDescricao ? (it.produtoCodigo + ' — ' + it.produtoDescricao) : (it.produtoCodigo ? 'Cód. ' + it.produtoCodigo : '')) + '">' +
         '<button class="btn-mini" data-i="' + i + '" data-acao="vincular">🔗</button></div></td>' +
-    '</tr>';
-  }).join('');
+    '</tr>'
+  ).join('');
 
-  $('modal-itens').querySelectorAll('.sel-depto').forEach(el => {
-    el.addEventListener('change', () => { itensAtuais[parseInt(el.dataset.i, 10)].departamento = el.value; });
-  });
-  $('modal-itens').querySelectorAll('.inp-cfop').forEach(el => {
-    el.addEventListener('input', () => { itensAtuais[parseInt(el.dataset.i, 10)].cfop = el.value.trim(); });
-  });
   $('modal-itens').querySelectorAll('button[data-acao="vincular"]').forEach(btn => {
     btn.addEventListener('click', () => abrirPopoverProduto(parseInt(btn.dataset.i, 10)));
   });
 }
 
+function renderRateio(departamentos) {
+  const container = $('rateio-linhas');
+  container.innerHTML = rateioAtual.map((r, i) => linhaRateioHtml(r, i, departamentos)).join('');
+  ligarEventosRateio(departamentos);
+  atualizarTotalRateio();
+}
+
+function linhaRateioHtml(r, i, departamentos) {
+  const opts = '<option value="">— selecione —</option>' + departamentos.map(d =>
+    '<option value="' + esc(d.codigo) + '"' + (r.codigo === String(d.codigo) ? ' selected' : '') + '>' + esc(d.descricao) + '</option>'
+  ).join('');
+  return '<div class="rateio-linha" data-i="' + i + '">' +
+    '<select class="sel-rateio-depto" data-i="' + i + '">' + opts + '</select>' +
+    '<input type="number" class="inp-rateio-perc" data-i="' + i + '" value="' + esc(r.percentual) + '" min="0" max="100" step="0.01"> %' +
+    '<button data-i="' + i + '" data-acao="remover">✕</button>' +
+  '</div>';
+}
+
+function ligarEventosRateio(departamentos) {
+  $('rateio-linhas').querySelectorAll('.sel-rateio-depto').forEach(el => {
+    el.addEventListener('change', () => { rateioAtual[parseInt(el.dataset.i, 10)].codigo = el.value; });
+  });
+  $('rateio-linhas').querySelectorAll('.inp-rateio-perc').forEach(el => {
+    el.addEventListener('input', () => {
+      rateioAtual[parseInt(el.dataset.i, 10)].percentual = parseFloat(el.value) || 0;
+      atualizarTotalRateio();
+    });
+  });
+  $('rateio-linhas').querySelectorAll('button[data-acao="remover"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rateioAtual.splice(parseInt(btn.dataset.i, 10), 1);
+      renderRateio(_cacheDepartamentos[pedidoAtual.empCod] || []);
+    });
+  });
+}
+
+function atualizarTotalRateio() {
+  const total = rateioAtual.reduce((s, r) => s + (Number(r.percentual) || 0), 0);
+  const el = $('rateio-total');
+  el.textContent = 'Total: ' + total.toFixed(2) + '% ' + (Math.abs(total - 100) < 0.01 ? '✓' : '(precisa somar 100%)');
+  el.className = 'rateio-total ' + (Math.abs(total - 100) < 0.01 ? 'ok' : 'bad');
+}
+
+$('btn-add-depto').addEventListener('click', () => {
+  rateioAtual.push({ codigo: '', percentual: 0 });
+  renderRateio(_cacheDepartamentos[pedidoAtual.empCod] || []);
+});
+
 function fecharModal() {
   $('overlay').classList.remove('open');
-  notaAtual = null;
+  pedidoAtual = null;
   itensAtuais = [];
+  rateioAtual = [];
 }
 
 async function salvarClassificacao() {
-  if (!notaAtual) return;
+  if (!pedidoAtual) return;
   erro('', 'modal-erro');
-  $('modal-salvar').disabled = true;
-  $('modal-salvar').innerHTML = '<span class="spin"></span> Salvando…';
 
-  const semClassificacao = itensAtuais.filter(it => it.descricao && it.descricao !== 'Nenhum item retornado pelo Omie para este documento — confira o "Retorno bruto do Omie".' && (!it.departamento || !it.cfop));
-  if (semClassificacao.length) {
-    erro('Todos os itens precisam de departamento e CFOP preenchidos antes de salvar.', 'modal-erro');
-    $('modal-salvar').disabled = false;
-    $('modal-salvar').textContent = 'Salvar classificação no Omie';
+  const totalRateio = rateioAtual.reduce((s, r) => s + (Number(r.percentual) || 0), 0);
+  if (rateioAtual.length && Math.abs(totalRateio - 100) > 0.01) {
+    erro('O rateio por departamento precisa somar exatamente 100% (está em ' + totalRateio.toFixed(2) + '%).', 'modal-erro');
+    return;
+  }
+  if (rateioAtual.some(r => !r.codigo)) {
+    erro('Selecione um departamento em todas as linhas de rateio (ou remova a linha vazia).', 'modal-erro');
     return;
   }
 
+  $('modal-salvar').disabled = true;
+  $('modal-salvar').innerHTML = '<span class="spin"></span> Salvando…';
+
   try {
-    const codigoPedido = buscarCampoProfundo(notaAtual.bruto, ['codigo_pedido', 'nCodPed', 'codigo']);
-    const numeroPedido = buscarCampoProfundo(notaAtual.bruto, ['numero_pedido', 'nNumero', 'numero']);
-    const payload = [{
-      cabecalho: { codigo_pedido: codigoPedido || 0, numero_pedido: numeroPedido || '' },
-      itens: itensAtuais.map(it => ({
-        descricao: it.descricao,
-        codigo_departamento: it.departamento,
-        cfop: it.cfop,
-        codigo_produto: it.produtoCodigo || ''
-      }))
-    }];
-    const resp = await omieCall(EP_PEDCOMPRA, 'AlterarPedCompra', notaAtual.empCod, payload);
+    // Reenvia os itens praticamente como vieram do Omie — só atualiza o
+    // produto vinculado (nCodProd). Reenviar os outros campos originais
+    // evita que o Omie limpe algo que não estávamos tentando mudar.
+    const produtosAlterar = itensAtuais.map(it => ({
+      cCodIntItem: it.bruto.cCodIntItem || '',
+      nCodItem: it.bruto.nCodItem || 0,
+      cCodIntProd: it.bruto.cCodIntProd || '',
+      nCodProd: it.produtoCodigo || it.bruto.nCodProd || 0,
+      cProduto: it.bruto.cProduto || '',
+      cDescricao: it.bruto.cDescricao || '',
+      cNCM: it.bruto.cNCM || '',
+      cUnidade: it.bruto.cUnidade || '',
+      cEAN: it.bruto.cEAN || '',
+      nPesoLiq: it.bruto.nPesoLiq || 0,
+      nPesoBruto: it.bruto.nPesoBruto || 0,
+      nQtde: it.bruto.nQtde || 0,
+      nValUnit: it.bruto.nValUnit || 0,
+      nDesconto: it.bruto.nDesconto || 0,
+      nValorIcms: it.bruto.nValorIcms || 0,
+      nValorSt: it.bruto.nValorSt || 0,
+      nValorIpi: it.bruto.nValorIpi || 0,
+      nValorPis: it.bruto.nValorPis || 0,
+      nValorCofins: it.bruto.nValorCofins || 0,
+      cObs: it.bruto.cObs || '',
+      cMkpAtuPv: it.bruto.cMkpAtuPv || 'N',
+      cMkpAtuSm: it.bruto.cMkpAtuSm || 'N',
+      nMkpPerc: it.bruto.nMkpPerc || 0,
+      codigo_local_estoque: it.bruto.codigo_local_estoque || '',
+      cCodCateg: it.bruto.cCodCateg || ''
+    }));
+    const departamentosAlterar = rateioAtual.map(r => ({ cCodDepto: r.codigo, nPerc: r.percentual }));
+
+    const resp = await salvarPedidoCompra(pedidoAtual.bruto.nCodPed, produtosAlterar, departamentosAlterar, pedidoAtual.empCod);
     mostrarRaw(resp);
-    notaAtual.classificado = true;
+    pedidoAtual.temRateio = departamentosAlterar.length > 0;
     render();
     fecharModal();
   } catch (e) {
@@ -621,12 +716,12 @@ async function salvarClassificacao() {
     if (e.raw) mostrarRaw(e.raw);
   } finally {
     $('modal-salvar').disabled = false;
-    $('modal-salvar').textContent = 'Salvar classificação no Omie';
+    $('modal-salvar').textContent = 'Salvar no Omie';
   }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   8. POPOVER DE PRODUTO (buscar / vincular / cadastrar)
+   9. POPOVER DE PRODUTO (buscar / vincular / cadastrar)
    ══════════════════════════════════════════════════════════════════════════ */
 async function abrirPopoverProduto(indiceItem) {
   itemAlvoPopover = indiceItem;
@@ -637,19 +732,19 @@ async function abrirPopoverProduto(indiceItem) {
   $('pop-novo-unidade').value = '';
   $('pop-produto').classList.add('open');
 
-  const resultados = await buscarProdutos(notaAtual.empCod, '');
+  const resultados = await buscarProdutos(pedidoAtual.empCod, '');
   renderListaProdutos(resultados);
 }
 
 function renderListaProdutos(lista) {
   $('pop-lista').innerHTML = lista.length
-    ? lista.map(p => '<div class="lp-item" data-codigo="' + esc(p.codigo) + '" data-desc="' + esc(p.descricao) + '"><b>' + esc(p.codigo) + '</b> — ' + esc(p.descricao) + '</div>').join('')
+    ? lista.map(p => '<div class="lp-item" data-codigo="' + esc(p.codigo_produto || p.codigo) + '" data-desc="' + esc(p.descricao) + '"><b>' + esc(p.codigo) + '</b> — ' + esc(p.descricao) + '</div>').join('')
     : '<div class="lp-item" style="color:var(--muted);">Nenhum produto encontrado — cadastre um novo abaixo.</div>';
   $('pop-lista').querySelectorAll('.lp-item[data-codigo]').forEach(el => {
     el.addEventListener('click', () => {
       itensAtuais[itemAlvoPopover].produtoCodigo = el.dataset.codigo;
       itensAtuais[itemAlvoPopover].produtoDescricao = el.dataset.desc;
-      renderItensModal(_cacheDepartamentos[notaAtual.empCod] || []);
+      renderItensModal();
       $('pop-produto').classList.remove('open');
     });
   });
@@ -660,7 +755,7 @@ $('pop-busca').addEventListener('input', () => {
   clearTimeout(_buscaProdutoTimer);
   const termo = $('pop-busca').value;
   _buscaProdutoTimer = setTimeout(async () => {
-    const resultados = await buscarProdutos(notaAtual.empCod, termo);
+    const resultados = await buscarProdutos(pedidoAtual.empCod, termo);
     renderListaProdutos(resultados);
   }, 250);
 });
@@ -673,11 +768,11 @@ $('pop-novo-cadastrar').addEventListener('click', async () => {
   $('pop-novo-cadastrar').disabled = true;
   $('pop-novo-cadastrar').innerHTML = '<span class="spin"></span> Cadastrando…';
   try {
-    await cadastrarProduto(notaAtual.empCod, { codigo, descricao, unidade });
-    delete _cacheProdutos[notaAtual.empCod]; // força recarregar o catálogo com o novo item
-    itensAtuais[itemAlvoPopover].produtoCodigo = codigo;
+    const resp = await cadastrarProduto(pedidoAtual.empCod, { codigo, descricao, unidade });
+    delete _cacheProdutos[pedidoAtual.empCod];
+    itensAtuais[itemAlvoPopover].produtoCodigo = resp.codigo_produto || codigo;
     itensAtuais[itemAlvoPopover].produtoDescricao = descricao;
-    renderItensModal(_cacheDepartamentos[notaAtual.empCod] || []);
+    renderItensModal();
     $('pop-produto').classList.remove('open');
   } catch (e) {
     alert('Erro ao cadastrar produto no Omie: ' + (e.message || e));
@@ -690,7 +785,7 @@ $('pop-novo-cancelar').addEventListener('click', () => {});
 $('pop-fechar').addEventListener('click', () => { $('pop-produto').classList.remove('open'); });
 
 /* ══════════════════════════════════════════════════════════════════════════
-   9. EVENTOS
+   10. EVENTOS
    ══════════════════════════════════════════════════════════════════════════ */
 $('btn-buscar').addEventListener('click', buscar);
 $('modal-fechar').addEventListener('click', fecharModal);
