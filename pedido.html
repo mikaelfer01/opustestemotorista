@@ -20,102 +20,86 @@
 html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:900px;margin:0 auto;}
-.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
-h1{font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--navy);margin-bottom:4px;}
-.sub{font-size:12px;color:var(--muted);margin-bottom:4px;}
-.nav-modulos{font-size:11px;margin-bottom:2px;}
-.nav-modulos a{color:var(--navy);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--gold);}
-.grid2{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:20px;align-items:start;margin-top:16px;}
-@media(max-width:760px){.grid2{grid-template-columns:1fr;}}
-textarea{width:100%;min-height:140px;border:1.5px solid var(--gold-b);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6;background:#fff;color:var(--navy);outline:none;resize:vertical;}
-textarea:focus{border-color:var(--gold);}
-.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;}
-label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
-label.fld select{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);width:100%;}
-label.fld select:focus{border-color:var(--gold);}
+.wrap{padding:28px 40px 60px;display:flex;flex-direction:column;gap:18px;max-width:1400px;margin:0 auto;width:100%;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:24px 28px;animation:fadeUp .35s ease both;}
+h1{font-family:'Playfair Display',serif;font-style:italic;font-size:26px;color:var(--navy);margin-bottom:6px;}
+.sub{font-size:13px;color:var(--muted);margin-bottom:4px;max-width:760px;}
+.grid2{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:28px;align-items:start;}
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:16px;}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:180px;}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
 .btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
 .btn-primary:hover{background:var(--navy-d);}
 .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 16px;height:38px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
 .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 .erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:14px;display:none;}
-.resumo-busca{font-size:11px;color:var(--muted);margin-top:10px;display:none;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:150px;overflow-y:auto;margin-top:12px;display:none;line-height:1.7;}
 
-/* Folhas de impressão dos pedidos */
-.folhas{display:none;flex-direction:column;gap:16px;}
-.folhas.mostrar{display:flex;}
-.folha{background:#fff;border:0.5px solid var(--gold-b);border-radius:12px;padding:28px 32px;}
-.folha.erro-pedido{border-color:rgba(176,58,46,.4);}
-.folha.erro-pedido .msg-erro{color:var(--red);font-size:13px;}
-.folha-cab{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:12px;margin-bottom:14px;}
-.folha-cab h2{font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:var(--navy);}
-.folha-cab .empresa{font-size:12px;color:var(--muted);margin-top:2px;}
-.folha-cab .pednum{text-align:right;}
-.folha-cab .pednum .num{font-size:22px;font-weight:700;color:var(--navy);font-family:ui-monospace,Menlo,monospace;}
-.folha-cab .pednum .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
-.grid-info{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px;margin-bottom:16px;}
-.info-item .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px;}
-.info-item .val{font-size:13px;color:var(--navy);font-weight:600;}
-table.itens{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
-table.itens th{background:var(--navy);color:#fff;padding:7px 9px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-table.itens td{padding:7px 9px;border-bottom:0.5px solid var(--gold-l);}
-table.itens td.r{text-align:right;font-variant-numeric:tabular-nums;}
-table.itens tfoot td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;padding-top:9px;}
-.obs-box{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:10px;white-space:pre-wrap;}
-.obs-box .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px;font-weight:700;}
-.folha-rodape{margin-top:18px;padding-top:10px;border-top:0.5px dashed var(--gold-b);font-size:10px;color:var(--muted);display:flex;justify-content:space-between;}
-.acoes-finais{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.lista-pedidos{display:flex;flex-direction:column;gap:6px;margin-top:16px;}
+.item-pedido{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0.5px solid var(--gold-b);border-radius:8px;padding:8px 12px;font-size:13px;}
+.item-pedido .emp{font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;background:var(--icon);color:var(--navy);}
+.item-pedido .num{font-family:ui-monospace,Menlo,monospace;font-weight:600;}
+.item-pedido button{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;}
+.vazio-lista{font-size:12px;color:var(--muted);font-style:italic;padding:8px 2px;}
+.acoes-lista{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
 
-@media print{
-  body *{visibility:hidden;}
-  .folhas, .folhas *{visibility:visible;}
-  .folhas{position:absolute;top:0;left:0;width:100%;}
-  .folha{border:none;border-radius:0;padding:0 12mm;page-break-after:always;}
-  .folha:last-child{page-break-after:auto;}
-  .wrap{padding:0;max-width:none;}
-  .sec:not(.folhas-container){display:none;}
-}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.st-ok{background:var(--green-l);color:var(--green);}
+.st-erro{background:var(--red-l);color:var(--red);}
+.resultado{margin-top:16px;display:none;}
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <div class="sec">
-    <div class="nav-modulos"><a href="/nf-boleto.html">← Nota Fiscal + Boletos</a></div>
     <h1>Impressão de Pedido</h1>
-    <p class="sub">Selecione a empresa, informe um ou mais números de pedido (um por linha) e imprima os pedidos completos (itens, quantidades, valores e cliente), direto do Omie.</p>
+    <p class="sub">Selecione a empresa, informe o número do pedido e clique em "Adicionar". Repita para quantos pedidos precisar (mesmo de empresas diferentes) e depois busque tudo junto para gerar um único PDF.</p>
 
-    <div class="grid2">
+    <div class="grid2" style="margin-top:18px;">
       <div>
-        <label class="fld">Empresa
-          <select id="f-empresa">
-            <option value="MFP">MF Paris</option>
-            <option value="DMS">DMS Alimentos</option>
-            <option value="PRF">Profi Comércio</option>
-          </select>
-        </label>
-        <label class="fld">Número(s) do pedido
-          <textarea id="f-numeros" spellcheck="false" placeholder="12345&#10;12346&#10;12347"></textarea>
-        </label>
-        <div class="hint">Um número de pedido por linha. Pode colar direto de uma coluna do Excel.</div>
+        <div class="controls" style="margin-top:0;">
+          <label class="fld">Empresa
+            <select id="f-empresa">
+              <option value="MFP">MF Paris</option>
+              <option value="DMS">DMS Alimentos</option>
+              <option value="PRF">Profi Comércio</option>
+            </select>
+          </label>
+          <label class="fld">Número do pedido
+            <input type="text" id="f-numero" placeholder="Ex.: 12345" inputmode="numeric">
+          </label>
+          <button class="btn-secondary" id="btn-adicionar">+ Adicionar à lista</button>
+        </div>
+
+        <div class="acoes-lista">
+          <button class="btn-primary" id="btn-buscar" disabled>Buscar tudo e gerar PDF</button>
+          <button class="btn-secondary" id="btn-limpar" disabled>Limpar lista</button>
+        </div>
+
+        <div class="log" id="log"></div>
+        <div class="erro" id="erro"></div>
       </div>
+
       <div>
-        <button class="btn-primary" id="btn-buscar">Buscar pedido(s)</button>
-        <div class="resumo-busca" id="resumo-busca"></div>
+        <div class="lista-pedidos" id="lista-pedidos">
+          <div class="vazio-lista">Nenhum pedido adicionado ainda.</div>
+        </div>
+
+        <div class="resultado" id="resultado">
+          <div class="lista-pedidos" id="lista-resultado"></div>
+        </div>
       </div>
     </div>
-
-    <div class="erro" id="erro"></div>
-  </div>
-
-  <div class="sec folhas-container">
-    <div class="folhas" id="folhas"></div>
-  </div>
-
-  <div class="acoes-finais" id="acoes-finais" style="display:none;">
-    <button class="btn-primary" id="btn-imprimir">Imprimir pedido(s)</button>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 'use strict';
@@ -138,6 +122,13 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function limparLog() { $('log').innerHTML = ''; $('log').style.display = 'none'; }
 function erro(msg) {
   const el = $('erro');
   if (!msg) { el.style.display = 'none'; return; }
@@ -147,20 +138,57 @@ function fmtMoeda(v) {
   return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtData(d) {
-  if (!d) return '—';
+  if (!d) return '-';
   const m = String(d).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (m) return d;
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('pt-BR');
 }
-function parseNumeros(txt) {
-  const vistos = new Set();
-  return String(txt).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.replace(/\D/g, '')).filter(Boolean)
-    .filter(n => { if (vistos.has(n)) return false; vistos.add(n); return true; });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. LISTA DE PEDIDOS A BUSCAR
+   ══════════════════════════════════════════════════════════════════════════ */
+let listaPedidos = []; // { empresaCod, numero }
+
+function renderLista() {
+  const el = $('lista-pedidos');
+  if (!listaPedidos.length) {
+    el.innerHTML = '<div class="vazio-lista">Nenhum pedido adicionado ainda.</div>';
+  } else {
+    el.innerHTML = listaPedidos.map((it, i) =>
+      '<div class="item-pedido">' +
+        '<span><span class="emp">' + esc(EMPRESAS[it.empresaCod].nome) + '</span> <span class="num">Pedido ' + esc(it.numero) + '</span></span>' +
+        '<button data-i="' + i + '" title="Remover">✕</button>' +
+      '</div>'
+    ).join('');
+    el.querySelectorAll('button[data-i]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        listaPedidos.splice(parseInt(btn.dataset.i, 10), 1);
+        renderLista();
+      });
+    });
+  }
+  $('btn-buscar').disabled = listaPedidos.length === 0;
+  $('btn-limpar').disabled = listaPedidos.length === 0;
+}
+
+function adicionar() {
+  const empresaCod = $('f-empresa').value;
+  const numero = $('f-numero').value.trim().replace(/\D/g, '');
+  if (!numero) { erro('Informe o número do pedido.'); return; }
+  erro('');
+  if (listaPedidos.some(it => it.empresaCod === empresaCod && it.numero === numero)) {
+    erro('Esse pedido já está na lista.');
+    return;
+  }
+  listaPedidos.push({ empresaCod, numero });
+  $('f-numero').value = '';
+  $('f-numero').focus();
+  renderLista();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   2. OMIE — mesmo padrão de nf-boleto.html
+   3. OMIE — mesmo padrão de nf-boleto.html
    ══════════════════════════════════════════════════════════════════════════ */
 async function omieCall(endpoint, call, empCod, param, tentativa) {
   const resp = await fetch('/api/omie-seguro', {
@@ -173,6 +201,7 @@ async function omieCall(endpoint, call, empCod, param, tentativa) {
     if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
       const m = data.faultstring.match(/(\d+)\s*segundo/i);
       const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      log('Limite da API atingido — aguardando ' + seg + 's…');
       await sleep(seg * 1000);
       return omieCall(endpoint, call, empCod, param, true);
     }
@@ -210,37 +239,33 @@ async function consultarCliente(codigoCliente, empCod) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3. FLUXO PRINCIPAL
+   4. BUSCAR TUDO E GERAR PDF
    ══════════════════════════════════════════════════════════════════════════ */
 let rodando = false;
 
-async function buscar() {
-  if (rodando) return;
-  const empCod = $('f-empresa').value;
-  const numeros = parseNumeros($('f-numeros').value);
-  if (!numeros.length) { erro('Informe ao menos um número de pedido.'); return; }
-
+async function buscarEGerarPdf() {
+  if (rodando || !listaPedidos.length) return;
   rodando = true;
   erro('');
-  $('folhas').innerHTML = '';
-  $('folhas').classList.remove('mostrar');
-  $('acoes-finais').style.display = 'none';
-  $('resumo-busca').style.display = 'none';
+  limparLog();
+  $('resultado').style.display = 'none';
+  $('lista-resultado').innerHTML = '';
   $('btn-buscar').disabled = true;
   $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
+  $('btn-adicionar').disabled = true;
 
   const resultados = [];
 
   try {
-    for (let i = 0; i < numeros.length; i++) {
-      const numero = numeros[i];
+    for (const it of listaPedidos) {
+      log('Buscando pedido ' + it.numero + ' em ' + EMPRESAS[it.empresaCod].nome + '…');
       try {
-        const p = await acharPedidoCompleto(numero, empCod);
+        const p = await acharPedidoCompleto(it.numero, it.empresaCod);
         if (!p) {
-          resultados.push({ ok: false, numero, mensagem: 'Pedido ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome + '.' });
+          resultados.push({ ok: false, numero: it.numero, empresaNome: EMPRESAS[it.empresaCod].nome, mensagem: 'Pedido não encontrado' });
         } else {
           const cab = p.cabecalho || {};
-          const cliente = await consultarCliente(cab.codigo_cliente, empCod);
+          const cliente = await consultarCliente(cab.codigo_cliente, it.empresaCod);
           await sleep(300);
 
           const itens = (p.det || []).map(d => ({
@@ -250,103 +275,213 @@ async function buscar() {
             valorUnit: (d.produto || {}).valor_unitario || 0,
             valorTotal: (d.produto || {}).valor_total || 0,
             pesoLiquido: (d.inf_adic || {}).peso_liquido || 0
-          })).filter(it => it.sku);
+          })).filter(x => x.sku);
 
           resultados.push({
             ok: true,
-            empresaNome: EMPRESAS[empCod].nome,
-            numeroPedido: cab.numero_pedido || numero,
+            empresaNome: EMPRESAS[it.empresaCod].nome,
+            numeroPedido: cab.numero_pedido || it.numero,
             cliente,
             vendedorCodigo: cab.codigo_vendedor,
             dataInclusao: (p.infoCadastro || {}).dInc || '',
-            frete: FRETE_LABEL[String((p.frete || {}).modalidade)] || (p.frete || {}).modalidade || '—',
-            etapa: ETAPA_LABEL[String(cab.etapa)] || cab.etapa || '—',
+            frete: FRETE_LABEL[String((p.frete || {}).modalidade)] || (p.frete || {}).modalidade || '-',
+            etapa: ETAPA_LABEL[String(cab.etapa)] || cab.etapa || '-',
             itens,
-            valorTotal: (p.total_pedido || {}).valor_total_pedido || itens.reduce((s, it) => s + it.valorTotal, 0),
+            valorTotal: (p.total_pedido || {}).valor_total_pedido || itens.reduce((s, x) => s + x.valorTotal, 0),
             observacoes: (p.observacoes || {}).obs_venda || '',
             dadosNF: (p.informacoes_adicionais || {}).dados_adicionais_nf || ''
           });
         }
       } catch (e) {
-        resultados.push({ ok: false, numero, mensagem: 'Erro ao buscar pedido ' + numero + ': ' + (e.message || e) });
+        resultados.push({ ok: false, numero: it.numero, empresaNome: EMPRESAS[it.empresaCod].nome, mensagem: e.message || String(e) });
       }
       await sleep(300);
     }
 
-    renderFolhas(resultados);
+    renderResultado(resultados);
 
-    const ok = resultados.filter(r => r.ok).length;
-    $('resumo-busca').textContent = ok + ' de ' + numeros.length + ' pedido(s) encontrado(s).';
-    $('resumo-busca').style.display = 'block';
+    const okList = resultados.filter(r => r.ok);
+    if (!okList.length) {
+      erro('Nenhum dos pedidos pôde ser localizado — nenhum PDF foi gerado.');
+      return;
+    }
+
+    log('Montando PDF com ' + okList.length + ' pedido(s)…');
+    const blob = gerarPdf(okList);
+    const nome = 'Pedidos_' + new Date().toISOString().slice(0, 10) + '.pdf';
+    salvar(blob, nome);
+    log('PDF gerado: ' + nome);
   } finally {
     rodando = false;
     $('btn-buscar').disabled = false;
-    $('btn-buscar').textContent = 'Buscar pedido(s)';
+    $('btn-buscar').textContent = 'Buscar tudo e gerar PDF';
+    $('btn-adicionar').disabled = false;
   }
 }
 
-function renderFolhas(resultados) {
-  const el = $('folhas');
-  el.innerHTML = resultados.map(r => r.ok ? folhaHtml(r) : folhaErroHtml(r)).join('');
-  el.classList.add('mostrar');
-  $('acoes-finais').style.display = resultados.some(r => r.ok) ? 'flex' : 'none';
+function renderResultado(resultados) {
+  $('lista-resultado').innerHTML = resultados.map(r =>
+    '<div class="item-pedido">' +
+      '<span><span class="emp">' + esc(r.empresaNome) + '</span> <span class="num">Pedido ' + esc(r.numeroPedido || r.numero) + '</span></span>' +
+      '<span class="st ' + (r.ok ? 'st-ok' : 'st-erro') + '">' + (r.ok ? 'Encontrado' : (r.mensagem || 'Erro')) + '</span>' +
+    '</div>'
+  ).join('');
+  $('resultado').style.display = 'block';
 }
 
-function folhaErroHtml(r) {
-  return '<div class="folha erro-pedido">' +
-    '<div class="msg-erro">' + esc(r.mensagem) + '</div>' +
-  '</div>';
-}
-
-function folhaHtml(info) {
-  const cli = info.cliente || {};
-  const clienteNome = cli.razao_social || cli.nome_fantasia || 'Cliente não localizado no Omie';
-  const clienteDoc = cli.cnpj_cpf || '—';
-  const clienteCidade = [cli.cidade, cli.estado].filter(Boolean).join(' / ') || '—';
-  const clienteEndereco = [cli.endereco, cli.endereco_numero, cli.bairro].filter(Boolean).join(', ') || '—';
-  const vendedor = info.vendedorCodigo ? ('Cód. ' + info.vendedorCodigo) : '—';
-  const pesoTotal = info.itens.reduce((s, it) => s + (it.pesoLiquido * it.quantidade), 0);
-  const pesoTxt = pesoTotal ? pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' kg' : '—';
-
-  const itensHtml = info.itens.map(it =>
-    '<tr><td>' + esc(it.sku || '—') + '</td><td>' + esc(it.descricao || '—') + '</td>' +
-    '<td class="r">' + it.quantidade + '</td>' +
-    '<td class="r">' + fmtMoeda(it.valorUnit) + '</td>' +
-    '<td class="r">' + fmtMoeda(it.valorTotal) + '</td></tr>'
-  ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nenhum item encontrado</td></tr>';
-
-  return '<div class="folha">' +
-    '<div class="folha-cab">' +
-      '<div><h2>Pedido de Venda</h2><div class="empresa">' + esc(info.empresaNome) + '</div></div>' +
-      '<div class="pednum"><div class="lbl">Nº do pedido</div><div class="num">' + esc(info.numeroPedido) + '</div></div>' +
-    '</div>' +
-    '<div class="grid-info">' +
-      '<div class="info-item"><div class="lbl">Cliente</div><div class="val">' + esc(clienteNome) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">CNPJ/CPF</div><div class="val">' + esc(clienteDoc) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Cidade/UF</div><div class="val">' + esc(clienteCidade) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Endereço</div><div class="val">' + esc(clienteEndereco) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Vendedor</div><div class="val">' + esc(vendedor) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Data de inclusão</div><div class="val">' + esc(fmtData(info.dataInclusao)) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Frete</div><div class="val">' + esc(info.frete) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Etapa</div><div class="val">' + esc(info.etapa) + '</div></div>' +
-      '<div class="info-item"><div class="lbl">Peso total (estimado)</div><div class="val">' + esc(pesoTxt) + '</div></div>' +
-    '</div>' +
-    '<table class="itens">' +
-      '<thead><tr><th>SKU</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">Vlr Unit.</th><th style="text-align:right">Vlr Total</th></tr></thead>' +
-      '<tbody>' + itensHtml + '</tbody>' +
-      '<tfoot><tr><td colspan="4">TOTAL DO PEDIDO</td><td class="r">' + fmtMoeda(info.valorTotal) + '</td></tr></tfoot>' +
-    '</table>' +
-    (info.observacoes ? '<div class="obs-box"><div class="lbl">Observações</div><div>' + esc(info.observacoes) + '</div></div>' : '') +
-    (info.dadosNF ? '<div class="obs-box"><div class="lbl">Dados adicionais para a Nota Fiscal</div><div>' + esc(info.dadosNF) + '</div></div>' : '') +
-    '<div class="folha-rodape"><span>' + esc(info.empresaNome) + ' — Pedido de Venda</span><span>Impresso em ' + new Date().toLocaleString('pt-BR') + '</span></div>' +
-  '</div>';
+function salvar(blob, nome) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   4. EVENTOS
+   5. GERAÇÃO DO PDF (jsPDF) — uma página (ou mais) por pedido
    ══════════════════════════════════════════════════════════════════════════ */
-$('btn-buscar').addEventListener('click', buscar);
-$('btn-imprimir').addEventListener('click', () => window.print());
+function gerarPdf(pedidos) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const ml = 14, mr = 14, W = 210;
+  const tableW = W - ml - mr;
+  let y;
+
+  function checarQuebra(altura) {
+    if (y + altura > 285) { doc.addPage(); y = 18; }
+  }
+
+  pedidos.forEach((info, idx) => {
+    if (idx > 0) doc.addPage();
+    y = 18;
+
+    // Cabeçalho
+    doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(15); doc.setTextColor(26, 43, 74);
+    doc.text('Pedido de Venda', ml, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 84, 78);
+    doc.text(info.empresaNome, ml, y + 5);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(26, 43, 74);
+    doc.text('Nº ' + String(info.numeroPedido), W - mr, y, { align: 'right' });
+    y += 8;
+    doc.setDrawColor(26, 43, 74); doc.setLineWidth(0.6);
+    doc.line(ml, y, W - mr, y);
+    y += 7;
+
+    // Grade de informações
+    const cli = info.cliente || {};
+    const clienteNome = cli.razao_social || cli.nome_fantasia || 'Cliente não localizado no Omie';
+    const clienteDoc = cli.cnpj_cpf || '-';
+    const clienteCidade = [cli.cidade, cli.estado].filter(Boolean).join(' / ') || '-';
+    const clienteEndereco = [cli.endereco, cli.endereco_numero, cli.bairro].filter(Boolean).join(', ') || '-';
+    const vendedor = info.vendedorCodigo ? ('Cód. ' + info.vendedorCodigo) : '-';
+    const pesoTotal = info.itens.reduce((s, it) => s + (it.pesoLiquido * it.quantidade), 0);
+    const pesoTxt = pesoTotal ? pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' kg' : '-';
+
+    const campos = [
+      ['Cliente', clienteNome], ['CNPJ/CPF', clienteDoc],
+      ['Cidade/UF', clienteCidade], ['Endereço', clienteEndereco],
+      ['Vendedor', vendedor], ['Data de inclusão', fmtData(info.dataInclusao)],
+      ['Frete', info.frete], ['Etapa', info.etapa],
+      ['Peso total (estimado)', pesoTxt]
+    ];
+    const colW = tableW / 3;
+    campos.forEach((c, i) => {
+      const col = i % 3, row = Math.floor(i / 3);
+      const x = ml + col * colW;
+      const yy = y + row * 11;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(90, 84, 78);
+      doc.text(c[0].toUpperCase(), x, yy);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(26, 43, 74);
+      doc.text(String(c[1]), x, yy + 4, { maxWidth: colW - 4 });
+    });
+    y += Math.ceil(campos.length / 3) * 11 + 4;
+
+    // Tabela de itens
+    const cols = [
+      { l: 'SKU', w: 22 }, { l: 'Descrição', w: 84 }, { l: 'Qtd', w: 18 },
+      { l: 'Vlr Unit.', w: 30 }, { l: 'Vlr Total', w: 28 }
+    ];
+    let cx = ml;
+    const colX = cols.map(c => { const x = cx; cx += c.w; return x; });
+
+    function cabecalhoTabela() {
+      checarQuebra(7);
+      doc.setFillColor(26, 43, 74);
+      doc.rect(ml, y, tableW, 6.5, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255);
+      cols.forEach((c, i) => doc.text(c.l.toUpperCase(), colX[i] + 1.5, y + 4.4));
+      y += 6.5;
+    }
+    cabecalhoTabela();
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    (info.itens.length ? info.itens : [{ sku: '-', descricao: 'Nenhum item encontrado', quantidade: '', valorUnit: '', valorTotal: '' }]).forEach(it => {
+      checarQuebra(6);
+      doc.setDrawColor(200, 185, 154); doc.setLineWidth(0.2);
+      doc.line(ml, y + 5.5, W - mr, y + 5.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(String(it.sku || '-'), colX[0] + 1.5, y + 4, { maxWidth: cols[0].w - 3 });
+      doc.text(String(it.descricao || '-'), colX[1] + 1.5, y + 4, { maxWidth: cols[1].w - 3 });
+      doc.text(String(it.quantidade), colX[2] + 1.5, y + 4, { maxWidth: cols[2].w - 3 });
+      doc.text(it.valorUnit === '' ? '' : fmtMoeda(it.valorUnit), colX[3] + 1.5, y + 4, { maxWidth: cols[3].w - 3 });
+      doc.text(it.valorTotal === '' ? '' : fmtMoeda(it.valorTotal), colX[4] + 1.5, y + 4, { maxWidth: cols[4].w - 3 });
+      y += 6;
+    });
+
+    checarQuebra(8);
+    doc.setDrawColor(26, 43, 74); doc.setLineWidth(0.5);
+    doc.line(ml, y, W - mr, y);
+    y += 5;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(26, 43, 74);
+    doc.text('TOTAL DO PEDIDO', ml, y);
+    doc.text(fmtMoeda(info.valorTotal), W - mr, y, { align: 'right' });
+    y += 8;
+
+    if (info.observacoes) {
+      checarQuebra(12);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(90, 84, 78);
+      doc.text('OBSERVAÇÕES', ml, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+      const linhas = doc.splitTextToSize(info.observacoes, tableW);
+      checarQuebra(linhas.length * 4 + 2);
+      doc.text(linhas, ml, y);
+      y += linhas.length * 4 + 4;
+    }
+
+    if (info.dadosNF) {
+      checarQuebra(12);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(90, 84, 78);
+      doc.text('DADOS ADICIONAIS PARA A NOTA FISCAL', ml, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+      const linhas = doc.splitTextToSize(info.dadosNF, tableW);
+      checarQuebra(linhas.length * 4 + 2);
+      doc.text(linhas, ml, y);
+      y += linhas.length * 4 + 4;
+    }
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(120, 120, 120);
+    doc.text(info.empresaNome + ' — Pedido de Venda — Impresso em ' + new Date().toLocaleString('pt-BR'), ml, 292);
+  });
+
+  return doc.output('blob');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. EVENTOS
+   ══════════════════════════════════════════════════════════════════════════ */
+$('btn-adicionar').addEventListener('click', adicionar);
+$('f-numero').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionar(); } });
+$('btn-buscar').addEventListener('click', buscarEGerarPdf);
+$('btn-limpar').addEventListener('click', () => {
+  listaPedidos = [];
+  renderLista();
+  $('resultado').style.display = 'none';
+  erro('');
+});
+renderLista();
 </script>
+<script src="js/sidebar.js?v=1" defer></script>
 </body>
 </html>

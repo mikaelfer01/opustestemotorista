@@ -22,7 +22,7 @@
 html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1200px;margin:0 auto;}
+.wrap{padding:28px 40px 60px;display:flex;flex-direction:column;gap:18px;max-width:1400px;margin:0 auto;width:100%;}
 .sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
 .sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
 h1{font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--navy);margin-bottom:4px;}
@@ -75,7 +75,6 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
 
 <div class="wrap">
   <div class="sec">
-    <div style="font-size:11px;margin-bottom:2px;"><a href="/pedido.html" style="color:var(--navy);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--gold);">Impressão de Pedido →</a></div>
     <h1>Nota Fiscal + Boletos</h1>
     <p class="sub">Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.</p>
 
@@ -588,5 +587,6 @@ $('f-numeros').addEventListener('input', () => {
 });
 render();
 </script>
+<script src="js/sidebar.js?v=1" defer></script>
 </body>
 </html>
