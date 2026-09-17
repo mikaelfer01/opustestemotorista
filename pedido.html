@@ -26,22 +26,27 @@ h1{font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:v
 .sub{font-size:12px;color:var(--muted);margin-bottom:4px;}
 .nav-modulos{font-size:11px;margin-bottom:2px;}
 .nav-modulos a{color:var(--navy);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--gold);}
-.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
-.controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:200px;}
-.controls select:focus,.controls input:focus{border-color:var(--gold);}
+.grid2{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:20px;align-items:start;margin-top:16px;}
+@media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+textarea{width:100%;min-height:140px;border:1.5px solid var(--gold-b);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6;background:#fff;color:var(--navy);outline:none;resize:vertical;}
+textarea:focus{border-color:var(--gold);}
+.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
+label.fld select{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);width:100%;}
+label.fld select:focus{border-color:var(--gold);}
 .btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
 .btn-primary:hover{background:var(--navy-d);}
 .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
-.btn-secondary{padding:0 16px;height:38px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
-.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
-.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
 .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 .erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:14px;display:none;}
+.resumo-busca{font-size:11px;color:var(--muted);margin-top:10px;display:none;}
 
-/* Folha de impressão do pedido */
-.folha{display:none;background:#fff;border:0.5px solid var(--gold-b);border-radius:12px;padding:28px 32px;}
-.folha.mostrar{display:block;}
+/* Folhas de impressão dos pedidos */
+.folhas{display:none;flex-direction:column;gap:16px;}
+.folhas.mostrar{display:flex;}
+.folha{background:#fff;border:0.5px solid var(--gold-b);border-radius:12px;padding:28px 32px;}
+.folha.erro-pedido{border-color:rgba(176,58,46,.4);}
+.folha.erro-pedido .msg-erro{color:var(--red);font-size:13px;}
 .folha-cab{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:12px;margin-bottom:14px;}
 .folha-cab h2{font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:var(--navy);}
 .folha-cab .empresa{font-size:12px;color:var(--muted);margin-top:2px;}
@@ -63,10 +68,12 @@ table.itens tfoot td{border-top:2px solid var(--navy);border-bottom:none;font-we
 
 @media print{
   body *{visibility:hidden;}
-  .folha, .folha *{visibility:visible;}
-  .folha{position:absolute;top:0;left:0;width:100%;border:none;border-radius:0;padding:0 12mm;}
+  .folhas, .folhas *{visibility:visible;}
+  .folhas{position:absolute;top:0;left:0;width:100%;}
+  .folha{border:none;border-radius:0;padding:0 12mm;page-break-after:always;}
+  .folha:last-child{page-break-after:auto;}
   .wrap{padding:0;max-width:none;}
-  .sec:not(.folha-container){display:none;}
+  .sec:not(.folhas-container){display:none;}
 }
 </style>
 </head>
@@ -76,74 +83,37 @@ table.itens tfoot td{border-top:2px solid var(--navy);border-bottom:none;font-we
   <div class="sec">
     <div class="nav-modulos"><a href="/nf-boleto.html">← Nota Fiscal + Boletos</a></div>
     <h1>Impressão de Pedido</h1>
-    <p class="sub">Selecione a empresa, informe o número do pedido e imprima o pedido completo (itens, quantidades, valores e cliente), direto do Omie.</p>
+    <p class="sub">Selecione a empresa, informe um ou mais números de pedido (um por linha) e imprima os pedidos completos (itens, quantidades, valores e cliente), direto do Omie.</p>
 
-    <div class="controls" style="margin-top:16px;">
-      <label class="fld">Empresa
-        <select id="f-empresa">
-          <option value="MFP">MF Paris</option>
-          <option value="DMS">DMS Alimentos</option>
-          <option value="PRF">Profi Comércio</option>
-        </select>
-      </label>
-      <label class="fld">Número do pedido
-        <input type="text" id="f-numero" placeholder="Ex.: 12345" inputmode="numeric">
-      </label>
-      <button class="btn-primary" id="btn-buscar">Buscar pedido</button>
+    <div class="grid2">
+      <div>
+        <label class="fld">Empresa
+          <select id="f-empresa">
+            <option value="MFP">MF Paris</option>
+            <option value="DMS">DMS Alimentos</option>
+            <option value="PRF">Profi Comércio</option>
+          </select>
+        </label>
+        <label class="fld">Número(s) do pedido
+          <textarea id="f-numeros" spellcheck="false" placeholder="12345&#10;12346&#10;12347"></textarea>
+        </label>
+        <div class="hint">Um número de pedido por linha. Pode colar direto de uma coluna do Excel.</div>
+      </div>
+      <div>
+        <button class="btn-primary" id="btn-buscar">Buscar pedido(s)</button>
+        <div class="resumo-busca" id="resumo-busca"></div>
+      </div>
     </div>
 
     <div class="erro" id="erro"></div>
   </div>
 
-  <div class="sec folha-container">
-    <div class="folha" id="folha">
-      <div class="folha-cab">
-        <div>
-          <h2>Pedido de Venda</h2>
-          <div class="empresa" id="f-nome-empresa">—</div>
-        </div>
-        <div class="pednum">
-          <div class="lbl">Nº do pedido</div>
-          <div class="num" id="f-num-pedido">—</div>
-        </div>
-      </div>
-
-      <div class="grid-info">
-        <div class="info-item"><div class="lbl">Cliente</div><div class="val" id="f-cliente">—</div></div>
-        <div class="info-item"><div class="lbl">CNPJ/CPF</div><div class="val" id="f-cliente-doc">—</div></div>
-        <div class="info-item"><div class="lbl">Cidade/UF</div><div class="val" id="f-cliente-cidade">—</div></div>
-        <div class="info-item"><div class="lbl">Endereço</div><div class="val" id="f-cliente-endereco">—</div></div>
-        <div class="info-item"><div class="lbl">Vendedor</div><div class="val" id="f-vendedor">—</div></div>
-        <div class="info-item"><div class="lbl">Data de inclusão</div><div class="val" id="f-data">—</div></div>
-        <div class="info-item"><div class="lbl">Frete</div><div class="val" id="f-frete">—</div></div>
-        <div class="info-item"><div class="lbl">Etapa</div><div class="val" id="f-etapa">—</div></div>
-        <div class="info-item"><div class="lbl">Peso total (estimado)</div><div class="val" id="f-peso">—</div></div>
-      </div>
-
-      <table class="itens">
-        <thead><tr><th>SKU</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">Vlr Unit.</th><th style="text-align:right">Vlr Total</th></tr></thead>
-        <tbody id="f-itens"></tbody>
-        <tfoot><tr><td colspan="4">TOTAL DO PEDIDO</td><td class="r" id="f-valor-total">—</td></tr></tfoot>
-      </table>
-
-      <div class="obs-box" id="f-obs-box" style="display:none;">
-        <div class="lbl">Observações</div>
-        <div id="f-obs"></div>
-      </div>
-      <div class="obs-box" id="f-nf-box" style="display:none;">
-        <div class="lbl">Dados adicionais para a Nota Fiscal</div>
-        <div id="f-nf-dados"></div>
-      </div>
-
-      <div class="folha-rodape">
-        <span id="f-rodape-esq"></span>
-        <span id="f-rodape-dir"></span>
-      </div>
-    </div>
+  <div class="sec folhas-container">
+    <div class="folhas" id="folhas"></div>
   </div>
 
   <div class="acoes-finais" id="acoes-finais" style="display:none;">
-    <button class="btn-primary" id="btn-imprimir">Imprimir pedido</button>
+    <button class="btn-primary" id="btn-imprimir">Imprimir pedido(s)</button>
   </div>
 </div>
 
@@ -165,6 +135,9 @@ const FRETE_LABEL = { '1': 'CIF (remetente)', '2': 'FOB (destinatário)', '3': '
 const ETAPA_LABEL = { '10': 'Em digitação', '20': 'Em análise', '30': 'Aprovado (parcial)', '40': 'Aprovado (produção)', '50': 'Aprovado', '60': 'Faturado' };
 
 const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 function erro(msg) {
   const el = $('erro');
   if (!msg) { el.style.display = 'none'; return; }
@@ -180,11 +153,16 @@ function fmtData(d) {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('pt-BR');
 }
+function parseNumeros(txt) {
+  const vistos = new Set();
+  return String(txt).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.replace(/\D/g, '')).filter(Boolean)
+    .filter(n => { if (vistos.has(n)) return false; vistos.add(n); return true; });
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. OMIE — mesmo padrão de nf-boleto.html
    ══════════════════════════════════════════════════════════════════════════ */
-async function omieCall(endpoint, call, empCod, param) {
+async function omieCall(endpoint, call, empCod, param, tentativa) {
   const resp = await fetch('/api/omie-seguro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -192,6 +170,12 @@ async function omieCall(endpoint, call, empCod, param) {
   });
   const data = await resp.json().catch(() => ({}));
   if (data && data.faultstring) {
+    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, true);
+    }
     const err = new Error(data.faultstring);
     err.omie = true;
     throw err;
@@ -228,101 +212,140 @@ async function consultarCliente(codigoCliente, empCod) {
 /* ══════════════════════════════════════════════════════════════════════════
    3. FLUXO PRINCIPAL
    ══════════════════════════════════════════════════════════════════════════ */
-async function buscar() {
-  const empCod = $('f-empresa').value;
-  const numero = $('f-numero').value.trim();
-  if (!numero) { erro('Informe o número do pedido.'); return; }
+let rodando = false;
 
+async function buscar() {
+  if (rodando) return;
+  const empCod = $('f-empresa').value;
+  const numeros = parseNumeros($('f-numeros').value);
+  if (!numeros.length) { erro('Informe ao menos um número de pedido.'); return; }
+
+  rodando = true;
   erro('');
-  $('folha').classList.remove('mostrar');
+  $('folhas').innerHTML = '';
+  $('folhas').classList.remove('mostrar');
   $('acoes-finais').style.display = 'none';
+  $('resumo-busca').style.display = 'none';
   $('btn-buscar').disabled = true;
   $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
 
+  const resultados = [];
+
   try {
-    const p = await acharPedidoCompleto(numero, empCod);
-    if (!p) {
-      erro('Pedido ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome + '.');
-      return;
+    for (let i = 0; i < numeros.length; i++) {
+      const numero = numeros[i];
+      try {
+        const p = await acharPedidoCompleto(numero, empCod);
+        if (!p) {
+          resultados.push({ ok: false, numero, mensagem: 'Pedido ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome + '.' });
+        } else {
+          const cab = p.cabecalho || {};
+          const cliente = await consultarCliente(cab.codigo_cliente, empCod);
+          await sleep(300);
+
+          const itens = (p.det || []).map(d => ({
+            sku: (d.produto || {}).codigo || '',
+            descricao: (d.produto || {}).descricao || '',
+            quantidade: (d.produto || {}).quantidade || 0,
+            valorUnit: (d.produto || {}).valor_unitario || 0,
+            valorTotal: (d.produto || {}).valor_total || 0,
+            pesoLiquido: (d.inf_adic || {}).peso_liquido || 0
+          })).filter(it => it.sku);
+
+          resultados.push({
+            ok: true,
+            empresaNome: EMPRESAS[empCod].nome,
+            numeroPedido: cab.numero_pedido || numero,
+            cliente,
+            vendedorCodigo: cab.codigo_vendedor,
+            dataInclusao: (p.infoCadastro || {}).dInc || '',
+            frete: FRETE_LABEL[String((p.frete || {}).modalidade)] || (p.frete || {}).modalidade || '—',
+            etapa: ETAPA_LABEL[String(cab.etapa)] || cab.etapa || '—',
+            itens,
+            valorTotal: (p.total_pedido || {}).valor_total_pedido || itens.reduce((s, it) => s + it.valorTotal, 0),
+            observacoes: (p.observacoes || {}).obs_venda || '',
+            dadosNF: (p.informacoes_adicionais || {}).dados_adicionais_nf || ''
+          });
+        }
+      } catch (e) {
+        resultados.push({ ok: false, numero, mensagem: 'Erro ao buscar pedido ' + numero + ': ' + (e.message || e) });
+      }
+      await sleep(300);
     }
 
-    const cab = p.cabecalho || {};
-    const cliente = await consultarCliente(cab.codigo_cliente, empCod);
+    renderFolhas(resultados);
 
-    const itens = (p.det || []).map(d => ({
-      sku: (d.produto || {}).codigo || '',
-      descricao: (d.produto || {}).descricao || '',
-      quantidade: (d.produto || {}).quantidade || 0,
-      valorUnit: (d.produto || {}).valor_unitario || 0,
-      valorTotal: (d.produto || {}).valor_total || 0,
-      pesoLiquido: (d.inf_adic || {}).peso_liquido || 0
-    })).filter(it => it.sku);
-
-    renderPedido({
-      empresaNome: EMPRESAS[empCod].nome,
-      numeroPedido: cab.numero_pedido || numero,
-      cliente,
-      vendedorCodigo: cab.codigo_vendedor,
-      dataInclusao: (p.infoCadastro || {}).dInc || '',
-      frete: FRETE_LABEL[String((p.frete || {}).modalidade)] || (p.frete || {}).modalidade || '—',
-      etapa: ETAPA_LABEL[String(cab.etapa)] || cab.etapa || '—',
-      itens,
-      valorTotal: (p.total_pedido || {}).valor_total_pedido || itens.reduce((s, it) => s + it.valorTotal, 0),
-      observacoes: (p.observacoes || {}).obs_venda || '',
-      dadosNF: (p.informacoes_adicionais || {}).dados_adicionais_nf || ''
-    });
-  } catch (e) {
-    erro(e.message || String(e));
+    const ok = resultados.filter(r => r.ok).length;
+    $('resumo-busca').textContent = ok + ' de ' + numeros.length + ' pedido(s) encontrado(s).';
+    $('resumo-busca').style.display = 'block';
   } finally {
+    rodando = false;
     $('btn-buscar').disabled = false;
-    $('btn-buscar').textContent = 'Buscar pedido';
+    $('btn-buscar').textContent = 'Buscar pedido(s)';
   }
 }
 
-function renderPedido(info) {
-  $('f-nome-empresa').textContent = info.empresaNome;
-  $('f-num-pedido').textContent = info.numeroPedido;
+function renderFolhas(resultados) {
+  const el = $('folhas');
+  el.innerHTML = resultados.map(r => r.ok ? folhaHtml(r) : folhaErroHtml(r)).join('');
+  el.classList.add('mostrar');
+  $('acoes-finais').style.display = resultados.some(r => r.ok) ? 'flex' : 'none';
+}
 
+function folhaErroHtml(r) {
+  return '<div class="folha erro-pedido">' +
+    '<div class="msg-erro">' + esc(r.mensagem) + '</div>' +
+  '</div>';
+}
+
+function folhaHtml(info) {
   const cli = info.cliente || {};
-  $('f-cliente').textContent = cli.razao_social || cli.nome_fantasia || 'Cliente não localizado no Omie';
-  $('f-cliente-doc').textContent = cli.cnpj_cpf || '—';
-  $('f-cliente-cidade').textContent = [cli.cidade, cli.estado].filter(Boolean).join(' / ') || '—';
-  $('f-cliente-endereco').textContent = [cli.endereco, cli.endereco_numero, cli.bairro].filter(Boolean).join(', ') || '—';
-  $('f-vendedor').textContent = info.vendedorCodigo ? ('Cód. ' + info.vendedorCodigo) : '—';
-  $('f-data').textContent = fmtData(info.dataInclusao);
-  $('f-frete').textContent = info.frete;
-  $('f-etapa').textContent = info.etapa;
-
+  const clienteNome = cli.razao_social || cli.nome_fantasia || 'Cliente não localizado no Omie';
+  const clienteDoc = cli.cnpj_cpf || '—';
+  const clienteCidade = [cli.cidade, cli.estado].filter(Boolean).join(' / ') || '—';
+  const clienteEndereco = [cli.endereco, cli.endereco_numero, cli.bairro].filter(Boolean).join(', ') || '—';
+  const vendedor = info.vendedorCodigo ? ('Cód. ' + info.vendedorCodigo) : '—';
   const pesoTotal = info.itens.reduce((s, it) => s + (it.pesoLiquido * it.quantidade), 0);
-  $('f-peso').textContent = pesoTotal ? pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' kg' : '—';
+  const pesoTxt = pesoTotal ? pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' kg' : '—';
 
-  $('f-itens').innerHTML = info.itens.map(it =>
-    '<tr><td>' + (it.sku || '—') + '</td><td>' + (it.descricao || '—') + '</td>' +
+  const itensHtml = info.itens.map(it =>
+    '<tr><td>' + esc(it.sku || '—') + '</td><td>' + esc(it.descricao || '—') + '</td>' +
     '<td class="r">' + it.quantidade + '</td>' +
     '<td class="r">' + fmtMoeda(it.valorUnit) + '</td>' +
     '<td class="r">' + fmtMoeda(it.valorTotal) + '</td></tr>'
   ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nenhum item encontrado</td></tr>';
 
-  $('f-valor-total').textContent = fmtMoeda(info.valorTotal);
-
-  if (info.observacoes) { $('f-obs').textContent = info.observacoes; $('f-obs-box').style.display = 'block'; }
-  else { $('f-obs-box').style.display = 'none'; }
-
-  if (info.dadosNF) { $('f-nf-dados').textContent = info.dadosNF; $('f-nf-box').style.display = 'block'; }
-  else { $('f-nf-box').style.display = 'none'; }
-
-  $('f-rodape-esq').textContent = info.empresaNome + ' — Pedido de Venda';
-  $('f-rodape-dir').textContent = 'Impresso em ' + new Date().toLocaleString('pt-BR');
-
-  $('folha').classList.add('mostrar');
-  $('acoes-finais').style.display = 'flex';
+  return '<div class="folha">' +
+    '<div class="folha-cab">' +
+      '<div><h2>Pedido de Venda</h2><div class="empresa">' + esc(info.empresaNome) + '</div></div>' +
+      '<div class="pednum"><div class="lbl">Nº do pedido</div><div class="num">' + esc(info.numeroPedido) + '</div></div>' +
+    '</div>' +
+    '<div class="grid-info">' +
+      '<div class="info-item"><div class="lbl">Cliente</div><div class="val">' + esc(clienteNome) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">CNPJ/CPF</div><div class="val">' + esc(clienteDoc) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Cidade/UF</div><div class="val">' + esc(clienteCidade) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Endereço</div><div class="val">' + esc(clienteEndereco) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Vendedor</div><div class="val">' + esc(vendedor) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Data de inclusão</div><div class="val">' + esc(fmtData(info.dataInclusao)) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Frete</div><div class="val">' + esc(info.frete) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Etapa</div><div class="val">' + esc(info.etapa) + '</div></div>' +
+      '<div class="info-item"><div class="lbl">Peso total (estimado)</div><div class="val">' + esc(pesoTxt) + '</div></div>' +
+    '</div>' +
+    '<table class="itens">' +
+      '<thead><tr><th>SKU</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">Vlr Unit.</th><th style="text-align:right">Vlr Total</th></tr></thead>' +
+      '<tbody>' + itensHtml + '</tbody>' +
+      '<tfoot><tr><td colspan="4">TOTAL DO PEDIDO</td><td class="r">' + fmtMoeda(info.valorTotal) + '</td></tr></tfoot>' +
+    '</table>' +
+    (info.observacoes ? '<div class="obs-box"><div class="lbl">Observações</div><div>' + esc(info.observacoes) + '</div></div>' : '') +
+    (info.dadosNF ? '<div class="obs-box"><div class="lbl">Dados adicionais para a Nota Fiscal</div><div>' + esc(info.dadosNF) + '</div></div>' : '') +
+    '<div class="folha-rodape"><span>' + esc(info.empresaNome) + ' — Pedido de Venda</span><span>Impresso em ' + new Date().toLocaleString('pt-BR') + '</span></div>' +
+  '</div>';
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
    4. EVENTOS
    ══════════════════════════════════════════════════════════════════════════ */
 $('btn-buscar').addEventListener('click', buscar);
-$('f-numero').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
 $('btn-imprimir').addEventListener('click', () => window.print());
 </script>
 </body>
