@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impressão de Pedido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:900px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+h1{font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--navy);margin-bottom:4px;}
+.sub{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.nav-modulos{font-size:11px;margin-bottom:2px;}
+.nav-modulos a{color:var(--navy);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--gold);}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:200px;}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+.btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 16px;height:38px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:14px;display:none;}
+
+/* Folha de impressão do pedido */
+.folha{display:none;background:#fff;border:0.5px solid var(--gold-b);border-radius:12px;padding:28px 32px;}
+.folha.mostrar{display:block;}
+.folha-cab{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:12px;margin-bottom:14px;}
+.folha-cab h2{font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:var(--navy);}
+.folha-cab .empresa{font-size:12px;color:var(--muted);margin-top:2px;}
+.folha-cab .pednum{text-align:right;}
+.folha-cab .pednum .num{font-size:22px;font-weight:700;color:var(--navy);font-family:ui-monospace,Menlo,monospace;}
+.folha-cab .pednum .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.grid-info{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px;margin-bottom:16px;}
+.info-item .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px;}
+.info-item .val{font-size:13px;color:var(--navy);font-weight:600;}
+table.itens{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+table.itens th{background:var(--navy);color:#fff;padding:7px 9px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+table.itens td{padding:7px 9px;border-bottom:0.5px solid var(--gold-l);}
+table.itens td.r{text-align:right;font-variant-numeric:tabular-nums;}
+table.itens tfoot td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;padding-top:9px;}
+.obs-box{background:var(--cream);border:0.5px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:10px;white-space:pre-wrap;}
+.obs-box .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px;font-weight:700;}
+.folha-rodape{margin-top:18px;padding-top:10px;border-top:0.5px dashed var(--gold-b);font-size:10px;color:var(--muted);display:flex;justify-content:space-between;}
+.acoes-finais{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+@media print{
+  body *{visibility:hidden;}
+  .folha, .folha *{visibility:visible;}
+  .folha{position:absolute;top:0;left:0;width:100%;border:none;border-radius:0;padding:0 12mm;}
+  .wrap{padding:0;max-width:none;}
+  .sec:not(.folha-container){display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="sec">
+    <div class="nav-modulos"><a href="/nf-boleto.html">← Nota Fiscal + Boletos</a></div>
+    <h1>Impressão de Pedido</h1>
+    <p class="sub">Selecione a empresa, informe o número do pedido e imprima o pedido completo (itens, quantidades, valores e cliente), direto do Omie.</p>
+
+    <div class="controls" style="margin-top:16px;">
+      <label class="fld">Empresa
+        <select id="f-empresa">
+          <option value="MFP">MF Paris</option>
+          <option value="DMS">DMS Alimentos</option>
+          <option value="PRF">Profi Comércio</option>
+        </select>
+      </label>
+      <label class="fld">Número do pedido
+        <input type="text" id="f-numero" placeholder="Ex.: 12345" inputmode="numeric">
+      </label>
+      <button class="btn-primary" id="btn-buscar">Buscar pedido</button>
+    </div>
+
+    <div class="erro" id="erro"></div>
+  </div>
+
+  <div class="sec folha-container">
+    <div class="folha" id="folha">
+      <div class="folha-cab">
+        <div>
+          <h2>Pedido de Venda</h2>
+          <div class="empresa" id="f-nome-empresa">—</div>
+        </div>
+        <div class="pednum">
+          <div class="lbl">Nº do pedido</div>
+          <div class="num" id="f-num-pedido">—</div>
+        </div>
+      </div>
+
+      <div class="grid-info">
+        <div class="info-item"><div class="lbl">Cliente</div><div class="val" id="f-cliente">—</div></div>
+        <div class="info-item"><div class="lbl">CNPJ/CPF</div><div class="val" id="f-cliente-doc">—</div></div>
+        <div class="info-item"><div class="lbl">Cidade/UF</div><div class="val" id="f-cliente-cidade">—</div></div>
+        <div class="info-item"><div class="lbl">Endereço</div><div class="val" id="f-cliente-endereco">—</div></div>
+        <div class="info-item"><div class="lbl">Vendedor</div><div class="val" id="f-vendedor">—</div></div>
+        <div class="info-item"><div class="lbl">Data de inclusão</div><div class="val" id="f-data">—</div></div>
+        <div class="info-item"><div class="lbl">Frete</div><div class="val" id="f-frete">—</div></div>
+        <div class="info-item"><div class="lbl">Etapa</div><div class="val" id="f-etapa">—</div></div>
+        <div class="info-item"><div class="lbl">Peso total (estimado)</div><div class="val" id="f-peso">—</div></div>
+      </div>
+
+      <table class="itens">
+        <thead><tr><th>SKU</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">Vlr Unit.</th><th style="text-align:right">Vlr Total</th></tr></thead>
+        <tbody id="f-itens"></tbody>
+        <tfoot><tr><td colspan="4">TOTAL DO PEDIDO</td><td class="r" id="f-valor-total">—</td></tr></tfoot>
+      </table>
+
+      <div class="obs-box" id="f-obs-box" style="display:none;">
+        <div class="lbl">Observações</div>
+        <div id="f-obs"></div>
+      </div>
+      <div class="obs-box" id="f-nf-box" style="display:none;">
+        <div class="lbl">Dados adicionais para a Nota Fiscal</div>
+        <div id="f-nf-dados"></div>
+      </div>
+
+      <div class="folha-rodape">
+        <span id="f-rodape-esq"></span>
+        <span id="f-rodape-dir"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="acoes-finais" id="acoes-finais" style="display:none;">
+    <button class="btn-primary" id="btn-imprimir">Imprimir pedido</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG — key/secret NÃO ficam aqui: /api/omie-seguro resolve no
+   servidor a partir do código da empresa (mesmo padrão de nf-boleto.html).
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = {
+  MFP: { nome: 'MF Paris' },
+  DMS: { nome: 'DMS Alimentos' },
+  PRF: { nome: 'Profi Comércio' },
+};
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+const EP_CLIENTE = 'https://app.omie.com.br/api/v1/geral/clientes/';
+const FRETE_LABEL = { '1': 'CIF (remetente)', '2': 'FOB (destinatário)', '3': 'Terceiros', '4': 'Próprio (remetente)', '5': 'Próprio (destinatário)', '6': 'Sem transporte' };
+const ETAPA_LABEL = { '10': 'Em digitação', '20': 'Em análise', '30': 'Aprovado (parcial)', '40': 'Aprovado (produção)', '50': 'Aprovado', '60': 'Faturado' };
+
+const $ = id => document.getElementById(id);
+function erro(msg) {
+  const el = $('erro');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg; el.style.display = 'block';
+}
+function fmtMoeda(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtData(d) {
+  if (!d) return '—';
+  const m = String(d).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return d;
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('pt-BR');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. OMIE — mesmo padrão de nf-boleto.html
+   ══════════════════════════════════════════════════════════════════════════ */
+async function omieCall(endpoint, call, empCod, param) {
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) {
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    throw err;
+  }
+  return data;
+}
+
+async function acharPedidoCompleto(numeroPedido, empCod) {
+  const soDigitos = String(numeroPedido || '').replace(/\D/g, '');
+  const n = parseInt(soDigitos, 10) || 0;
+  if (!n) return null;
+  const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+    pagina: 1, registros_por_pagina: 20,
+    numero_pedido_de: n, numero_pedido_ate: n,
+    apenas_importado_api: 'N'
+  }]);
+  const lista = (data && data.pedido_venda_produto) || [];
+  const alvo = String(numeroPedido).trim();
+  return lista.find(p => {
+    const np = String((p.cabecalho || {}).numero_pedido || '').trim();
+    if (np === alvo) return true;
+    const npDigitos = np.replace(/\D/g, '');
+    return npDigitos && (parseInt(npDigitos, 10) === n);
+  }) || null;
+}
+
+async function consultarCliente(codigoCliente, empCod) {
+  if (!codigoCliente) return null;
+  try {
+    return await omieCall(EP_CLIENTE, 'ConsultarCliente', empCod, [{ codigo_cliente_omie: parseInt(codigoCliente, 10) }]);
+  } catch (e) { return null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. FLUXO PRINCIPAL
+   ══════════════════════════════════════════════════════════════════════════ */
+async function buscar() {
+  const empCod = $('f-empresa').value;
+  const numero = $('f-numero').value.trim();
+  if (!numero) { erro('Informe o número do pedido.'); return; }
+
+  erro('');
+  $('folha').classList.remove('mostrar');
+  $('acoes-finais').style.display = 'none';
+  $('btn-buscar').disabled = true;
+  $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
+
+  try {
+    const p = await acharPedidoCompleto(numero, empCod);
+    if (!p) {
+      erro('Pedido ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome + '.');
+      return;
+    }
+
+    const cab = p.cabecalho || {};
+    const cliente = await consultarCliente(cab.codigo_cliente, empCod);
+
+    const itens = (p.det || []).map(d => ({
+      sku: (d.produto || {}).codigo || '',
+      descricao: (d.produto || {}).descricao || '',
+      quantidade: (d.produto || {}).quantidade || 0,
+      valorUnit: (d.produto || {}).valor_unitario || 0,
+      valorTotal: (d.produto || {}).valor_total || 0,
+      pesoLiquido: (d.inf_adic || {}).peso_liquido || 0
+    })).filter(it => it.sku);
+
+    renderPedido({
+      empresaNome: EMPRESAS[empCod].nome,
+      numeroPedido: cab.numero_pedido || numero,
+      cliente,
+      vendedorCodigo: cab.codigo_vendedor,
+      dataInclusao: (p.infoCadastro || {}).dInc || '',
+      frete: FRETE_LABEL[String((p.frete || {}).modalidade)] || (p.frete || {}).modalidade || '—',
+      etapa: ETAPA_LABEL[String(cab.etapa)] || cab.etapa || '—',
+      itens,
+      valorTotal: (p.total_pedido || {}).valor_total_pedido || itens.reduce((s, it) => s + it.valorTotal, 0),
+      observacoes: (p.observacoes || {}).obs_venda || '',
+      dadosNF: (p.informacoes_adicionais || {}).dados_adicionais_nf || ''
+    });
+  } catch (e) {
+    erro(e.message || String(e));
+  } finally {
+    $('btn-buscar').disabled = false;
+    $('btn-buscar').textContent = 'Buscar pedido';
+  }
+}
+
+function renderPedido(info) {
+  $('f-nome-empresa').textContent = info.empresaNome;
+  $('f-num-pedido').textContent = info.numeroPedido;
+
+  const cli = info.cliente || {};
+  $('f-cliente').textContent = cli.razao_social || cli.nome_fantasia || 'Cliente não localizado no Omie';
+  $('f-cliente-doc').textContent = cli.cnpj_cpf || '—';
+  $('f-cliente-cidade').textContent = [cli.cidade, cli.estado].filter(Boolean).join(' / ') || '—';
+  $('f-cliente-endereco').textContent = [cli.endereco, cli.endereco_numero, cli.bairro].filter(Boolean).join(', ') || '—';
+  $('f-vendedor').textContent = info.vendedorCodigo ? ('Cód. ' + info.vendedorCodigo) : '—';
+  $('f-data').textContent = fmtData(info.dataInclusao);
+  $('f-frete').textContent = info.frete;
+  $('f-etapa').textContent = info.etapa;
+
+  const pesoTotal = info.itens.reduce((s, it) => s + (it.pesoLiquido * it.quantidade), 0);
+  $('f-peso').textContent = pesoTotal ? pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' kg' : '—';
+
+  $('f-itens').innerHTML = info.itens.map(it =>
+    '<tr><td>' + (it.sku || '—') + '</td><td>' + (it.descricao || '—') + '</td>' +
+    '<td class="r">' + it.quantidade + '</td>' +
+    '<td class="r">' + fmtMoeda(it.valorUnit) + '</td>' +
+    '<td class="r">' + fmtMoeda(it.valorTotal) + '</td></tr>'
+  ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nenhum item encontrado</td></tr>';
+
+  $('f-valor-total').textContent = fmtMoeda(info.valorTotal);
+
+  if (info.observacoes) { $('f-obs').textContent = info.observacoes; $('f-obs-box').style.display = 'block'; }
+  else { $('f-obs-box').style.display = 'none'; }
+
+  if (info.dadosNF) { $('f-nf-dados').textContent = info.dadosNF; $('f-nf-box').style.display = 'block'; }
+  else { $('f-nf-box').style.display = 'none'; }
+
+  $('f-rodape-esq').textContent = info.empresaNome + ' — Pedido de Venda';
+  $('f-rodape-dir').textContent = 'Impresso em ' + new Date().toLocaleString('pt-BR');
+
+  $('folha').classList.add('mostrar');
+  $('acoes-finais').style.display = 'flex';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. EVENTOS
+   ══════════════════════════════════════════════════════════════════════════ */
+$('btn-buscar').addEventListener('click', buscar);
+$('f-numero').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+$('btn-imprimir').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>
