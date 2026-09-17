@@ -1,14 +1,14 @@
 /* ============================================================
    OPUS — Menu lateral (sidebar.js)
-   Sistema reduzido a 2 módulos: Nota Fiscal + Boletos e Impressão
-   de Pedido. Editar MENU_ITEMS abaixo para adicionar/remover páginas.
+   Editar MENU_ITEMS abaixo para adicionar/remover páginas.
    ============================================================ */
 (function () {
   "use strict";
 
   var MENU_ITEMS = [
     { href: "nf-boleto.html", label: "Nota Fiscal + Boletos", icon: '<path d="M6 2h9l5 5v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>' },
-    { href: "pedido.html", label: "Impressão de Pedido", icon: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v8H6z"/>' }
+    { href: "pedido.html", label: "Impressão de Pedido", icon: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v8H6z"/>' },
+    { href: "recebimento-nf.html", label: "Recebimento de NF", icon: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' }
   ];
 
   var CURRENT = (location.pathname.split("/").pop() || "nf-boleto.html");
