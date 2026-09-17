@@ -165,24 +165,27 @@ function classificarSituacao(situacao) {
   return 'transito';
 }
 
+// As 3 transportadoras (ssw/eureka/pajucara) foram consolidadas num único
+// endpoint (/api/rastreio-transportadora) pra não estourar o limite de 12
+// Serverless Functions do plano Hobby da Vercel.
 async function rastrearSSW(cnpj, numero) {
-  const r = await fetch('/api/rastreio-ssw', {
+  const r = await fetch('/api/rastreio-transportadora', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cnpj, numero })
+    body: JSON.stringify({ transportadora: 'ssw', cnpj, numero })
   });
   return r.json();
 }
 async function rastrearEureka(cnpj, numero) {
-  const r = await fetch('/api/rastreio-eureka', {
+  const r = await fetch('/api/rastreio-transportadora', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cnpj, numero })
+    body: JSON.stringify({ transportadora: 'eureka', cnpj, numero })
   });
   return r.json();
 }
 async function rastrearPajucara(cnpj, numero) {
-  const r = await fetch('/api/rastreio-pajucara', {
+  const r = await fetch('/api/rastreio-transportadora', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cnpj, numero })
+    body: JSON.stringify({ transportadora: 'pajucara', cnpj, numero })
   });
   return r.json();
 }

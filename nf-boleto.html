@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nota Fiscal + Boletos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:900px;margin:0 auto;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:20px 22px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);}
+h1{font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:var(--navy);margin-bottom:4px;}
+.sub{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:200px;}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+.btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 16px;height:38px;border:1.5px solid var(--gold-b);border-radius:9px;background:transparent;color:var(--navy);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:160px;overflow-y:auto;margin-top:14px;display:none;line-height:1.7;}
+.erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:14px;display:none;}
+.resultado{margin-top:16px;display:none;}
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+.kcard{background:var(--icon);border-radius:10px;padding:10px 14px;}
+.kcard .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.kcard .val{font-size:15px;font-weight:600;color:var(--navy);font-family:ui-monospace,Menlo,monospace;}
+.lista-arquivos{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.item-arquivo{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0.5px solid var(--gold-b);border-radius:8px;padding:8px 12px;font-size:12px;}
+.item-arquivo .tag{font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;white-space:nowrap;}
+.tag-nf{background:var(--blue-l);color:var(--blue);}
+.tag-boleto{background:var(--amber-l);color:var(--amber);}
+.acoes-finais{display:flex;gap:10px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="sec">
+    <h1>Nota Fiscal + Boletos</h1>
+    <p class="sub">Selecione a empresa, informe o número do pedido/nota e gere um único PDF com a DANFE e os boletos vinculados, direto do Omie.</p>
+
+    <div class="controls" style="margin-top:16px;">
+      <label class="fld">Empresa
+        <select id="f-empresa">
+          <option value="MFP">MF Paris</option>
+          <option value="DMS">DMS Alimentos</option>
+          <option value="PRF">Profi Comércio</option>
+        </select>
+      </label>
+      <label class="fld">Número do pedido / nota
+        <input type="text" id="f-numero" placeholder="Ex.: 12345" inputmode="numeric">
+      </label>
+      <button class="btn-primary" id="btn-buscar">Buscar</button>
+    </div>
+
+    <div class="log" id="log"></div>
+    <div class="erro" id="erro"></div>
+
+    <div class="resultado" id="resultado">
+      <div class="resumo" id="resumo"></div>
+      <div class="lista-arquivos" id="lista-arquivos"></div>
+      <div class="acoes-finais">
+        <button class="btn-primary" id="btn-gerar-pdf" disabled>Gerar PDF único</button>
+        <button class="btn-secondary" id="btn-imprimir" disabled>Abrir e imprimir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+<!-- Controle de acesso: usa o mesmo auth.js do resto do sistema, se existir. -->
+<script type="module">
+  try {
+    const m = await import('/js/auth.js');
+    m.exigirPerfis(['admin', 'logistica', 'comercial']);
+  } catch (e) { /* página aberta fora do app: segue sem bloquear */ }
+</script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG — key/secret NÃO ficam aqui: /api/omie-seguro resolve no
+   servidor a partir do código da empresa (mesmo padrão de termos.html).
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = {
+  MFP: { nome: 'MF Paris' },
+  DMS: { nome: 'DMS Alimentos' },
+  PRF: { nome: 'Profi Comércio' },
+};
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function limparLog() { $('log').innerHTML = ''; $('log').style.display = 'none'; }
+function erro(msg) {
+  const el = $('erro');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg; el.style.display = 'block';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. OMIE — mesmo padrão de termos.html / notas-fiscais.html
+   ══════════════════════════════════════════════════════════════════════════ */
+async function omieCall(endpoint, call, empCod, param, tentativa) {
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) {
+    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      log('Limite da API atingido — aguardando ' + seg + 's…');
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, true);
+    }
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    throw err;
+  }
+  return data;
+}
+
+async function acharPedidoPorNumero(numeroPedido, empCod) {
+  const soDigitos = String(numeroPedido || '').replace(/\D/g, '');
+  const n = parseInt(soDigitos, 10) || 0;
+  if (!n) return null;
+  const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+    pagina: 1, registros_por_pagina: 20,
+    numero_pedido_de: n, numero_pedido_ate: n,
+    apenas_importado_api: 'N'
+  }]);
+  const lista = (data && data.pedido_venda_produto) || [];
+  const alvo = String(numeroPedido).trim();
+  const achado = lista.find(p => {
+    const np = String((p.cabecalho || {}).numero_pedido || '').trim();
+    if (np === alvo) return true;
+    const npDigitos = np.replace(/\D/g, '');
+    return npDigitos && (parseInt(npDigitos, 10) === n);
+  });
+  if (!achado) return null;
+  return achado.cabecalho.codigo_pedido;
+}
+
+async function statusPedido(codigoPedido, empCod) {
+  return omieCall(EP_PEDIDO, 'StatusPedido', empCod, [{ codigo_pedido: parseInt(codigoPedido, 10) || codigoPedido }]);
+}
+
+function extrairLinks(obj) {
+  const out = { pdf: null, xml: null };
+  const visitar = o => {
+    if (!o || typeof o !== 'object') return;
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) {
+        const alvo = (k + ' ' + v).toLowerCase();
+        if (!out.pdf && /(danfe|boleto|\.pdf|impress|pdf)/.test(alvo)) out.pdf = v;
+        else if (!out.xml && /xml/.test(alvo)) out.xml = v;
+      } else if (v && typeof v === 'object') visitar(v);
+    }
+  };
+  visitar(obj);
+  return out;
+}
+
+const CANDIDATOS_DOC = [
+  { id: 'util-ObterNFe',      endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterNFe' },
+  { id: 'util-ObterDanfe',    endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterDanfe' },
+  { id: 'dfe-ObterDocs',      endpoint: 'https://app.omie.com.br/api/v1/produtos/dfedocs/',        call: 'ObterDocumentos' },
+  { id: 'dfe-ObterDocumento', endpoint: 'https://app.omie.com.br/api/v1/produtos/dfedocs/',        call: 'ObterDocumento' },
+];
+const LS_METODO_DOC = 'opus_nf_metodo_doc';
+
+async function buscarDocsPorNF(nf, empCod) {
+  const fixado = localStorage.getItem(LS_METODO_DOC);
+  const fila = fixado
+    ? [].concat(CANDIDATOS_DOC.filter(c => c.id === fixado), CANDIDATOS_DOC.filter(c => c.id !== fixado))
+    : CANDIDATOS_DOC.slice();
+  const param = [{ nIdNF: nf.nIdNF || 0, cChaveNFe: nf.chave || '', cModelo: '55', nCodNF: nf.nIdNF || 0 }];
+  for (const cand of fila) {
+    try {
+      const d = await omieCall(cand.endpoint, cand.call, empCod, param);
+      const links = extrairLinks(d);
+      if (links.pdf || links.xml) {
+        localStorage.setItem(LS_METODO_DOC, cand.id);
+        return links;
+      }
+    } catch (e) { /* método não existe nesta conta: tenta o próximo */ }
+  }
+  return { pdf: null, xml: null };
+}
+
+/* financas/contareceber não filtra por chave/numero_documento_fiscal — só
+   pagina/registros_por_pagina — mesmo padrão de termos.html: pagina de trás
+   pra frente e compara no navegador. */
+async function buscarBoletosPorNF(numeroNF, chaveNF, empCod) {
+  if (!chaveNF && !numeroNF) return [];
+  const links = [];
+  const EP_CR = 'https://app.omie.com.br/api/v1/financas/contareceber/';
+  const TETO_PAGINAS = 20;
+  try {
+    const primeira = await omieCall(EP_CR, 'ListarContasReceber', empCod, [{ pagina: 1, registros_por_pagina: 20 }]);
+    const totalPaginas = primeira.total_de_paginas || 1;
+    const titulos = [];
+    for (let p = totalPaginas, vistas = 0; p >= 1 && vistas < TETO_PAGINAS; p--, vistas++) {
+      await sleep(350);
+      const dados = (p === 1) ? primeira : await omieCall(EP_CR, 'ListarContasReceber', empCod, [{ pagina: p, registros_por_pagina: 20 }]);
+      titulos.push.apply(titulos, dados.conta_receber_cadastro || []);
+    }
+    const numeroSemZeros = numeroNF ? String(numeroNF).replace(/^0+/, '') : '';
+    const encontrados = titulos.filter(t =>
+      (chaveNF && t.chave_nfe === chaveNF) ||
+      (numeroSemZeros && String(t.numero_documento_fiscal || '').replace(/^0+/, '') === numeroSemZeros)
+    );
+    for (const titulo of encontrados) {
+      const nCodTitulo = titulo.codigo_lancamento_omie;
+      if (!nCodTitulo) continue;
+      try {
+        await sleep(300);
+        const boleto = await omieCall(
+          'https://app.omie.com.br/api/v1/financas/contareceberboleto/', 'ObterBoleto', empCod,
+          [{ nCodTitulo }]
+        );
+        const l = extrairLinks(boleto);
+        if (l.pdf) links.push({ url: l.pdf, parcela: titulo.numero_parcela || '' });
+      } catch (e) {
+        log('Boleto (título ' + nCodTitulo + '): ' + (e.message || e));
+      }
+    }
+  } catch (e) {
+    log('Boletos: ' + (e.message || e));
+  }
+  return links;
+}
+
+async function baixarArquivo(url) {
+  const resp = await fetch('/api/omie-arquivo', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const d = await resp.json();
+  if (d.error) throw new Error(d.error);
+  const bin = atob(d.base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. FLUXO PRINCIPAL
+   ══════════════════════════════════════════════════════════════════════════ */
+let arquivosAtuais = []; // { tipo: 'nf'|'boleto', label, url }
+
+async function buscar() {
+  const empCod = $('f-empresa').value;
+  const numero = $('f-numero').value.trim();
+  if (!numero) { erro('Informe o número do pedido/nota.'); return; }
+
+  erro('');
+  limparLog();
+  arquivosAtuais = [];
+  $('resultado').style.display = 'none';
+  $('btn-gerar-pdf').disabled = true;
+  $('btn-imprimir').disabled = true;
+  $('btn-buscar').disabled = true;
+  $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
+
+  try {
+    log('Localizando pedido ' + numero + ' em ' + EMPRESAS[empCod].nome + '…');
+    const codigoPedido = await acharPedidoPorNumero(numero, empCod);
+    if (!codigoPedido) {
+      erro('Pedido/nota ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome + '.');
+      return;
+    }
+
+    await sleep(400);
+    const st = await statusPedido(codigoPedido, empCod);
+    const notas = (st && st.ListaNfe) || [];
+    if (!notas.length) {
+      erro('Pedido ' + numero + ' localizado, mas ainda não tem NF-e emitida.');
+      return;
+    }
+
+    const resumoInfo = { pedido: numero, empresa: EMPRESAS[empCod].nome, notas: [] };
+
+    for (const nfRaw of notas) {
+      const nf = {
+        nIdNF:  nfRaw.nIdNF || nfRaw.nIdNf || nfRaw.codigo_nf || 0,
+        numero: nfRaw.numero_nfe || nfRaw.nNF || '',
+        serie:  nfRaw.serie_nfe || nfRaw.serie || '',
+        chave:  nfRaw.chave_nfe || nfRaw.cChaveNFe || nfRaw.nfe_chave || ''
+      };
+      log('NF ' + (nf.numero || '—') + ' encontrada — buscando DANFE…');
+
+      let links = extrairLinks(nfRaw);
+      if (!links.pdf) {
+        const extra = await buscarDocsPorNF(nf, empCod);
+        await sleep(400);
+        links.pdf = links.pdf || extra.pdf;
+        links.xml = links.xml || extra.xml;
+      }
+      if (links.pdf) {
+        arquivosAtuais.push({ tipo: 'nf', label: 'NF ' + (nf.numero || '—'), url: links.pdf });
+      } else {
+        log('  → DANFE não retornado pelo Omie para a NF ' + (nf.numero || '—') + '.');
+      }
+
+      log('Buscando boletos vinculados à NF ' + (nf.numero || '—') + '…');
+      const boletos = await buscarBoletosPorNF(nf.numero, nf.chave, empCod);
+      await sleep(300);
+      boletos.forEach(b => {
+        arquivosAtuais.push({ tipo: 'boleto', label: 'Boleto NF ' + (nf.numero || '—') + (b.parcela ? ' — parcela ' + b.parcela : ''), url: b.url });
+      });
+      if (!boletos.length) log('  → Nenhum boleto localizado para essa NF (pode ser outra forma de pagamento).');
+
+      resumoInfo.notas.push(nf);
+    }
+
+    if (!arquivosAtuais.length) {
+      erro('Pedido e NF localizados, mas nenhum arquivo (DANFE/boleto) pôde ser obtido do Omie.');
+      return;
+    }
+
+    renderResultado(resumoInfo);
+  } catch (e) {
+    erro(e.message || String(e));
+  } finally {
+    $('btn-buscar').disabled = false;
+    $('btn-buscar').textContent = 'Buscar';
+  }
+}
+
+function renderResultado(info) {
+  $('resumo').innerHTML =
+    '<div class="kcard"><div class="label">Pedido</div><div class="val">' + esc(info.pedido) + '</div></div>' +
+    '<div class="kcard"><div class="label">Empresa</div><div class="val">' + esc(info.empresa) + '</div></div>' +
+    '<div class="kcard"><div class="label">Nota(s)</div><div class="val">' + info.notas.map(n => esc(n.numero || '—')).join(', ') + '</div></div>' +
+    '<div class="kcard"><div class="label">Arquivos</div><div class="val">' + arquivosAtuais.length + '</div></div>';
+
+  $('lista-arquivos').innerHTML = arquivosAtuais.map(a =>
+    '<div class="item-arquivo"><span>' + esc(a.label) + '</span><span class="tag ' + (a.tipo === 'nf' ? 'tag-nf' : 'tag-boleto') + '">' + (a.tipo === 'nf' ? 'NF' : 'Boleto') + '</span></div>'
+  ).join('');
+
+  $('resultado').style.display = 'block';
+  $('btn-gerar-pdf').disabled = false;
+  $('btn-imprimir').disabled = false;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. GERAÇÃO DO PDF ÚNICO (DANFE + boletos, na ordem NF → boletos)
+   ══════════════════════════════════════════════════════════════════════════ */
+async function montarPdfUnico() {
+  const { PDFDocument } = PDFLib;
+  const doc = await PDFDocument.create();
+  let falhas = 0;
+
+  for (const a of arquivosAtuais) {
+    try {
+      const src = await PDFDocument.load(await baixarArquivo(a.url), { ignoreEncryption: true });
+      const pgs = await doc.copyPages(src, src.getPageIndices());
+      pgs.forEach(p => doc.addPage(p));
+      log(a.label + ' adicionado ao PDF.');
+    } catch (e) {
+      falhas++;
+      log('Falhou ' + a.label + ': ' + (e.message || e));
+    }
+  }
+
+  if (!doc.getPageCount()) { throw new Error('Nenhum arquivo pôde ser lido.'); }
+  if (falhas) log(falhas + ' arquivo(s) falharam e não entraram no PDF.');
+  return new Blob([await doc.save()], { type: 'application/pdf' });
+}
+
+function salvar(blob, nome) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+async function gerarEBaixar() {
+  limparLog();
+  $('btn-gerar-pdf').disabled = true;
+  $('btn-gerar-pdf').innerHTML = '<span class="spin"></span> Gerando…';
+  try {
+    const blob = await montarPdfUnico();
+    const empCod = $('f-empresa').value;
+    const numero = $('f-numero').value.trim();
+    salvar(blob, 'NF_Boletos_' + empCod + '_' + numero + '.pdf');
+  } catch (e) {
+    erro(e.message || String(e));
+  } finally {
+    $('btn-gerar-pdf').disabled = false;
+    $('btn-gerar-pdf').textContent = 'Gerar PDF único';
+  }
+}
+
+async function gerarEImprimir() {
+  limparLog();
+  $('btn-imprimir').disabled = true;
+  $('btn-imprimir').innerHTML = '<span class="spin"></span> Gerando…';
+  try {
+    const blob = await montarPdfUnico();
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) { win.addEventListener('load', () => win.print()); }
+    else { salvar(blob, 'NF_Boletos.pdf'); }
+  } catch (e) {
+    erro(e.message || String(e));
+  } finally {
+    $('btn-imprimir').disabled = false;
+    $('btn-imprimir').textContent = 'Abrir e imprimir';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. EVENTOS
+   ══════════════════════════════════════════════════════════════════════════ */
+$('btn-buscar').addEventListener('click', buscar);
+$('f-numero').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+$('btn-gerar-pdf').addEventListener('click', gerarEBaixar);
+$('btn-imprimir').addEventListener('click', gerarEImprimir);
+</script>
+<script src="js/sidebar.js?v=3" defer></script>
+</body>
+</html>
