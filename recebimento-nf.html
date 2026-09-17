@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recebimento de NF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --cream:#F2EFE8;--card:#FDFAF5;--icon:#EDE8DF;
+  --navy:#1A2B4A;--navy-d:#0F1D33;--gold:#B8864A;
+  --gold-b:rgba(184,134,74,.2);--gold-l:rgba(184,134,74,.1);
+  --div:#C8B99A;--muted:#5A544E;
+  --green:#2E7D52;--green-l:#E4EDE4;
+  --red:#B03A2E;--red-l:#FDECEA;
+  --amber:#9A6B1A;--amber-l:#FFF3DC;
+  --blue:#1A56A0;--blue-l:#E8F0FB;
+}
+html,body{min-height:100%;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--navy);-webkit-font-smoothing:antialiased;font-size:14px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wrap{padding:28px 40px 60px;display:flex;flex-direction:column;gap:18px;max-width:1400px;margin:0 auto;width:100%;}
+.sec{background:var(--card);border:0.5px solid var(--gold-b);border-radius:16px;padding:22px 26px;animation:fadeUp .35s ease both;}
+.sec-title{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--gold-l);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+h1{font-family:'Playfair Display',serif;font-style:italic;font-size:26px;color:var(--navy);margin-bottom:6px;}
+.sub{font-size:13px;color:var(--muted);margin-bottom:4px;max-width:800px;}
+.controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:16px;}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.controls select,.controls input{height:38px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 12px;font-size:13px;background:#fff;font-family:inherit;outline:none;color:var(--navy);min-width:160px;}
+.controls select:focus,.controls input:focus{border-color:var(--gold);}
+.chk-empresas{display:flex;gap:14px;height:38px;align-items:center;}
+.chk-empresas label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-primary{padding:0 22px;height:38px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-primary:hover{background:var(--navy-d);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{padding:0 14px;height:32px;border:1.5px solid var(--gold-b);border-radius:8px;background:transparent;color:var(--navy);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--gold);background:var(--icon);}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-mini{padding:0 10px;height:26px;border:1px solid var(--gold-b);border-radius:6px;background:#fff;font-family:inherit;font-size:10px;font-weight:700;color:var(--navy);cursor:pointer;}
+.btn-mini:hover{border-color:var(--gold);background:var(--icon);}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.log{background:var(--navy-d);border-radius:8px;padding:10px 12px;font-size:11px;color:#a0c0e0;font-family:ui-monospace,Menlo,monospace;max-height:150px;overflow-y:auto;margin-top:12px;display:none;line-height:1.7;}
+.erro{background:var(--red-l);color:var(--red);border:0.5px solid rgba(176,58,46,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:12px;display:none;}
+.aviso{background:var(--amber-l);color:var(--amber);border:0.5px solid rgba(154,107,26,.3);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;}
+.table-wrap{overflow-x:auto;border:0.5px solid var(--gold-b);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{padding:9px 10px;text-align:left;background:var(--navy);font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+td{padding:8px 10px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--cream);}
+tr.selecionavel{cursor:pointer;}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);}
+td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
+.emp{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.e-MFP{background:var(--blue-l);color:var(--blue);}
+.e-DMS{background:var(--green-l);color:var(--green);}
+.e-PRF{background:var(--amber-l);color:var(--amber);}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.st-ok{background:var(--green-l);color:var(--green);}
+.st-erro{background:var(--red-l);color:var(--red);}
+.st-sem{background:var(--icon);color:var(--muted);}
+
+.overlay{position:fixed;inset:0;background:rgba(15,29,51,.55);z-index:900;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;max-width:1000px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;border-bottom:1px solid var(--gold-l);}
+.modal-head h2{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:var(--navy);}
+.modal-head .info{font-size:11px;color:var(--muted);margin-top:4px;}
+.modal-close{background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:4px;}
+.modal-body{padding:20px 24px;max-height:70vh;overflow-y:auto;}
+table.itens-nf{width:100%;border-collapse:collapse;font-size:11.5px;}
+table.itens-nf th{background:var(--icon);color:var(--navy);padding:7px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;}
+table.itens-nf td{padding:6px 8px;border-bottom:0.5px solid var(--gold-l);vertical-align:middle;}
+table.itens-nf select,table.itens-nf input{height:30px;border:1.5px solid var(--gold-b);border-radius:6px;padding:0 8px;font-size:11.5px;font-family:inherit;outline:none;color:var(--navy);width:100%;}
+.produto-cel{display:flex;gap:4px;align-items:center;}
+.produto-cel input{flex:1;}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--gold-l);display:flex;justify-content:flex-end;gap:10px;}
+
+.pop-produto{position:fixed;inset:0;background:rgba(15,29,51,.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.pop-produto.open{display:flex;}
+.pop-card{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:20px 22px;}
+.pop-card h3{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;color:var(--navy);margin-bottom:12px;}
+.pop-card label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:10px;margin-bottom:4px;}
+.pop-card input{width:100%;height:36px;border:1.5px solid var(--gold-b);border-radius:8px;padding:0 10px;font-family:inherit;font-size:13px;outline:none;}
+.lista-produtos{max-height:200px;overflow-y:auto;border:0.5px solid var(--gold-b);border-radius:8px;margin-top:8px;}
+.lista-produtos .lp-item{padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--gold-l);}
+.lista-produtos .lp-item:hover{background:var(--cream);}
+.lista-produtos .lp-item:last-child{border-bottom:none;}
+.pop-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="sec">
+    <h1>Recebimento de Notas Fiscais (Fornecedor)</h1>
+    <p class="sub">Lista as notas fiscais de compra recebidas das 3 empresas, direto do Omie (módulo DF-e), com os itens e valores. Permite classificar cada item por departamento, CFOP e produto do catálogo.</p>
+
+    <div class="aviso" id="aviso-endpoint">
+      ⚠ Este módulo usa endpoints do Omie (documentos DF-e de entrada) que nunca tinham sido usados neste sistema antes.
+      Se a busca ou a gravação não funcionar de primeira, abra o painel "Retorno bruto do Omie" no fim da página — a resposta real
+      ajuda a corrigir com precisão em vez de continuar chutando o formato.
+    </div>
+
+    <div class="controls">
+      <label class="fld">Empresas
+        <div class="chk-empresas">
+          <label><input type="checkbox" class="chk-emp" value="MFP" checked> MF Paris</label>
+          <label><input type="checkbox" class="chk-emp" value="DMS" checked> DMS</label>
+          <label><input type="checkbox" class="chk-emp" value="PRF" checked> Profi</label>
+        </div>
+      </label>
+      <label class="fld">Data de
+        <input type="date" id="f-data-de">
+      </label>
+      <label class="fld">Data até
+        <input type="date" id="f-data-ate">
+      </label>
+      <button class="btn-primary" id="btn-buscar">Buscar notas recebidas</button>
+    </div>
+
+    <div class="log" id="log"></div>
+    <div class="erro" id="erro"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title"><span>Notas recebidas</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Fornecedor</th>
+            <th style="width:90px">NF</th>
+            <th style="width:90px">Emissão</th>
+            <th style="width:110px">Valor</th>
+            <th style="width:130px">Situação</th>
+            <th style="width:100px">Classificação</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="empty">Escolha o período e clique em "Buscar notas recebidas".</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rodape" id="rodape" style="font-size:10px;color:var(--muted);margin-top:8px;text-align:right;"></div>
+  </div>
+
+  <div class="sec">
+    <details>
+      <summary style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;">Retorno bruto do Omie (para conferência e ajuste)</summary>
+      <pre id="raw" style="margin-top:10px;background:var(--navy-d);color:#a0c0e0;padding:12px;border-radius:8px;font-size:10px;line-height:1.6;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-all;">Nada carregado ainda.</pre>
+    </details>
+  </div>
+</div>
+
+<!-- Modal de detalhe / classificação da nota -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="modal-titulo">Nota fiscal</h2>
+        <div class="info" id="modal-info"></div>
+      </div>
+      <button class="modal-close" id="modal-fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap">
+        <table class="itens-nf">
+          <thead>
+            <tr>
+              <th style="width:80px">CFOP orig.</th>
+              <th>Descrição (fornecedor)</th>
+              <th style="width:60px">Qtd</th>
+              <th style="width:90px">Vlr Unit.</th>
+              <th style="width:90px">Vlr Total</th>
+              <th style="width:140px">Departamento</th>
+              <th style="width:90px">CFOP</th>
+              <th style="width:220px">Produto vinculado</th>
+            </tr>
+          </thead>
+          <tbody id="modal-itens"></tbody>
+        </table>
+      </div>
+      <div class="erro" id="modal-erro" style="margin-top:14px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" id="modal-cancelar">Fechar</button>
+      <button class="btn-primary" id="modal-salvar">Salvar classificação no Omie</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popover de busca/cadastro de produto -->
+<div class="pop-produto" id="pop-produto">
+  <div class="pop-card">
+    <h3>Vincular / cadastrar produto</h3>
+    <label>Buscar por código ou descrição</label>
+    <input type="text" id="pop-busca" placeholder="Digite para buscar no catálogo do Omie...">
+    <div class="lista-produtos" id="pop-lista"></div>
+    <details style="margin-top:12px;">
+      <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Não encontrou? Cadastrar produto novo</summary>
+      <label>Código (SKU)</label>
+      <input type="text" id="pop-novo-codigo">
+      <label>Descrição</label>
+      <input type="text" id="pop-novo-descricao">
+      <label>Unidade</label>
+      <input type="text" id="pop-novo-unidade" placeholder="UN, KG, CX...">
+      <div class="pop-foot">
+        <button class="btn-secondary" id="pop-novo-cancelar">Cancelar</button>
+        <button class="btn-primary" id="pop-novo-cadastrar">Cadastrar no Omie</button>
+      </div>
+    </details>
+    <div class="pop-foot">
+      <button class="btn-secondary" id="pop-fechar">Fechar sem vincular</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONFIG — key/secret NÃO ficam aqui: /api/omie-seguro resolve no
+   servidor a partir do código da empresa (mesmo padrão do resto do sistema).
+   ══════════════════════════════════════════════════════════════════════════ */
+const EMPRESAS = {
+  MFP: { nome: 'MF Paris' },
+  DMS: { nome: 'DMS Alimentos' },
+  PRF: { nome: 'Profi Comércio' },
+};
+const EP_DFE = 'https://app.omie.com.br/api/v1/produtos/dfedocs/';
+const EP_DEPTO = 'https://app.omie.com.br/api/v1/geral/departamentos/';
+const EP_PRODUTO = 'https://app.omie.com.br/api/v1/geral/produtos/';
+
+// Tabela de CFOP de entrada mais comuns (tabela oficial da Receita — não
+// depende do Omie, é fixa). Cobre os casos mais usuais de compra; qualquer
+// outro código pode ser digitado direto no campo (ele aceita texto livre).
+const CFOP_COMUNS = [
+  ['1102', 'Compra p/ comercialização'],
+  ['1101', 'Compra p/ industrialização'],
+  ['1403', 'Compra p/ comercialização (ST)'],
+  ['1556', 'Compra de material p/ uso/consumo'],
+  ['1949', 'Outra entrada não especificada'],
+  ['2102', 'Compra p/ comercialização (outro estado)'],
+  ['2101', 'Compra p/ industrialização (outro estado)'],
+  ['2403', 'Compra p/ comercialização (ST, outro estado)'],
+  ['2556', 'Compra de material p/ uso/consumo (outro estado)'],
+];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function log(msg) {
+  const el = $('log');
+  el.style.display = 'block';
+  el.innerHTML += esc(msg) + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+function limparLog() { $('log').innerHTML = ''; $('log').style.display = 'none'; }
+function erro(msg, elId) {
+  const el = $(elId || 'erro');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg; el.style.display = 'block';
+}
+function fmtMoeda(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function mostrarRaw(obj) {
+  const el = $('raw');
+  if (el) el.textContent = JSON.stringify(obj, null, 2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. OMIE — mesmo padrão do resto do sistema
+   ══════════════════════════════════════════════════════════════════════════ */
+async function omieCall(endpoint, call, empCod, param, tentativa) {
+  const resp = await fetch('/api/omie-seguro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, call, param, empresa: empCod })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (data && data.faultstring) {
+    if (/REDUNDANT|CONSUMO|Aguarde/i.test(data.faultstring) && !tentativa) {
+      const m = data.faultstring.match(/(\d+)\s*segundo/i);
+      const seg = m ? (parseInt(m[1], 10) + 3) : 35;
+      log('Limite da API atingido — aguardando ' + seg + 's…');
+      await sleep(seg * 1000);
+      return omieCall(endpoint, call, empCod, param, true);
+    }
+    const err = new Error(data.faultstring);
+    err.omie = true;
+    err.raw = data;
+    throw err;
+  }
+  return data;
+}
+
+/* Resposta de listagem do Omie embrulha o array de registros numa
+   propriedade cujo nome varia por módulo — pega o maior array encontrado
+   em qualquer nível (mesma estratégia usada em nf-boleto.html). */
+function extrairListaGenerica(obj) {
+  let melhor = [];
+  const visitar = o => {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) { if (o.length > melhor.length) melhor = o; return; }
+    for (const k of Object.keys(o)) visitar(o[k]);
+  };
+  visitar(obj);
+  return melhor;
+}
+function buscarCampoProfundo(obj, candidatos, visitados) {
+  visitados = visitados || new Set();
+  if (!obj || typeof obj !== 'object' || visitados.has(obj)) return null;
+  visitados.add(obj);
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (candidatos.includes(k) && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== '') return v;
+  }
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === 'object') { const r = buscarCampoProfundo(v, candidatos, visitados); if (r != null) return r; }
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. DEPARTAMENTOS (confirmado: geral/departamentos/ListarDepartamentos)
+   ══════════════════════════════════════════════════════════════════════════ */
+var _cacheDepartamentos = {};
+async function carregarDepartamentos(empCod) {
+  if (_cacheDepartamentos[empCod]) return _cacheDepartamentos[empCod];
+  try {
+    const d = await omieCall(EP_DEPTO, 'ListarDepartamentos', empCod, [{ pagina: 1, registros_por_pagina: 200 }]);
+    const lista = (d.departamentos || []).map(dep => ({ codigo: dep.codigo, descricao: dep.descricao }));
+    _cacheDepartamentos[empCod] = lista;
+    return lista;
+  } catch (e) {
+    log('Departamentos (' + EMPRESAS[empCod].nome + '): ' + (e.message || e));
+    _cacheDepartamentos[empCod] = [];
+    return [];
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. CATÁLOGO DE PRODUTOS (confirmado: geral/produtos/ListarProdutos)
+   ══════════════════════════════════════════════════════════════════════════ */
+var _cacheProdutos = {}; // empCod -> array (cacheado por empresa nesta sessão)
+async function carregarProdutos(empCod) {
+  if (_cacheProdutos[empCod]) return _cacheProdutos[empCod];
+  const TETO_PAGINAS = 15; // ~7500 produtos — cobre bem o catálogo típico
+  const produtos = [];
+  try {
+    const primeira = await omieCall(EP_PRODUTO, 'ListarProdutos', empCod, [{ pagina: 1, registros_por_pagina: 500, apenas_importado_api: 'N' }]);
+    const totalPaginas = primeira.total_de_paginas || 1;
+    produtos.push.apply(produtos, primeira.produto_servico_cadastro || []);
+    for (let p = 2; p <= Math.min(totalPaginas, TETO_PAGINAS); p++) {
+      await sleep(300);
+      const dados = await omieCall(EP_PRODUTO, 'ListarProdutos', empCod, [{ pagina: p, registros_por_pagina: 500, apenas_importado_api: 'N' }]);
+      produtos.push.apply(produtos, dados.produto_servico_cadastro || []);
+    }
+  } catch (e) {
+    log('Catálogo de produtos (' + EMPRESAS[empCod].nome + '): ' + (e.message || e));
+  }
+  _cacheProdutos[empCod] = produtos;
+  return produtos;
+}
+async function buscarProdutos(empCod, termo) {
+  const todos = await carregarProdutos(empCod);
+  const t = termo.toLowerCase().trim();
+  if (!t) return todos.slice(0, 30);
+  return todos.filter(p =>
+    String(p.codigo || '').toLowerCase().includes(t) ||
+    String(p.descricao || '').toLowerCase().includes(t)
+  ).slice(0, 30);
+}
+async function cadastrarProduto(empCod, dados) {
+  return omieCall(EP_PRODUTO, 'IncluirProduto', empCod, [{
+    codigo: dados.codigo,
+    descricao: dados.descricao,
+    unidade: dados.unidade || 'UN',
+    tipoItem: '01', // Mercadoria p/ Revenda — ajustar depois se o catálogo usar outra classificação padrão
+    ncm: '00000000'
+  }]);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. NOTAS FISCAIS DE ENTRADA (DF-e) — chutado, sem uso confirmado neste
+   projeto ainda. Se a chamada abaixo falhar, o erro do Omie aparece direto
+   na tela e no painel de retorno bruto, pra corrigir com precisão.
+   ══════════════════════════════════════════════════════════════════════════ */
+async function listarDocumentosRecebidos(empCod, dataDe, dataAte) {
+  const param = { pagina: 1, registros_por_pagina: 50 };
+  if (dataDe) param.dEmiInicial = dataDe;
+  if (dataAte) param.dEmiFinal = dataAte;
+  const primeira = await omieCall(EP_DFE, 'ListarDocumentos', empCod, [param]);
+  mostrarRaw(primeira);
+  const lista = extrairListaGenerica(primeira);
+  const totalPaginas = primeira.total_de_paginas || 1;
+  const todos = lista.slice();
+  for (let p = 2; p <= Math.min(totalPaginas, 10); p++) {
+    await sleep(350);
+    const dados = await omieCall(EP_DFE, 'ListarDocumentos', empCod, [{ ...param, pagina: p }]);
+    todos.push.apply(todos, extrairListaGenerica(dados));
+  }
+  return todos;
+}
+
+async function obterDocumentoCompleto(doc, empCod) {
+  const chave = buscarCampoProfundo(doc, ['chave_nfe', 'cChaveNFe', 'chNFe', 'chaveAcesso', 'chave']);
+  const nIdDoc = buscarCampoProfundo(doc, ['nIdDocumento', 'nIdNF', 'nIdDfe', 'codigo']);
+  const param = [{ nIdDocumento: nIdDoc || 0, cChaveAcesso: chave || '', cChaveNFe: chave || '' }];
+  const d = await omieCall(EP_DFE, 'ObterDocumento', empCod, param);
+  mostrarRaw(d);
+  return d;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. ESTADO E FLUXO PRINCIPAL
+   ══════════════════════════════════════════════════════════════════════════ */
+let notas = []; // { empCod, bruto, fornecedor, numero, emissao, valor, situacao }
+let notaAtual = null;
+let itensAtuais = []; // itens do documento aberto no modal
+let itemAlvoPopover = null;
+
+function empresasSelecionadas() {
+  return Array.from(document.querySelectorAll('.chk-emp:checked')).map(c => c.value);
+}
+
+async function buscar() {
+  const empresas = empresasSelecionadas();
+  if (!empresas.length) { erro('Selecione ao menos uma empresa.'); return; }
+  const dataDeIso = $('f-data-de').value;
+  const dataAteIso = $('f-data-ate').value;
+  const dataDe = dataDeIso ? dataDeIso.split('-').reverse().join('/') : '';
+  const dataAte = dataAteIso ? dataAteIso.split('-').reverse().join('/') : '';
+
+  erro('');
+  limparLog();
+  notas = [];
+  $('btn-buscar').disabled = true;
+  $('btn-buscar').innerHTML = '<span class="spin"></span> Buscando…';
+  render();
+
+  try {
+    for (const empCod of empresas) {
+      log('Buscando documentos recebidos — ' + EMPRESAS[empCod].nome + '…');
+      try {
+        const docs = await listarDocumentosRecebidos(empCod, dataDe, dataAte);
+        log('  → ' + docs.length + ' documento(s) encontrados em ' + EMPRESAS[empCod].nome + '.');
+        docs.forEach(doc => {
+          notas.push({
+            empCod,
+            bruto: doc,
+            fornecedor: buscarCampoProfundo(doc, ['razao_social', 'xNome', 'nome_fornecedor', 'razaoSocial']) || 'Fornecedor não identificado',
+            numero: buscarCampoProfundo(doc, ['numero_nfe', 'nNF', 'numero', 'nfe_numero']) || '—',
+            emissao: buscarCampoProfundo(doc, ['data_emissao', 'dEmi', 'dhEmi']) || '',
+            valor: buscarCampoProfundo(doc, ['valor_nf', 'vNF', 'valor_total_nota', 'valorTotal']) || 0,
+            situacao: buscarCampoProfundo(doc, ['situacao', 'cSitDfe', 'status']) || '—',
+            classificado: false
+          });
+        });
+      } catch (e) {
+        log('  → Erro em ' + EMPRESAS[empCod].nome + ': ' + (e.message || e));
+        if (e.raw) mostrarRaw(e.raw);
+      }
+      await sleep(300);
+    }
+    if (!notas.length) {
+      erro('Nenhum documento recebido encontrado para o período/empresas selecionados — ou a chamada ao Omie falhou (confira o log acima e o "Retorno bruto do Omie").');
+    }
+  } finally {
+    $('btn-buscar').disabled = false;
+    $('btn-buscar').textContent = 'Buscar notas recebidas';
+    render();
+  }
+}
+
+function render() {
+  const tb = $('tbody');
+  if (!notas.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">Escolha o período e clique em "Buscar notas recebidas".</td></tr>';
+  } else {
+    tb.innerHTML = notas.map((n, i) =>
+      '<tr class="selecionavel" data-i="' + i + '">' +
+        '<td><span class="emp e-' + n.empCod + '">' + esc(EMPRESAS[n.empCod].nome) + '</span></td>' +
+        '<td>' + esc(n.fornecedor) + '</td>' +
+        '<td class="mono">' + esc(n.numero) + '</td>' +
+        '<td class="mono">' + esc(n.emissao) + '</td>' +
+        '<td class="mono">' + fmtMoeda(n.valor) + '</td>' +
+        '<td>' + esc(n.situacao) + '</td>' +
+        '<td><span class="st ' + (n.classificado ? 'st-ok' : 'st-sem') + '">' + (n.classificado ? 'Classificada' : 'Pendente') + '</span></td>' +
+      '</tr>'
+    ).join('');
+    tb.querySelectorAll('tr[data-i]').forEach(tr => {
+      tr.addEventListener('click', () => abrirNota(notas[parseInt(tr.dataset.i, 10)]));
+    });
+  }
+  $('rodape').textContent = notas.length ? notas.length + ' documento(s) encontrado(s)' : '';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. MODAL DE DETALHE / CLASSIFICAÇÃO
+   ══════════════════════════════════════════════════════════════════════════ */
+async function abrirNota(nota) {
+  notaAtual = nota;
+  erro('', 'modal-erro');
+  $('modal-titulo').textContent = 'NF ' + nota.numero + ' — ' + nota.fornecedor;
+  $('modal-info').textContent = EMPRESAS[nota.empCod].nome + ' · Emitida em ' + (nota.emissao || '—') + ' · ' + fmtMoeda(nota.valor);
+  $('modal-itens').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">Carregando itens…</td></tr>';
+  $('overlay').classList.add('open');
+
+  const departamentos = await carregarDepartamentos(nota.empCod);
+
+  try {
+    const doc = await obterDocumentoCompleto(nota.bruto, nota.empCod);
+    const itensBrutos = extrairListaGenerica(doc).length ? extrairListaGenerica(doc) : (extrairListaGenerica(nota.bruto) || []);
+    itensAtuais = itensBrutos.map(it => ({
+      cfopOrig: buscarCampoProfundo(it, ['cfop', 'CFOP']) || '',
+      descricao: buscarCampoProfundo(it, ['descricao', 'xProd', 'descricao_produto']) || '',
+      quantidade: buscarCampoProfundo(it, ['quantidade', 'qCom', 'qtde']) || 0,
+      valorUnit: buscarCampoProfundo(it, ['valor_unitario', 'vUnCom', 'valorUnitario']) || 0,
+      valorTotal: buscarCampoProfundo(it, ['valor_total', 'vProd', 'valorTotal']) || 0,
+      departamento: '',
+      cfop: buscarCampoProfundo(it, ['cfop', 'CFOP']) || '',
+      produtoCodigo: '',
+      produtoDescricao: ''
+    }));
+    if (!itensAtuais.length) {
+      itensAtuais = [{ cfopOrig: '', descricao: 'Nenhum item retornado pelo Omie para este documento — confira o "Retorno bruto do Omie".', quantidade: '', valorUnit: '', valorTotal: '', departamento: '', cfop: '', produtoCodigo: '', produtoDescricao: '' }];
+    }
+    renderItensModal(departamentos);
+  } catch (e) {
+    $('modal-itens').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px;">Erro ao buscar itens: ' + esc(e.message || e) + '</td></tr>';
+    if (e.raw) mostrarRaw(e.raw);
+  }
+}
+
+function renderItensModal(departamentos) {
+  $('modal-itens').innerHTML = itensAtuais.map((it, i) => {
+    const optsDepto = '<option value="">—</option>' + departamentos.map(d => '<option value="' + esc(d.codigo) + '"' + (it.departamento === String(d.codigo) ? ' selected' : '') + '>' + esc(d.descricao) + '</option>').join('');
+    const optsCfop = '<option value="">—</option>' + CFOP_COMUNS.map(c => '<option value="' + c[0] + '"' + (it.cfop === c[0] ? ' selected' : '') + '>' + c[0] + ' — ' + c[1] + '</option>').join('');
+    return '<tr data-i="' + i + '">' +
+      '<td class="mono">' + esc(it.cfopOrig || '—') + '</td>' +
+      '<td>' + esc(it.descricao || '—') + '</td>' +
+      '<td class="mono">' + esc(it.quantidade) + '</td>' +
+      '<td class="mono">' + (it.valorUnit === '' ? '—' : fmtMoeda(it.valorUnit)) + '</td>' +
+      '<td class="mono">' + (it.valorTotal === '' ? '—' : fmtMoeda(it.valorTotal)) + '</td>' +
+      '<td><select class="sel-depto" data-i="' + i + '">' + optsDepto + '</select></td>' +
+      '<td><input class="inp-cfop" data-i="' + i + '" list="cfop-list-' + i + '" value="' + esc(it.cfop) + '" placeholder="CFOP">' +
+        '<datalist id="cfop-list-' + i + '">' + CFOP_COMUNS.map(c => '<option value="' + c[0] + '">' + c[1] + '</option>').join('') + '</datalist></td>' +
+      '<td><div class="produto-cel"><input class="inp-produto" data-i="' + i + '" readonly placeholder="Nenhum produto vinculado" value="' + esc(it.produtoDescricao ? (it.produtoCodigo + ' — ' + it.produtoDescricao) : '') + '">' +
+        '<button class="btn-mini" data-i="' + i + '" data-acao="vincular">🔗</button></div></td>' +
+    '</tr>';
+  }).join('');
+
+  $('modal-itens').querySelectorAll('.sel-depto').forEach(el => {
+    el.addEventListener('change', () => { itensAtuais[parseInt(el.dataset.i, 10)].departamento = el.value; });
+  });
+  $('modal-itens').querySelectorAll('.inp-cfop').forEach(el => {
+    el.addEventListener('input', () => { itensAtuais[parseInt(el.dataset.i, 10)].cfop = el.value.trim(); });
+  });
+  $('modal-itens').querySelectorAll('button[data-acao="vincular"]').forEach(btn => {
+    btn.addEventListener('click', () => abrirPopoverProduto(parseInt(btn.dataset.i, 10)));
+  });
+}
+
+function fecharModal() {
+  $('overlay').classList.remove('open');
+  notaAtual = null;
+  itensAtuais = [];
+}
+
+async function salvarClassificacao() {
+  if (!notaAtual) return;
+  erro('', 'modal-erro');
+  $('modal-salvar').disabled = true;
+  $('modal-salvar').innerHTML = '<span class="spin"></span> Salvando…';
+
+  const semClassificacao = itensAtuais.filter(it => it.descricao && it.descricao !== 'Nenhum item retornado pelo Omie para este documento — confira o "Retorno bruto do Omie".' && (!it.departamento || !it.cfop));
+  if (semClassificacao.length) {
+    erro('Todos os itens precisam de departamento e CFOP preenchidos antes de salvar.', 'modal-erro');
+    $('modal-salvar').disabled = false;
+    $('modal-salvar').textContent = 'Salvar classificação no Omie';
+    return;
+  }
+
+  try {
+    const chave = buscarCampoProfundo(notaAtual.bruto, ['chave_nfe', 'cChaveNFe', 'chNFe', 'chaveAcesso', 'chave']);
+    const nIdDoc = buscarCampoProfundo(notaAtual.bruto, ['nIdDocumento', 'nIdNF', 'nIdDfe', 'codigo']);
+    const payload = [{
+      nIdDocumento: nIdDoc || 0,
+      cChaveAcesso: chave || '',
+      itens: itensAtuais.map(it => ({
+        descricao: it.descricao,
+        codigo_departamento: it.departamento,
+        cfop: it.cfop,
+        codigo_produto: it.produtoCodigo || ''
+      }))
+    }];
+    const resp = await omieCall(EP_DFE, 'AlterarDocumento', notaAtual.empCod, payload);
+    mostrarRaw(resp);
+    notaAtual.classificado = true;
+    render();
+    fecharModal();
+  } catch (e) {
+    erro('Não foi possível salvar no Omie: ' + (e.message || e) + ' — confira o "Retorno bruto do Omie" na página principal pra ver a resposta completa.', 'modal-erro');
+    if (e.raw) mostrarRaw(e.raw);
+  } finally {
+    $('modal-salvar').disabled = false;
+    $('modal-salvar').textContent = 'Salvar classificação no Omie';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. POPOVER DE PRODUTO (buscar / vincular / cadastrar)
+   ══════════════════════════════════════════════════════════════════════════ */
+async function abrirPopoverProduto(indiceItem) {
+  itemAlvoPopover = indiceItem;
+  $('pop-busca').value = '';
+  $('pop-lista').innerHTML = '<div class="lp-item" style="color:var(--muted);">Carregando catálogo…</div>';
+  $('pop-novo-codigo').value = '';
+  $('pop-novo-descricao').value = itensAtuais[indiceItem].descricao || '';
+  $('pop-novo-unidade').value = '';
+  $('pop-produto').classList.add('open');
+
+  const resultados = await buscarProdutos(notaAtual.empCod, '');
+  renderListaProdutos(resultados);
+}
+
+function renderListaProdutos(lista) {
+  $('pop-lista').innerHTML = lista.length
+    ? lista.map(p => '<div class="lp-item" data-codigo="' + esc(p.codigo) + '" data-desc="' + esc(p.descricao) + '"><b>' + esc(p.codigo) + '</b> — ' + esc(p.descricao) + '</div>').join('')
+    : '<div class="lp-item" style="color:var(--muted);">Nenhum produto encontrado — cadastre um novo abaixo.</div>';
+  $('pop-lista').querySelectorAll('.lp-item[data-codigo]').forEach(el => {
+    el.addEventListener('click', () => {
+      itensAtuais[itemAlvoPopover].produtoCodigo = el.dataset.codigo;
+      itensAtuais[itemAlvoPopover].produtoDescricao = el.dataset.desc;
+      renderItensModal(_cacheDepartamentos[notaAtual.empCod] || []);
+      $('pop-produto').classList.remove('open');
+    });
+  });
+}
+
+let _buscaProdutoTimer = null;
+$('pop-busca').addEventListener('input', () => {
+  clearTimeout(_buscaProdutoTimer);
+  const termo = $('pop-busca').value;
+  _buscaProdutoTimer = setTimeout(async () => {
+    const resultados = await buscarProdutos(notaAtual.empCod, termo);
+    renderListaProdutos(resultados);
+  }, 250);
+});
+
+$('pop-novo-cadastrar').addEventListener('click', async () => {
+  const codigo = $('pop-novo-codigo').value.trim();
+  const descricao = $('pop-novo-descricao').value.trim();
+  const unidade = $('pop-novo-unidade').value.trim() || 'UN';
+  if (!codigo || !descricao) { alert('Preencha código e descrição.'); return; }
+  $('pop-novo-cadastrar').disabled = true;
+  $('pop-novo-cadastrar').innerHTML = '<span class="spin"></span> Cadastrando…';
+  try {
+    await cadastrarProduto(notaAtual.empCod, { codigo, descricao, unidade });
+    delete _cacheProdutos[notaAtual.empCod]; // força recarregar o catálogo com o novo item
+    itensAtuais[itemAlvoPopover].produtoCodigo = codigo;
+    itensAtuais[itemAlvoPopover].produtoDescricao = descricao;
+    renderItensModal(_cacheDepartamentos[notaAtual.empCod] || []);
+    $('pop-produto').classList.remove('open');
+  } catch (e) {
+    alert('Erro ao cadastrar produto no Omie: ' + (e.message || e));
+  } finally {
+    $('pop-novo-cadastrar').disabled = false;
+    $('pop-novo-cadastrar').textContent = 'Cadastrar no Omie';
+  }
+});
+$('pop-novo-cancelar').addEventListener('click', () => {});
+$('pop-fechar').addEventListener('click', () => { $('pop-produto').classList.remove('open'); });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. EVENTOS
+   ══════════════════════════════════════════════════════════════════════════ */
+$('btn-buscar').addEventListener('click', buscar);
+$('modal-fechar').addEventListener('click', fecharModal);
+$('modal-cancelar').addEventListener('click', fecharModal);
+$('modal-salvar').addEventListener('click', salvarClassificacao);
+$('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') fecharModal(); });
+
+(function initDatas() {
+  const hoje = new Date();
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const fmt = d => d.toISOString().slice(0, 10);
+  $('f-data-de').value = fmt(d30);
+  $('f-data-ate').value = fmt(hoje);
+})();
+
+render();
+</script>
+<script src="js/sidebar.js?v=1" defer></script>
+</body>
+</html>
