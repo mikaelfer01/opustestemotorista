@@ -76,7 +76,7 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
 <div class="wrap">
   <div class="sec">
     <h1>Nota Fiscal + Boletos</h1>
-    <p class="sub">Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.</p>
+    <p class="sub" id="sub-texto">Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.</p>
 
     <div class="grid2" style="margin-top:16px;">
       <div>
@@ -87,14 +87,20 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
             <option value="PRF">Profi Comércio</option>
           </select>
         </label>
-        <label class="fld">Número(s) da nota fiscal
+        <label class="fld">Buscar por
+          <div style="display:flex;gap:16px;height:38px;align-items:center;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:normal;"><input type="radio" name="modo-busca" value="nf" checked> Nota fiscal</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:normal;"><input type="radio" name="modo-busca" value="pedido"> Número do pedido</label>
+          </div>
+        </label>
+        <label class="fld" id="lbl-numeros">Número(s) da nota fiscal
           <textarea id="f-numeros" spellcheck="false" placeholder="12345&#10;12346&#10;12347"></textarea>
         </label>
-        <div class="hint">Uma nota fiscal por linha. Pode colar direto de uma coluna do Excel.</div>
+        <div class="hint" id="hint-numeros">Uma nota fiscal por linha. Pode colar direto de uma coluna do Excel.</div>
       </div>
       <div>
         <button class="btn-primary" id="btn-buscar">Buscar notas fiscais</button>
-        <div class="hint" style="margin-top:10px;">
+        <div class="hint" id="hint-metodo" style="margin-top:10px;">
           A busca varre as notas mais recentes emitidas pela empresa e casa com os números informados —
           o Omie não permite filtrar a listagem de NF diretamente por número. Para notas muito antigas,
           a busca pode não encontrar.
@@ -123,6 +129,7 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
       <table>
         <thead>
           <tr>
+            <th style="width:90px">Pesquisado</th>
             <th style="width:100px">NF</th>
             <th>Empresa</th>
             <th style="width:90px">Emissão</th>
@@ -133,7 +140,7 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="7" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>
+          <tr><td colspan="8" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>
         </tbody>
       </table>
     </div>
@@ -167,6 +174,7 @@ const EMPRESAS = {
   PRF: { nome: 'Profi Comércio' },
 };
 const EP_NF = 'https://app.omie.com.br/api/v1/produtos/nfconsultar/';
+const EP_PEDIDO = 'https://app.omie.com.br/api/v1/produtos/pedido/';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -349,6 +357,51 @@ async function acharNotaPorNumero(numero, empCod) {
   };
 }
 
+/* Busca por NÚMERO DO PEDIDO — mesmo padrão já confirmado/testado desde a
+   primeira versão desta página (produtos/pedido: ListarPedidos localiza o
+   codigo_pedido pelo numero_pedido, StatusPedido devolve a(s) NF(s) geradas
+   pra aquele pedido em ListaNfe). Mais direto que a busca por número de NF,
+   que precisa varrer as notas recentes. */
+async function acharPedidoPorNumero(numeroPedido, empCod) {
+  const soDigitos = String(numeroPedido || '').replace(/\D/g, '');
+  const n = parseInt(soDigitos, 10) || 0;
+  if (!n) return null;
+  const data = await omieCall(EP_PEDIDO, 'ListarPedidos', empCod, [{
+    pagina: 1, registros_por_pagina: 20,
+    numero_pedido_de: n, numero_pedido_ate: n,
+    apenas_importado_api: 'N'
+  }]);
+  const lista = (data && data.pedido_venda_produto) || [];
+  const alvo = String(numeroPedido).trim();
+  const achado = lista.find(p => {
+    const np = String((p.cabecalho || {}).numero_pedido || '').trim();
+    if (np === alvo) return true;
+    const npDigitos = np.replace(/\D/g, '');
+    return npDigitos && (parseInt(npDigitos, 10) === n);
+  });
+  return achado ? achado.cabecalho.codigo_pedido : null;
+}
+
+async function acharNotaPorPedido(numeroPedido, empCod) {
+  const codigoPedido = await acharPedidoPorNumero(numeroPedido, empCod);
+  if (!codigoPedido) return { erro: 'pedido_nao_encontrado' };
+  const st = await omieCall(EP_PEDIDO, 'StatusPedido', empCod, [{ codigo_pedido: parseInt(codigoPedido, 10) || codigoPedido }]);
+  mostrarRaw(st);
+  const notas = (st && st.ListaNfe) || [];
+  if (!notas.length) return { erro: 'sem_nf' };
+  const achada = notas[0];
+  return {
+    nf: {
+      nIdNF: extrairIdNF(achada),
+      numero: extrairNumeroNF(achada),
+      serie: buscarCampoProfundo(achada, ['serie_nfe', 'serie', 'cSerie']) || '',
+      chave: extrairChaveNF(achada),
+      emissao: extrairEmissaoNF(achada),
+      bruto: achada
+    }
+  };
+}
+
 const CANDIDATOS_DOC = [
   { id: 'util-ObterNFe',      endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterNFe' },
   { id: 'util-ObterDanfe',    endpoint: 'https://app.omie.com.br/api/v1/produtos/notafiscalutil/', call: 'ObterDanfe' },
@@ -452,11 +505,17 @@ async function baixarArquivo(url) {
 let resultados = []; // uma linha por NF pesquisada
 let rodando = false;
 
+function modoBuscaAtual() {
+  const el = document.querySelector('input[name="modo-busca"]:checked');
+  return el ? el.value : 'nf';
+}
+
 async function buscar() {
   if (rodando) return;
   const empCod = $('f-empresa').value;
+  const modo = modoBuscaAtual();
   const numeros = parseNumeros($('f-numeros').value);
-  if (!numeros.length) { erro('Informe ao menos um número de nota fiscal.'); return; }
+  if (!numeros.length) { erro('Informe ao menos um número de ' + (modo === 'pedido' ? 'pedido' : 'nota fiscal') + '.'); return; }
 
   rodando = true;
   erro('');
@@ -470,26 +529,46 @@ async function buscar() {
   render();
 
   try {
-    log('Carregando notas fiscais recentes de ' + EMPRESAS[empCod].nome + '…');
-    await _carregarNotasRecentes(empCod);
+    if (modo === 'nf') {
+      log('Carregando notas fiscais recentes de ' + EMPRESAS[empCod].nome + '…');
+      await _carregarNotasRecentes(empCod);
+    }
 
     for (let i = 0; i < numeros.length; i++) {
       const numero = numeros[i];
       let linha = {
-        numero, empresaCod: empCod, empresaNome: EMPRESAS[empCod].nome,
-        emissao: '', chave: '', arquivos: [], status: 'erro', obs: 'Não encontrada nas notas recentes'
+        pesquisado: numero, numero: '', empresaCod: empCod, empresaNome: EMPRESAS[empCod].nome,
+        emissao: '', chave: '', arquivos: [], status: 'erro', obs: modo === 'pedido' ? 'Pedido não encontrado' : 'Não encontrada nas notas recentes'
       };
 
       try {
-        const nf = await acharNotaPorNumero(numero, empCod);
-        if (!nf) {
-          linha.status = 'sem';
-          linha.obs = 'Nota não encontrada entre as notas recentes de ' + EMPRESAS[empCod].nome;
+        let nf = null;
+        if (modo === 'pedido') {
+          log('Localizando pedido ' + numero + ' em ' + EMPRESAS[empCod].nome + '…');
+          const resultado = await acharNotaPorPedido(numero, empCod);
+          if (resultado.erro === 'pedido_nao_encontrado') {
+            linha.status = 'sem';
+            linha.obs = 'Pedido ' + numero + ' não encontrado em ' + EMPRESAS[empCod].nome;
+          } else if (resultado.erro === 'sem_nf') {
+            linha.status = 'sem';
+            linha.obs = 'Pedido ' + numero + ' localizado, mas ainda não tem NF-e emitida';
+          } else {
+            nf = resultado.nf;
+          }
         } else {
+          nf = await acharNotaPorNumero(numero, empCod);
+          if (!nf) {
+            linha.status = 'sem';
+            linha.obs = 'Nota não encontrada entre as notas recentes de ' + EMPRESAS[empCod].nome;
+          }
+        }
+
+        if (nf) {
+          linha.numero = nf.numero;
           linha.emissao = nf.emissao;
           linha.chave = nf.chave;
 
-          log('NF ' + numero + ' encontrada — buscando DANFE…');
+          log('NF ' + (nf.numero || numero) + ' encontrada — buscando DANFE…');
           let links = extrairLinks(nf.bruto);
           if (!links.pdf) {
             const extra = await buscarDocsPorNF(nf, empCod);
@@ -497,13 +576,13 @@ async function buscar() {
             links.pdf = links.pdf || extra.pdf;
             links.xml = links.xml || extra.xml;
           }
-          if (links.pdf) linha.arquivos.push({ tipo: 'nf', label: 'NF ' + numero, url: links.pdf });
+          if (links.pdf) linha.arquivos.push({ tipo: 'nf', label: 'NF ' + (nf.numero || numero), url: links.pdf });
 
-          log('Buscando boletos vinculados à NF ' + numero + '…');
+          log('Buscando boletos vinculados à NF ' + (nf.numero || numero) + '…');
           const boletos = await buscarBoletosPorNF(nf.numero, nf.chave, empCod);
           await sleep(300);
           boletos.forEach(b => {
-            linha.arquivos.push({ tipo: 'boleto', label: 'Boleto NF ' + numero + (b.parcela ? ' — parcela ' + b.parcela : ''), url: b.url });
+            linha.arquivos.push({ tipo: 'boleto', label: 'Boleto NF ' + (nf.numero || numero) + (b.parcela ? ' — parcela ' + b.parcela : ''), url: b.url });
           });
 
           linha.status = links.pdf ? 'ok' : 'sem';
@@ -534,7 +613,7 @@ function toast() { /* placeholder simples: o rodapé já resume o resultado */ }
 function render() {
   const tb = $('tbody');
   if (!resultados.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>';
   } else {
     tb.innerHTML = resultados.map(r => {
       const stCls = r.status === 'ok' ? 'st-ok' : (r.status === 'sem' ? 'st-sem' : 'st-erro');
@@ -542,7 +621,8 @@ function render() {
       const nArquivosNf = r.arquivos.filter(a => a.tipo === 'nf').length;
       const nBoletos = r.arquivos.filter(a => a.tipo === 'boleto').length;
       return '<tr>' +
-        '<td class="mono">' + esc(r.numero) + '</td>' +
+        '<td class="mono">' + esc(r.pesquisado) + '</td>' +
+        '<td class="mono">' + esc(r.numero || '—') + '</td>' +
         '<td>' + esc(r.empresaNome) + '</td>' +
         '<td class="mono">' + esc(r.emissao || '—') + '</td>' +
         '<td class="mono" style="font-size:10px;">' + esc(r.chave || '—') + '</td>' +
@@ -647,6 +727,26 @@ $('btn-imprimir').addEventListener('click', gerarEImprimir);
 $('f-numeros').addEventListener('input', () => {
   const n = parseNumeros($('f-numeros').value).length;
   $('k-ped').textContent = n || '—';
+});
+document.querySelectorAll('input[name="modo-busca"]').forEach(el => {
+  el.addEventListener('change', () => {
+    const modo = modoBuscaAtual();
+    if (modo === 'pedido') {
+      $('sub-texto').textContent = 'Selecione a empresa, informe um ou mais números de pedido (um por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.';
+      $('lbl-numeros').firstChild.textContent = 'Número(s) do pedido';
+      $('f-numeros').placeholder = '12345\n12346\n12347';
+      $('hint-numeros').textContent = 'Um número de pedido por linha. Pode colar direto de uma coluna do Excel.';
+      $('hint-metodo').textContent = 'A busca localiza o pedido pelo número e usa a NF-e vinculada a ele — mais direta que a busca por número de NF.';
+      $('btn-buscar').textContent = 'Buscar pedidos';
+    } else {
+      $('sub-texto').textContent = 'Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.';
+      $('lbl-numeros').firstChild.textContent = 'Número(s) da nota fiscal';
+      $('f-numeros').placeholder = '12345\n12346\n12347';
+      $('hint-numeros').textContent = 'Uma nota fiscal por linha. Pode colar direto de uma coluna do Excel.';
+      $('hint-metodo').textContent = 'A busca varre as notas mais recentes emitidas pela empresa e casa com os números informados — o Omie não permite filtrar a listagem de NF diretamente por número. Para notas muito antigas, a busca pode não encontrar.';
+      $('btn-buscar').textContent = 'Buscar notas fiscais';
+    }
+  });
 });
 render();
 </script>
