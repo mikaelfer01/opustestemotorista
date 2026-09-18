@@ -69,6 +69,13 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
 .st-sem{background:var(--icon);color:var(--muted);}
 .acoes-finais{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
 .rodape{font-size:10px;color:var(--muted);margin-top:8px;text-align:right;}
+.lista-itens{display:flex;flex-direction:column;gap:6px;}
+.item-lista{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0.5px solid var(--gold-b);border-radius:8px;padding:8px 12px;font-size:13px;}
+.item-lista .emp{font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;background:var(--icon);color:var(--navy);}
+.item-lista .modo{font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;background:var(--blue-l);color:var(--blue);}
+.item-lista .num{font-family:ui-monospace,Menlo,monospace;font-weight:600;}
+.item-lista button{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;}
+.vazio-lista{font-size:12px;color:var(--muted);font-style:italic;padding:8px 2px;}
 </style>
 </head>
 <body>
@@ -76,7 +83,7 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
 <div class="wrap">
   <div class="sec">
     <h1>Nota Fiscal + Boletos</h1>
-    <p class="sub" id="sub-texto">Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.</p>
+    <p class="sub" id="sub-texto">Selecione a empresa, informe o número (nota fiscal ou pedido) e clique em "Adicionar". Repita para quantos precisar — inclusive misturando empresas diferentes — e depois busque tudo junto.</p>
 
     <div class="grid2" style="margin-top:16px;">
       <div>
@@ -93,17 +100,22 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:normal;"><input type="radio" name="modo-busca" value="pedido"> Número do pedido</label>
           </div>
         </label>
-        <label class="fld" id="lbl-numeros">Número(s) da nota fiscal
-          <textarea id="f-numeros" spellcheck="false" placeholder="12345&#10;12346&#10;12347"></textarea>
+        <label class="fld" id="lbl-numeros">Número
+          <input type="text" id="f-numero" placeholder="Ex.: 12345" inputmode="numeric">
         </label>
-        <div class="hint" id="hint-numeros">Uma nota fiscal por linha. Pode colar direto de uma coluna do Excel.</div>
+        <button class="btn-secondary" id="btn-adicionar" style="margin-top:6px;">+ Adicionar à lista</button>
       </div>
       <div>
-        <button class="btn-primary" id="btn-buscar">Buscar notas fiscais</button>
+        <div class="lista-itens" id="lista-itens">
+          <div class="vazio-lista">Nenhum item adicionado ainda.</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+          <button class="btn-primary" id="btn-buscar" disabled>Buscar tudo</button>
+          <button class="btn-secondary" id="btn-limpar-lista" disabled>Limpar lista</button>
+        </div>
         <div class="hint" id="hint-metodo" style="margin-top:10px;">
-          A busca varre as notas mais recentes emitidas pela empresa e casa com os números informados —
-          o Omie não permite filtrar a listagem de NF diretamente por número. Para notas muito antigas,
-          a busca pode não encontrar.
+          Busca por nota fiscal varre as notas mais recentes da empresa (o Omie não permite filtrar por número).
+          Busca por pedido é mais direta: localiza o pedido e usa a NF-e já vinculada a ele.
         </div>
       </div>
     </div>
@@ -140,7 +152,7 @@ td.empty{text-align:center;color:var(--div);padding:26px;font-size:12px;}
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="8" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>
+          <tr><td colspan="8" class="empty">Adicione itens à lista e clique em "Buscar tudo".</td></tr>
         </tbody>
       </table>
     </div>
@@ -193,12 +205,6 @@ function erro(msg) {
   el.textContent = msg; el.style.display = 'block';
 }
 function progresso(pct) { $('progress').style.width = Math.max(0, Math.min(100, pct)) + '%'; }
-
-function parseNumeros(txt) {
-  const vistos = new Set();
-  return String(txt).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.replace(/\D/g, '')).filter(Boolean)
-    .filter(n => { if (vistos.has(n)) return false; vistos.add(n); return true; });
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. OMIE — mesmo padrão de termos.html / notas-fiscais.html
@@ -500,9 +506,10 @@ async function baixarArquivo(url) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3. FLUXO PRINCIPAL
+   3. LISTA DE ITENS A BUSCAR (empresa + modo + número, pode misturar empresas)
    ══════════════════════════════════════════════════════════════════════════ */
-let resultados = []; // uma linha por NF pesquisada
+let lista = []; // { empresaCod, modo, numero }
+let resultados = []; // uma linha por item pesquisado
 let rodando = false;
 
 function modoBuscaAtual() {
@@ -510,18 +517,57 @@ function modoBuscaAtual() {
   return el ? el.value : 'nf';
 }
 
-async function buscar() {
-  if (rodando) return;
-  const empCod = $('f-empresa').value;
+function renderLista() {
+  const el = $('lista-itens');
+  if (!lista.length) {
+    el.innerHTML = '<div class="vazio-lista">Nenhum item adicionado ainda.</div>';
+  } else {
+    el.innerHTML = lista.map((it, i) =>
+      '<div class="item-lista">' +
+        '<span><span class="emp">' + esc(EMPRESAS[it.empresaCod].nome) + '</span> ' +
+        '<span class="modo">' + (it.modo === 'pedido' ? 'Pedido' : 'NF') + '</span> ' +
+        '<span class="num">' + esc(it.numero) + '</span></span>' +
+        '<button data-i="' + i + '" title="Remover">✕</button>' +
+      '</div>'
+    ).join('');
+    el.querySelectorAll('button[data-i]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        lista.splice(parseInt(btn.dataset.i, 10), 1);
+        renderLista();
+      });
+    });
+  }
+  $('btn-buscar').disabled = lista.length === 0;
+  $('btn-limpar-lista').disabled = lista.length === 0;
+}
+
+function adicionarItem() {
+  const empresaCod = $('f-empresa').value;
   const modo = modoBuscaAtual();
-  const numeros = parseNumeros($('f-numeros').value);
-  if (!numeros.length) { erro('Informe ao menos um número de ' + (modo === 'pedido' ? 'pedido' : 'nota fiscal') + '.'); return; }
+  const numero = $('f-numero').value.trim().replace(/\D/g, '');
+  if (!numero) { erro('Informe o número.'); return; }
+  erro('');
+  if (lista.some(it => it.empresaCod === empresaCod && it.modo === modo && it.numero === numero)) {
+    erro('Esse item já está na lista.');
+    return;
+  }
+  lista.push({ empresaCod, modo, numero });
+  $('f-numero').value = '';
+  $('f-numero').focus();
+  renderLista();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. FLUXO PRINCIPAL
+   ══════════════════════════════════════════════════════════════════════════ */
+async function buscar() {
+  if (rodando || !lista.length) return;
 
   rodando = true;
   erro('');
   limparLog();
   resultados = [];
-  $('k-ped').textContent = numeros.length;
+  $('k-ped').textContent = lista.length;
   $('btn-gerar-pdf').disabled = true;
   $('btn-imprimir').disabled = true;
   $('btn-buscar').disabled = true;
@@ -529,13 +575,12 @@ async function buscar() {
   render();
 
   try {
-    if (modo === 'nf') {
-      log('Carregando notas fiscais recentes de ' + EMPRESAS[empCod].nome + '…');
-      await _carregarNotasRecentes(empCod);
-    }
+    for (let i = 0; i < lista.length; i++) {
+      const it = lista[i];
+      const empCod = it.empresaCod;
+      const modo = it.modo;
+      const numero = it.numero;
 
-    for (let i = 0; i < numeros.length; i++) {
-      const numero = numeros[i];
       let linha = {
         pesquisado: numero, numero: '', empresaCod: empCod, empresaNome: EMPRESAS[empCod].nome,
         emissao: '', chave: '', arquivos: [], status: 'erro', obs: modo === 'pedido' ? 'Pedido não encontrado' : 'Não encontrada nas notas recentes'
@@ -556,6 +601,7 @@ async function buscar() {
             nf = resultado.nf;
           }
         } else {
+          log('Carregando notas fiscais recentes de ' + EMPRESAS[empCod].nome + '…');
           nf = await acharNotaPorNumero(numero, empCod);
           if (!nf) {
             linha.status = 'sem';
@@ -594,17 +640,17 @@ async function buscar() {
       }
 
       resultados.push(linha);
-      progresso(((i + 1) / numeros.length) * 100);
+      progresso(((i + 1) / lista.length) * 100);
       render();
     }
 
-    toast('Busca concluída: ' + resultados.filter(r => r.status === 'ok').length + ' de ' + numeros.length + ' nota(s) encontrada(s).');
+    toast('Busca concluída: ' + resultados.filter(r => r.status === 'ok').length + ' de ' + lista.length + ' item(ns) encontrado(s).');
   } catch (e) {
     erro(e.message || String(e));
   } finally {
     rodando = false;
-    $('btn-buscar').disabled = false;
-    $('btn-buscar').textContent = 'Buscar notas fiscais';
+    $('btn-buscar').disabled = lista.length === 0;
+    $('btn-buscar').textContent = 'Buscar tudo';
   }
 }
 
@@ -613,7 +659,7 @@ function toast() { /* placeholder simples: o rodapé já resume o resultado */ }
 function render() {
   const tb = $('tbody');
   if (!resultados.length) {
-    tb.innerHTML = '<tr><td colspan="8" class="empty">Informe as notas fiscais e clique em "Buscar notas fiscais".</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="empty">Adicione itens à lista e clique em "Buscar tudo".</td></tr>';
   } else {
     tb.innerHTML = resultados.map(r => {
       const stCls = r.status === 'ok' ? 'st-ok' : (r.status === 'sem' ? 'st-sem' : 'st-erro');
@@ -690,8 +736,7 @@ async function gerarEBaixar() {
   $('btn-gerar-pdf').innerHTML = '<span class="spin"></span> Gerando…';
   try {
     const blob = await montarPdfUnico();
-    const empCod = $('f-empresa').value;
-    salvar(blob, 'NF_Boletos_' + empCod + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+    salvar(blob, 'NF_Boletos_' + new Date().toISOString().slice(0, 10) + '.pdf');
   } catch (e) {
     erro(e.message || String(e));
   } finally {
@@ -724,30 +769,14 @@ async function gerarEImprimir() {
 $('btn-buscar').addEventListener('click', buscar);
 $('btn-gerar-pdf').addEventListener('click', gerarEBaixar);
 $('btn-imprimir').addEventListener('click', gerarEImprimir);
-$('f-numeros').addEventListener('input', () => {
-  const n = parseNumeros($('f-numeros').value).length;
-  $('k-ped').textContent = n || '—';
+$('btn-adicionar').addEventListener('click', adicionarItem);
+$('f-numero').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarItem(); } });
+$('btn-limpar-lista').addEventListener('click', () => {
+  lista = [];
+  renderLista();
+  erro('');
 });
-document.querySelectorAll('input[name="modo-busca"]').forEach(el => {
-  el.addEventListener('change', () => {
-    const modo = modoBuscaAtual();
-    if (modo === 'pedido') {
-      $('sub-texto').textContent = 'Selecione a empresa, informe um ou mais números de pedido (um por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.';
-      $('lbl-numeros').firstChild.textContent = 'Número(s) do pedido';
-      $('f-numeros').placeholder = '12345\n12346\n12347';
-      $('hint-numeros').textContent = 'Um número de pedido por linha. Pode colar direto de uma coluna do Excel.';
-      $('hint-metodo').textContent = 'A busca localiza o pedido pelo número e usa a NF-e vinculada a ele — mais direta que a busca por número de NF.';
-      $('btn-buscar').textContent = 'Buscar pedidos';
-    } else {
-      $('sub-texto').textContent = 'Selecione a empresa, informe uma ou mais notas fiscais (uma por linha) e gere um único PDF com as DANFEs e os boletos vinculados, direto do Omie.';
-      $('lbl-numeros').firstChild.textContent = 'Número(s) da nota fiscal';
-      $('f-numeros').placeholder = '12345\n12346\n12347';
-      $('hint-numeros').textContent = 'Uma nota fiscal por linha. Pode colar direto de uma coluna do Excel.';
-      $('hint-metodo').textContent = 'A busca varre as notas mais recentes emitidas pela empresa e casa com os números informados — o Omie não permite filtrar a listagem de NF diretamente por número. Para notas muito antigas, a busca pode não encontrar.';
-      $('btn-buscar').textContent = 'Buscar notas fiscais';
-    }
-  });
-});
+renderLista();
 render();
 </script>
 <script src="js/sidebar.js?v=1" defer></script>
